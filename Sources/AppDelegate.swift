@@ -28,8 +28,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create view controller FIRST
         viewController = ViewController()
-        viewController.loadView() // Explicitly load the view
-        print("✅ Created view controller, view: \(viewController.view)")
+        print("✅ Created view controller")
 
         // Create window
         let contentRect = NSRect(x: 100, y: 100, width: 600, height: 400)
