@@ -187,83 +187,11 @@ class VoiceInputManager: NSObject, ObservableObject {
 
     // MARK: - Type Transcript
 
+    /// Type the current transcript as text input
     func typeCurrentTranscript() {
         guard !currentTranscript.isEmpty else { return }
         InputController.shared.typeText(currentTranscript)
         onLog?("⌨️ Typed: \(currentTranscript)")
         currentTranscript = ""
-    }
-
-    func typeAndSubmit() {
-        guard !currentTranscript.isEmpty else { return }
-        InputController.shared.typeText(currentTranscript)
-        InputController.shared.pressEnter()
-        onLog?("⌨️ Submitted: \(currentTranscript)")
-        currentTranscript = ""
-    }
-}
-
-// MARK: - Voice Commands
-
-extension VoiceInputManager {
-    /// Process voice commands for special actions
-    func processVoiceCommand(_ transcript: String) -> Bool {
-        let command = transcript.lowercased().trimmingCharacters(in: .whitespaces)
-
-        // Common voice commands
-        switch command {
-        case "enter", "submit", "send", "confirm", "return":
-            InputController.shared.pressEnter()
-            onLog?("🗣️ Command: Enter")
-            return true
-
-        case "escape", "cancel", "exit", "back":
-            InputController.shared.pressEscape()
-            onLog?("🗣️ Command: Escape")
-            return true
-
-        case "tab", "next", "autocomplete":
-            InputController.shared.pressTab()
-            onLog?("🗣️ Command: Tab")
-            return true
-
-        case "click", "select":
-            InputController.shared.leftClick()
-            onLog?("🗣️ Command: Click")
-            return true
-
-        case "right click", "context menu":
-            InputController.shared.rightClick()
-            onLog?("🗣️ Command: Right Click")
-            return true
-
-        case "scroll up", "up":
-            InputController.shared.pageUp()
-            onLog?("🗣️ Command: Page Up")
-            return true
-
-        case "scroll down", "down":
-            InputController.shared.pageDown()
-            onLog?("🗣️ Command: Page Down")
-            return true
-
-        case "delete", "backspace":
-            InputController.shared.pressBackspace()
-            onLog?("🗣️ Command: Backspace")
-            return true
-
-        case "stop", "interrupt":
-            InputController.shared.interruptProcess()
-            onLog?("🗣️ Command: Interrupt (Ctrl+C)")
-            return true
-
-        case "space":
-            InputController.shared.pressSpace()
-            onLog?("🗣️ Command: Space")
-            return true
-
-        default:
-            return false
-        }
     }
 }

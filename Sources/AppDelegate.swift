@@ -1,9 +1,11 @@
 import Cocoa
 import JoyConSwift
+import ApplicationServices
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
     var viewController: ViewController!
+    var permissionsViewController: PermissionsViewController?
     var joyConManager: JoyConManager!
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
@@ -13,11 +15,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create menu bar
         setupMenuBar()
 
-        // Create view controller FIRST
-        viewController = ViewController()
+        // Check if we need to show permissions screen
+        let hasAccessibility = AXIsProcessTrusted()
 
         // Create window
-        let contentRect = NSRect(x: 100, y: 100, width: 700, height: 500)
+        let contentRect = NSRect(x: 100, y: 100, width: 700, height: 600)
         window = NSWindow(
             contentRect: contentRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -25,17 +27,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.title = "berrry-joyful"
-        window.contentViewController = viewController
-        window.minSize = NSSize(width: 500, height: 350)
-        window.backgroundColor = NSColor(white: 0.1, alpha: 1.0)
+        window.backgroundColor = NSColor.windowBackgroundColor
+
+        if !hasAccessibility {
+            // Show permissions screen first
+            showPermissionsScreen()
+        } else {
+            // Go directly to main app
+            showMainApp()
+        }
 
         // Show window and activate app
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func showPermissionsScreen() {
+        permissionsViewController = PermissionsViewController()
+        permissionsViewController?.onPermissionsGranted = { [weak self] in
+            self?.showMainApp()
+        }
+        window.contentViewController = permissionsViewController
+        window.minSize = NSSize(width: 700, height: 600)
+    }
+
+    private func showMainApp() {
+        // Create view controller
+        viewController = ViewController()
+        window.contentViewController = viewController
+        window.minSize = NSSize(width: 500, height: 350)
 
         // Setup controller monitoring
         setupControllerMonitoring()
+
+        // Clear permissions VC
+        permissionsViewController = nil
     }
 
     private func setupMenuBar() {

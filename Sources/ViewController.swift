@@ -178,11 +178,8 @@ class ViewController: NSViewController {
         }
         voiceManager.onFinalTranscript = { [weak self] transcript in
             guard let self = self else { return }
-            // Check if it's a command first
-            if !self.voiceManager.processVoiceCommand(transcript) {
-                // Not a command, type it
-                self.voiceManager.typeCurrentTranscript()
-            }
+            // Voice input is text-only - type the transcript
+            self.voiceManager.typeCurrentTranscript()
         }
         voiceManager.onError = { [weak self] error in
             self?.log("❌ Voice Error: \(error)")
