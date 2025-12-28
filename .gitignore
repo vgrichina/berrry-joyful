@@ -1,8 +1,8 @@
 # Xcode
 # Using xcodegen - ignore generated files
 *.xcodeproj/
+*.xcworkspace/
 Sources/Info.plist
-!*.xcworkspace/contents.xcworkspacedata
 DerivedData/
 *.xcuserstate
 *.mode1v3
