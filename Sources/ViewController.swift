@@ -1,20 +1,59 @@
 import Cocoa
 import JoyConSwift
 
+enum ControlModeTab: String {
+    case mouse = "Mouse"
+    case keyboard = "Keyboard"
+    case voice = "Voice"
+}
+
 class ViewController: NSViewController {
-    // UI Components
-    private var textView: NSTextView!
+    // MARK: - UI Components
+
+    // Header
+    private var connectionLabel: NSTextField!
+    private var batteryLabel: NSTextField!
+    private var ledIndicator: NSTextField!
+
+    // Mode Tabs
+    private var mouseTabButton: NSButton!
+    private var keyboardTabButton: NSButton!
+    private var voiceTabButton: NSButton!
+    private var currentTab: ControlModeTab = .mouse
+
+    // Configuration Panels (one for each mode)
+    private var mouseConfigPanel: NSView!
+    private var keyboardConfigPanel: NSView!
+    private var voiceConfigPanel: NSView!
+
+    // Mouse Controls
+    private var sensitivitySlider: NSSlider!
+    private var sensitivityLabel: NSTextField!
+    private var deadzoneSlider: NSSlider!
+    private var deadzoneLabel: NSTextField!
+    private var invertYCheckbox: NSButton!
+    private var accelerationCheckbox: NSButton!
+    private var mouseActiveButton: NSButton!
+
+    // Keyboard Controls
+    private var keyboardPresetPopup: NSPopUpButton!
+    private var keyboardActiveButton: NSButton!
+
+    // Voice Controls
+    private var voiceStatusLabel: NSTextField!
+    private var voiceActivationMatrix: NSMatrix!
+    private var voiceActiveButton: NSButton!
+
+    // Bottom Bar & Debug Log
+    private var debugLogButton: NSButton!
+    private var debugLogContainer: NSView!
     private var scrollView: NSScrollView!
-    private var modeIndicator: NSTextField!
-    private var connectionIndicator: NSTextField!
-    private var permissionPanel: NSView?
-    private var accessibilityButton: NSButton?
-    private var microphoneButton: NSButton?
+    private var textView: NSTextView!
+    private var isDebugLogExpanded: Bool = true
 
-    // Controllers
-    var controllers: [Controller] = [] // JoyConSwift controllers
+    // MARK: - Controllers & State
 
-    // State
+    var controllers: [Controller] = []
     private var currentMode: ControlMode = .unified
     private var specialMode: SpecialInputMode = .none
     private var modifiers = ModifierState()
@@ -26,9 +65,10 @@ class ViewController: NSViewController {
     private let voiceManager = VoiceInputManager.shared
     private let settings = InputSettings.shared
 
+    // MARK: - Lifecycle
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 700, height: 500))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 700, height: 600))
     }
 
     override func viewDidLoad() {
@@ -36,45 +76,413 @@ class ViewController: NSViewController {
         setupUI()
         setupInputController()
         setupVoiceManager()
-        checkPermissions()
+        log("🫐 berrry-joyful initialized - waiting for controllers...")
     }
 
     // MARK: - UI Setup
 
     private func setupUI() {
         view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor(white: 0.1, alpha: 1.0).cgColor
+        view.layer?.backgroundColor = NSColor(white: 0.95, alpha: 1.0).cgColor
 
-        // Header with mode and connection indicators
-        let headerHeight: CGFloat = 50
-        let headerView = NSView(frame: NSRect(x: 0, y: view.bounds.height - headerHeight,
-                                               width: view.bounds.width, height: headerHeight))
+        let yOffset = setupHeader()
+        let yAfterTabs = setupModeTabs(below: yOffset)
+        let yAfterConfig = setupConfigurationPanels(below: yAfterTabs)
+        setupBottomBarAndDebugLog(below: yAfterConfig)
+
+        // Show initial tab
+        switchToTab(.mouse)
+    }
+
+    private func setupHeader() -> CGFloat {
+        let headerHeight: CGFloat = 60
+        let headerView = NSView(frame: NSRect(
+            x: 0,
+            y: view.bounds.height - headerHeight,
+            width: view.bounds.width,
+            height: headerHeight
+        ))
         headerView.autoresizingMask = [.width, .minYMargin]
         headerView.wantsLayer = true
-        headerView.layer?.backgroundColor = NSColor(white: 0.15, alpha: 1.0).cgColor
+        headerView.layer?.backgroundColor = NSColor(white: 0.2, alpha: 1.0).cgColor
 
-        // Mode indicator
-        modeIndicator = NSTextField(labelWithString: "🎮 Unified Control")
-        modeIndicator.font = NSFont.systemFont(ofSize: 18, weight: .semibold)
-        modeIndicator.textColor = .white
-        modeIndicator.frame = NSRect(x: 16, y: 10, width: 300, height: 30)
-        headerView.addSubview(modeIndicator)
+        // Connection status
+        connectionLabel = NSTextField(labelWithString: "🔍 No Joy-Con detected")
+        connectionLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        connectionLabel.textColor = NSColor(white: 0.7, alpha: 1.0)
+        connectionLabel.frame = NSRect(x: 20, y: 20, width: 400, height: 25)
+        headerView.addSubview(connectionLabel)
 
-        // Connection indicator
-        connectionIndicator = NSTextField(labelWithString: "🎮 No Controller")
-        connectionIndicator.font = NSFont.systemFont(ofSize: 14, weight: .regular)
-        connectionIndicator.textColor = NSColor.secondaryLabelColor
-        connectionIndicator.alignment = .right
-        connectionIndicator.frame = NSRect(x: view.bounds.width - 220, y: 12, width: 200, height: 25)
-        connectionIndicator.autoresizingMask = [.minXMargin]
-        headerView.addSubview(connectionIndicator)
+        // Battery indicator
+        batteryLabel = NSTextField(labelWithString: "")
+        batteryLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        batteryLabel.textColor = NSColor(white: 0.6, alpha: 1.0)
+        batteryLabel.alignment = .right
+        batteryLabel.frame = NSRect(x: view.bounds.width - 180, y: 25, width: 100, height: 20)
+        batteryLabel.autoresizingMask = [.minXMargin]
+        headerView.addSubview(batteryLabel)
+
+        // LED indicator
+        ledIndicator = NSTextField(labelWithString: "")
+        ledIndicator.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        ledIndicator.textColor = NSColor(white: 0.6, alpha: 1.0)
+        ledIndicator.alignment = .right
+        ledIndicator.frame = NSRect(x: view.bounds.width - 70, y: 25, width: 60, height: 20)
+        ledIndicator.autoresizingMask = [.minXMargin]
+        headerView.addSubview(ledIndicator)
 
         view.addSubview(headerView)
+        return view.bounds.height - headerHeight
+    }
 
-        // Log scroll view - calculate frame accounting for potential permission panel
-        let permissionPanelHeight: CGFloat = 80
-        let logFrame = NSRect(x: 0, y: 0, width: view.bounds.width, height: view.bounds.height - headerHeight - permissionPanelHeight)
-        scrollView = NSScrollView(frame: logFrame)
+    private func setupModeTabs(below yPosition: CGFloat) -> CGFloat {
+        let tabHeight: CGFloat = 50
+        let tabsView = NSView(frame: NSRect(
+            x: 0,
+            y: yPosition - tabHeight,
+            width: view.bounds.width,
+            height: tabHeight
+        ))
+        tabsView.autoresizingMask = [.width, .minYMargin]
+        tabsView.wantsLayer = true
+        tabsView.layer?.backgroundColor = NSColor(white: 0.9, alpha: 1.0).cgColor
+
+        let tabWidth: CGFloat = 150
+        let spacing: CGFloat = 10
+        let startX: CGFloat = 20
+
+        // Mouse Tab
+        mouseTabButton = createTabButton(
+            title: "🖱️ Mouse",
+            frame: NSRect(x: startX, y: 10, width: tabWidth, height: 30),
+            tag: 0
+        )
+        tabsView.addSubview(mouseTabButton)
+
+        // Keyboard Tab
+        keyboardTabButton = createTabButton(
+            title: "⌨️ Keyboard",
+            frame: NSRect(x: startX + tabWidth + spacing, y: 10, width: tabWidth, height: 30),
+            tag: 1
+        )
+        tabsView.addSubview(keyboardTabButton)
+
+        // Voice Tab
+        voiceTabButton = createTabButton(
+            title: "🎤 Voice",
+            frame: NSRect(x: startX + (tabWidth + spacing) * 2, y: 10, width: tabWidth, height: 30),
+            tag: 2
+        )
+        tabsView.addSubview(voiceTabButton)
+
+        view.addSubview(tabsView)
+        return yPosition - tabHeight
+    }
+
+    private func createTabButton(title: String, frame: NSRect, tag: Int) -> NSButton {
+        let button = NSButton(frame: frame)
+        button.title = title
+        button.bezelStyle = .rounded
+        button.target = self
+        button.action = #selector(tabButtonClicked(_:))
+        button.tag = tag
+        return button
+    }
+
+    private func setupConfigurationPanels(below yPosition: CGFloat) -> CGFloat {
+        let configHeight: CGFloat = 300
+
+        // Mouse Config Panel
+        mouseConfigPanel = createMouseConfigPanel(
+            frame: NSRect(x: 0, y: yPosition - configHeight, width: view.bounds.width, height: configHeight)
+        )
+        mouseConfigPanel.autoresizingMask = [.width, .minYMargin]
+        view.addSubview(mouseConfigPanel)
+
+        // Keyboard Config Panel
+        keyboardConfigPanel = createKeyboardConfigPanel(
+            frame: NSRect(x: 0, y: yPosition - configHeight, width: view.bounds.width, height: configHeight)
+        )
+        keyboardConfigPanel.autoresizingMask = [.width, .minYMargin]
+        view.addSubview(keyboardConfigPanel)
+
+        // Voice Config Panel
+        voiceConfigPanel = createVoiceConfigPanel(
+            frame: NSRect(x: 0, y: yPosition - configHeight, width: view.bounds.width, height: configHeight)
+        )
+        voiceConfigPanel.autoresizingMask = [.width, .minYMargin]
+        view.addSubview(voiceConfigPanel)
+
+        return yPosition - configHeight
+    }
+
+    private func createMouseConfigPanel(frame: NSRect) -> NSView {
+        let panel = NSView(frame: frame)
+        panel.wantsLayer = true
+        panel.layer?.backgroundColor = NSColor.white.cgColor
+
+        var y: CGFloat = frame.height - 40
+
+        // Title
+        let titleLabel = NSTextField(labelWithString: "Mouse Control Settings")
+        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
+        titleLabel.isBezeled = false
+        titleLabel.isEditable = false
+        titleLabel.drawsBackground = false
+        panel.addSubview(titleLabel)
+        y -= 50
+
+        // Sensitivity Slider
+        let sensitivityTitleLabel = NSTextField(labelWithString: "Sensitivity:")
+        sensitivityTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        sensitivityTitleLabel.isBezeled = false
+        sensitivityTitleLabel.isEditable = false
+        sensitivityTitleLabel.drawsBackground = false
+        panel.addSubview(sensitivityTitleLabel)
+
+        sensitivitySlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        sensitivitySlider.minValue = 0.5
+        sensitivitySlider.maxValue = 3.0
+        sensitivitySlider.doubleValue = Double(settings.mouseSensitivity)
+        sensitivitySlider.target = self
+        sensitivitySlider.action = #selector(sensitivityChanged(_:))
+        panel.addSubview(sensitivitySlider)
+
+        sensitivityLabel = NSTextField(labelWithString: String(format: "%.1fx", settings.mouseSensitivity))
+        sensitivityLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
+        sensitivityLabel.isBezeled = false
+        sensitivityLabel.isEditable = false
+        sensitivityLabel.drawsBackground = false
+        panel.addSubview(sensitivityLabel)
+        y -= 35
+
+        // Deadzone Slider
+        let deadzoneTitleLabel = NSTextField(labelWithString: "Deadzone:")
+        deadzoneTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        deadzoneTitleLabel.isBezeled = false
+        deadzoneTitleLabel.isEditable = false
+        deadzoneTitleLabel.drawsBackground = false
+        panel.addSubview(deadzoneTitleLabel)
+
+        deadzoneSlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        deadzoneSlider.minValue = 0.0
+        deadzoneSlider.maxValue = 0.3
+        deadzoneSlider.doubleValue = Double(settings.stickDeadzone)
+        deadzoneSlider.target = self
+        deadzoneSlider.action = #selector(deadzoneChanged(_:))
+        panel.addSubview(deadzoneSlider)
+
+        deadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.stickDeadzone * 100))
+        deadzoneLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
+        deadzoneLabel.isBezeled = false
+        deadzoneLabel.isEditable = false
+        deadzoneLabel.drawsBackground = false
+        panel.addSubview(deadzoneLabel)
+        y -= 40
+
+        // Checkboxes
+        invertYCheckbox = NSButton(checkboxWithTitle: "Invert Y-Axis", target: self, action: #selector(invertYChanged(_:)))
+        invertYCheckbox.frame = NSRect(x: 20, y: y, width: 150, height: 20)
+        invertYCheckbox.state = settings.invertY ? .on : .off
+        panel.addSubview(invertYCheckbox)
+
+        accelerationCheckbox = NSButton(checkboxWithTitle: "Acceleration", target: self, action: #selector(accelerationChanged(_:)))
+        accelerationCheckbox.frame = NSRect(x: 200, y: y, width: 150, height: 20)
+        accelerationCheckbox.state = settings.mouseAcceleration ? .on : .off
+        panel.addSubview(accelerationCheckbox)
+        y -= 50
+
+        // Active/Start Button
+        mouseActiveButton = NSButton(frame: NSRect(x: frame.width / 2 - 100, y: 20, width: 200, height: 32))
+        mouseActiveButton.title = "▶ Start Mouse Control"
+        mouseActiveButton.bezelStyle = .rounded
+        mouseActiveButton.target = self
+        mouseActiveButton.action = #selector(toggleMouseControl(_:))
+        panel.addSubview(mouseActiveButton)
+
+        return panel
+    }
+
+    private func createKeyboardConfigPanel(frame: NSRect) -> NSView {
+        let panel = NSView(frame: frame)
+        panel.wantsLayer = true
+        panel.layer?.backgroundColor = NSColor.white.cgColor
+
+        var y: CGFloat = frame.height - 40
+
+        // Title
+        let titleLabel = NSTextField(labelWithString: "Keyboard Layout & Mapping")
+        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
+        titleLabel.isBezeled = false
+        titleLabel.isEditable = false
+        titleLabel.drawsBackground = false
+        panel.addSubview(titleLabel)
+        y -= 50
+
+        // Layout Preset
+        let presetLabel = NSTextField(labelWithString: "Layout Preset:")
+        presetLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        presetLabel.isBezeled = false
+        presetLabel.isEditable = false
+        presetLabel.drawsBackground = false
+        panel.addSubview(presetLabel)
+
+        keyboardPresetPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 5, width: 250, height: 25))
+        keyboardPresetPopup.addItems(withTitles: [
+            "Gaming (WASD + Space/Jump)",
+            "Text Editing (Arrow keys, Delete)",
+            "Media Controls (Play/Pause, Volume)",
+            "Custom Mapping"
+        ])
+        keyboardPresetPopup.selectItem(at: 3) // Default to custom
+        keyboardPresetPopup.target = self
+        keyboardPresetPopup.action = #selector(keyboardPresetChanged(_:))
+        panel.addSubview(keyboardPresetPopup)
+        y -= 50
+
+        // Button mapping guide
+        let mappingLabel = NSTextField(wrappingLabelWithString: """
+        Current Mapping:
+        A → Enter    B → Escape    X → Tab    Y → Space
+        D-Pad → Arrow Keys    L → Option    R → Shift
+        ZL + ZR → Voice Input
+        """)
+        mappingLabel.font = NSFont.systemFont(ofSize: 11)
+        mappingLabel.frame = NSRect(x: 20, y: y - 80, width: frame.width - 40, height: 80)
+        panel.addSubview(mappingLabel)
+
+        // Active/Start Button
+        keyboardActiveButton = NSButton(frame: NSRect(x: frame.width / 2 - 100, y: 20, width: 200, height: 32))
+        keyboardActiveButton.title = "▶ Start Keyboard Control"
+        keyboardActiveButton.bezelStyle = .rounded
+        keyboardActiveButton.target = self
+        keyboardActiveButton.action = #selector(toggleKeyboardControl(_:))
+        panel.addSubview(keyboardActiveButton)
+
+        return panel
+    }
+
+    private func createVoiceConfigPanel(frame: NSRect) -> NSView {
+        let panel = NSView(frame: frame)
+        panel.wantsLayer = true
+        panel.layer?.backgroundColor = NSColor.white.cgColor
+
+        var y: CGFloat = frame.height - 40
+
+        // Title
+        let titleLabel = NSTextField(labelWithString: "Voice Recognition")
+        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
+        titleLabel.isBezeled = false
+        titleLabel.isEditable = false
+        titleLabel.drawsBackground = false
+        panel.addSubview(titleLabel)
+        y -= 50
+
+        // Status
+        voiceStatusLabel = NSTextField(labelWithString: "Status: ⏸️ Ready")
+        voiceStatusLabel.font = NSFont.systemFont(ofSize: 13)
+        voiceStatusLabel.frame = NSRect(x: 20, y: y, width: 300, height: 20)
+        voiceStatusLabel.isBezeled = false
+        voiceStatusLabel.isEditable = false
+        voiceStatusLabel.drawsBackground = false
+        panel.addSubview(voiceStatusLabel)
+        y -= 40
+
+        // Activation method
+        let activationLabel = NSTextField(labelWithString: "Activation Method:")
+        activationLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        activationLabel.frame = NSRect(x: 20, y: y, width: 150, height: 20)
+        activationLabel.isBezeled = false
+        activationLabel.isEditable = false
+        activationLabel.drawsBackground = false
+        panel.addSubview(activationLabel)
+        y -= 30
+
+        // Create radio buttons using NSMatrix (legacy but simple for radio groups)
+        voiceActivationMatrix = NSMatrix(frame: NSRect(x: 30, y: y - 80, width: 400, height: 80))
+        voiceActivationMatrix.cellSize = NSSize(width: 400, height: 20)
+        voiceActivationMatrix.prototype = NSButtonCell()
+        voiceActivationMatrix.addRow()
+        voiceActivationMatrix.addRow()
+        voiceActivationMatrix.addRow()
+
+        // Configure radio buttons
+        for row in 0..<voiceActivationMatrix.numberOfRows {
+            if let cell = voiceActivationMatrix.cell(atRow: row, column: 0) as? NSButtonCell {
+                cell.setButtonType(.radio)
+                switch row {
+                case 0:
+                    cell.title = "Hold [ZL + ZR] to speak (recommended)"
+                    cell.state = .on
+                case 1:
+                    cell.title = "Always listening (experimental)"
+                case 2:
+                    cell.title = "Wake word: \"Hey Mac\" (not implemented)"
+                    cell.isEnabled = false
+                default:
+                    break
+                }
+            }
+        }
+
+        panel.addSubview(voiceActivationMatrix)
+        y -= 100
+
+        // Info text
+        let infoLabel = NSTextField(wrappingLabelWithString: "Voice input is text-only. Speak naturally and your words will be typed automatically.")
+        infoLabel.font = NSFont.systemFont(ofSize: 11)
+        infoLabel.textColor = NSColor.secondaryLabelColor
+        infoLabel.frame = NSRect(x: 20, y: y - 30, width: frame.width - 40, height: 30)
+        panel.addSubview(infoLabel)
+
+        // Active/Start Button
+        voiceActiveButton = NSButton(frame: NSRect(x: frame.width / 2 - 100, y: 20, width: 200, height: 32))
+        voiceActiveButton.title = "▶ Enable Voice Input"
+        voiceActiveButton.bezelStyle = .rounded
+        voiceActiveButton.target = self
+        voiceActiveButton.action = #selector(toggleVoiceControl(_:))
+        panel.addSubview(voiceActiveButton)
+
+        return panel
+    }
+
+    private func setupBottomBarAndDebugLog(below yPosition: CGFloat) {
+        // Bottom bar with debug toggle
+        let bottomBarHeight: CGFloat = 40
+        let bottomBar = NSView(frame: NSRect(
+            x: 0,
+            y: yPosition - bottomBarHeight,
+            width: view.bounds.width,
+            height: bottomBarHeight
+        ))
+        bottomBar.autoresizingMask = [.width, .minYMargin]
+        bottomBar.wantsLayer = true
+        bottomBar.layer?.backgroundColor = NSColor(white: 0.9, alpha: 1.0).cgColor
+
+        debugLogButton = NSButton(frame: NSRect(x: view.bounds.width - 150, y: 5, width: 130, height: 30))
+        debugLogButton.title = "▼ Debug Log"
+        debugLogButton.bezelStyle = .rounded
+        debugLogButton.target = self
+        debugLogButton.action = #selector(toggleDebugLog(_:))
+        debugLogButton.autoresizingMask = [.minXMargin]
+        bottomBar.addSubview(debugLogButton)
+
+        view.addSubview(bottomBar)
+
+        // Debug log container
+        let logHeight: CGFloat = 150
+        debugLogContainer = NSView(frame: NSRect(
+            x: 0,
+            y: yPosition - bottomBarHeight - logHeight,
+            width: view.bounds.width,
+            height: logHeight
+        ))
+        debugLogContainer.autoresizingMask = [.width, .minYMargin]
+
+        scrollView = NSScrollView(frame: debugLogContainer.bounds)
         scrollView.autoresizingMask = [.width, .height]
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
@@ -91,75 +499,99 @@ class ViewController: NSViewController {
         textView.textContainer?.containerSize = NSSize(width: contentSize.width, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.isEditable = false
-        textView.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         textView.textColor = NSColor(white: 0.85, alpha: 1.0)
         textView.backgroundColor = NSColor(white: 0.1, alpha: 1.0)
-        textView.textContainerInset = NSSize(width: 12, height: 12)
+        textView.textContainerInset = NSSize(width: 8, height: 8)
 
         scrollView.documentView = textView
-        view.addSubview(scrollView)
+        debugLogContainer.addSubview(scrollView)
+        view.addSubview(debugLogContainer)
 
-        // Permission panel (add AFTER scrollView so it's on top)
-        let permissionPanelY = view.bounds.height - headerHeight - permissionPanelHeight
-        permissionPanel = NSView(frame: NSRect(x: 0, y: permissionPanelY, width: view.bounds.width, height: permissionPanelHeight))
-        permissionPanel?.autoresizingMask = [.width, .minYMargin]
-        permissionPanel?.wantsLayer = true
-        permissionPanel?.layer?.backgroundColor = NSColor(red: 0.8, green: 0.4, blue: 0.2, alpha: 1.0).cgColor
-        permissionPanel?.isHidden = true // Start hidden
-
-        let warningLabel = NSTextField(labelWithString: "⚠️ Permissions Required")
-        warningLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
-        warningLabel.textColor = .white
-        warningLabel.frame = NSRect(x: 16, y: 45, width: 300, height: 25)
-        permissionPanel?.addSubview(warningLabel)
-
-        // Accessibility button
-        accessibilityButton = NSButton(frame: NSRect(x: 16, y: 10, width: 200, height: 28))
-        accessibilityButton?.title = "Grant Accessibility"
-        accessibilityButton?.bezelStyle = .rounded
-        accessibilityButton?.target = self
-        accessibilityButton?.action = #selector(requestAccessibilityPermission)
-        permissionPanel?.addSubview(accessibilityButton!)
-
-        // Microphone button
-        microphoneButton = NSButton(frame: NSRect(x: 230, y: 10, width: 200, height: 28))
-        microphoneButton?.title = "Grant Microphone"
-        microphoneButton?.bezelStyle = .rounded
-        microphoneButton?.target = self
-        microphoneButton?.action = #selector(requestMicrophonePermission)
-        permissionPanel?.addSubview(microphoneButton!)
-
-        // Refresh button
-        let refreshButton = NSButton(frame: NSRect(x: 445, y: 10, width: 120, height: 28))
-        refreshButton.title = "↻ Refresh"
-        refreshButton.bezelStyle = .rounded
-        refreshButton.target = self
-        refreshButton.action = #selector(refreshPermissions)
-        permissionPanel?.addSubview(refreshButton)
-
-        view.addSubview(permissionPanel!)
-
-        // Initial messages
-        log("🫐 berrry-joyful - Joy-Con Mac Controller")
-        log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        log("Optimized for Claude Code and terminal workflows")
-        log("")
-        log("Unified Control Mode:")
-        log("  Left Stick   → Move mouse cursor")
-        log("  Right Stick  → Scroll vertically/horizontally")
-        log("  ZR           → Left click")
-        log("  ZL           → Right click")
-        log("  D-Pad        → Arrow keys (↑↓←→)")
-        log("  A/B/X/Y      → Enter / Escape / Tab / Space")
-        log("")
-        log("Special Modes (hold):")
-        log("  ZL + ZR      → 🎤 Voice input (speak to type)")
-        log("  L + R        → ✨ Precision mode")
-        log("  Options (-)  → Help overlay")
-        log("")
-        log("Waiting for controller connection...")
-        log("")
+        // Start with log expanded
+        debugLogContainer.isHidden = false
     }
+
+    // MARK: - UI Actions
+
+    @objc private func tabButtonClicked(_ sender: NSButton) {
+        switch sender.tag {
+        case 0: switchToTab(.mouse)
+        case 1: switchToTab(.keyboard)
+        case 2: switchToTab(.voice)
+        default: break
+        }
+    }
+
+    private func switchToTab(_ tab: ControlModeTab) {
+        currentTab = tab
+
+        // Update button states
+        mouseTabButton.state = (tab == .mouse) ? .on : .off
+        keyboardTabButton.state = (tab == .keyboard) ? .on : .off
+        voiceTabButton.state = (tab == .voice) ? .on : .off
+
+        // Show/hide panels
+        mouseConfigPanel.isHidden = (tab != .mouse)
+        keyboardConfigPanel.isHidden = (tab != .keyboard)
+        voiceConfigPanel.isHidden = (tab != .voice)
+
+        log("Switched to \(tab.rawValue) tab")
+    }
+
+    @objc private func sensitivityChanged(_ sender: NSSlider) {
+        let value = CGFloat(sender.doubleValue)
+        settings.mouseSensitivity = value
+        sensitivityLabel.stringValue = String(format: "%.1fx", value)
+    }
+
+    @objc private func deadzoneChanged(_ sender: NSSlider) {
+        let value = Float(sender.doubleValue)
+        settings.stickDeadzone = value
+        deadzoneLabel.stringValue = String(format: "%.0f%%", value * 100)
+    }
+
+    @objc private func invertYChanged(_ sender: NSButton) {
+        settings.invertY = (sender.state == .on)
+        log("Invert Y: \(settings.invertY)")
+    }
+
+    @objc private func accelerationChanged(_ sender: NSButton) {
+        settings.mouseAcceleration = (sender.state == .on)
+        log("Mouse acceleration: \(settings.mouseAcceleration)")
+    }
+
+    @objc private func keyboardPresetChanged(_ sender: NSPopUpButton) {
+        let presetName = sender.titleOfSelectedItem ?? "Unknown"
+        log("Keyboard preset changed to: \(presetName)")
+    }
+
+    @objc private func toggleMouseControl(_ sender: NSButton) {
+        log("Mouse control toggled")
+        // In unified mode, mouse is always active when controller is connected
+    }
+
+    @objc private func toggleKeyboardControl(_ sender: NSButton) {
+        log("Keyboard control toggled")
+        // In unified mode, keyboard is always active when controller is connected
+    }
+
+    @objc private func toggleVoiceControl(_ sender: NSButton) {
+        log("Voice control toggled - use ZL + ZR to activate")
+    }
+
+    @objc private func toggleDebugLog(_ sender: NSButton) {
+        isDebugLogExpanded = !isDebugLogExpanded
+
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.25
+            debugLogContainer.animator().isHidden = !isDebugLogExpanded
+        }, completionHandler: {
+            self.debugLogButton.title = self.isDebugLogExpanded ? "▼ Debug Log" : "▶ Debug Log"
+        })
+    }
+
+    // MARK: - Input Setup
 
     private func setupInputController() {
         inputController.onLog = { [weak self] message in
@@ -173,90 +605,18 @@ class ViewController: NSViewController {
             self?.log(message)
         }
         voiceManager.onTranscriptUpdate = { [weak self] transcript in
-            // Show transcript in log
             self?.log("🎤 \(transcript)")
+            self?.voiceStatusLabel.stringValue = "Status: 🎤 Listening... \"\(transcript)\""
         }
         voiceManager.onFinalTranscript = { [weak self] transcript in
             guard let self = self else { return }
-            // Voice input is text-only - type the transcript
             self.voiceManager.typeCurrentTranscript()
+            self.voiceStatusLabel.stringValue = "Status: ✅ Typed"
         }
         voiceManager.onError = { [weak self] error in
             self?.log("❌ Voice Error: \(error)")
+            self?.voiceStatusLabel.stringValue = "Status: ❌ Error"
         }
-    }
-
-    private func checkPermissions() {
-        updatePermissionPanel()
-    }
-
-    private func updatePermissionPanel() {
-        var needsPermissions = false
-
-        // Check accessibility permission
-        let hasAccessibility = InputController.checkAccessibilityPermission()
-        if !hasAccessibility {
-            log("⚠️  Accessibility permission required for mouse/keyboard control")
-            log("   Click 'Grant Accessibility' button above to open System Settings")
-            log("")
-            needsPermissions = true
-            accessibilityButton?.isEnabled = true
-            accessibilityButton?.title = "Grant Accessibility"
-        } else {
-            log("✅ Accessibility permission granted")
-            accessibilityButton?.isEnabled = false
-            accessibilityButton?.title = "✅ Accessibility OK"
-        }
-
-        // Check microphone permission (don't request at startup)
-        let hasMicrophone = VoiceInputManager.checkMicrophonePermission()
-        if !hasMicrophone {
-            // Don't log warning - only show in panel if user tries to use voice
-            microphoneButton?.isEnabled = true
-            microphoneButton?.title = "Grant Microphone"
-        } else {
-            log("✅ Microphone permission granted")
-            microphoneButton?.isEnabled = false
-            microphoneButton?.title = "✅ Microphone OK"
-        }
-
-        // Show panel only if accessibility missing (critical)
-        // Microphone is optional - only needed for voice mode
-        DispatchQueue.main.async { [weak self] in
-            self?.permissionPanel?.isHidden = !needsPermissions
-            if needsPermissions {
-                self?.log("🔧 Permission panel shown - look for red banner at top of window")
-            }
-        }
-    }
-
-    @objc private func requestAccessibilityPermission() {
-        log("📋 Opening Accessibility settings...")
-        InputController.requestAccessibilityPermission()
-
-        // Check again after a delay (user needs to grant in System Settings)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.updatePermissionPanel()
-        }
-    }
-
-    @objc private func requestMicrophonePermission() {
-        log("📋 Requesting microphone permission...")
-        VoiceInputManager.requestMicrophonePermission { [weak self] granted in
-            DispatchQueue.main.async {
-                if granted {
-                    self?.log("✅ Microphone permission granted")
-                } else {
-                    self?.log("❌ Microphone permission denied")
-                }
-                self?.updatePermissionPanel()
-            }
-        }
-    }
-
-    @objc private func refreshPermissions() {
-        log("🔄 Refreshing permissions...")
-        updatePermissionPanel()
     }
 
     // MARK: - Logging
@@ -269,7 +629,7 @@ class ViewController: NSViewController {
             let logMessage = "[\(timestamp)] \(message)\n"
 
             let attrString = NSAttributedString(string: logMessage, attributes: [
-                .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular),
+                .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
                 .foregroundColor: NSColor(white: 0.85, alpha: 1.0)
             ])
 
@@ -284,16 +644,9 @@ class ViewController: NSViewController {
         controllers.append(controller)
 
         let name = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
-        log("✅ Joy-Con Connected: \(name)")
+        log("✅ Controller Connected: \(name)")
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            let count = self.controllers.count
-            self.connectionIndicator.stringValue = "🎮 \(count) Joy-Con\(count > 1 ? "s" : "")"
-            self.connectionIndicator.textColor = .white
-        }
-
-        // Setup Joy-Con input handlers
+        updateConnectionDisplay()
         setupJoyConHandlers(controller)
 
         // Set player lights
@@ -303,254 +656,49 @@ class ViewController: NSViewController {
         case 1: controller.setPlayerLights(l1: .off, l2: .on, l3: .off, l4: .off)
         default: controller.setPlayerLights(l1: .on, l2: .on, l3: .off, l4: .off)
         }
-
-        log("")
     }
 
     func joyConDisconnected(_ controller: Controller) {
         controllers.removeAll { $0 === controller }
         let name = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
-        log("❌ Joy-Con Disconnected: \(name)")
+        log("❌ Controller Disconnected: \(name)")
+        updateConnectionDisplay()
+    }
 
+    private func updateConnectionDisplay() {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+
             if self.controllers.isEmpty {
-                self.connectionIndicator.stringValue = "🎮 No Controller"
-                self.connectionIndicator.textColor = NSColor.secondaryLabelColor
+                self.connectionLabel.stringValue = "🔍 No Joy-Con detected"
+                self.connectionLabel.textColor = NSColor(white: 0.7, alpha: 1.0)
+                self.batteryLabel.stringValue = ""
+                self.ledIndicator.stringValue = ""
             } else {
+                let names = self.controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
+                self.connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))"
+                self.connectionLabel.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
+
+                // Battery (placeholder - JoyConSwift doesn't expose battery easily)
+                if !self.controllers.isEmpty {
+                    self.batteryLabel.stringValue = "🔋 ---%"
+                }
+
+                // LED indicator
                 let count = self.controllers.count
-                self.connectionIndicator.stringValue = "🎮 \(count) Joy-Con\(count > 1 ? "s" : "")"
+                self.ledIndicator.stringValue = "🔵 LED \(count)"
             }
         }
     }
-
-    // MARK: - Special Mode Management
-
-    private func updateSpecialMode() {
-        let newMode: SpecialInputMode
-
-        // ZL + ZR = Voice mode
-        if isZLHeld && isZRHeld {
-            newMode = .voice
-        }
-        // L + R = Precision mode
-        else if modifiers.option && modifiers.shift {
-            newMode = .precision
-        } else {
-            newMode = .none
-        }
-
-        // Mode changed?
-        if newMode != specialMode {
-            specialMode = newMode
-            handleSpecialModeChange(to: newMode)
-        }
-    }
-
-    private func handleSpecialModeChange(to mode: SpecialInputMode) {
-        switch mode {
-        case .voice:
-            // Start voice input
-            log("🎤 Voice input activated - speak now")
-            voiceManager.startListening()
-            DispatchQueue.main.async { [weak self] in
-                self?.modeIndicator.stringValue = "🎤 Voice Input"
-            }
-
-        case .precision:
-            // Activate precision mode
-            log("✨ Precision mode activated")
-            inputController.setPrecisionMode(true)
-            DispatchQueue.main.async { [weak self] in
-                self?.modeIndicator.stringValue = "✨ Precision Mode"
-            }
-
-        case .none:
-            // Return to unified mode
-            if specialMode == .voice {
-                voiceManager.stopListening()
-                // Type the transcript if we have one
-                if !voiceManager.currentTranscript.isEmpty {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                        self?.voiceManager.typeCurrentTranscript()
-                    }
-                }
-            }
-            if specialMode == .precision {
-                inputController.setPrecisionMode(false)
-            }
-            DispatchQueue.main.async { [weak self] in
-                self?.modeIndicator.stringValue = "🎮 Unified Control"
-            }
-        }
-    }
-
-    // MARK: - Extended Gamepad Handlers (REMOVED - Using JoyConSwift)
-
-    /*
-    private func setupExtendedGamepadHandlers(_ gamepad: GCExtendedGamepad) {
-        // Face buttons
-        gamepad.buttonA.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard let self = self, pressed else { return }
-            self.handleButtonA()
-        }
-
-        gamepad.buttonB.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard let self = self, pressed else { return }
-            self.handleButtonB()
-        }
-
-        gamepad.buttonX.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard let self = self, pressed else { return }
-            self.handleButtonX()
-        }
-
-        gamepad.buttonY.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard let self = self, pressed else { return }
-            // Y button now presses Space
-            self.log("🕹️ Button Y → Space")
-            self.inputController.pressSpace(modifiers: self.modifiers)
-        }
-
-        // D-pad
-        gamepad.dpad.valueChangedHandler = { [weak self] _, xValue, yValue in
-            self?.handleDpad(x: xValue, y: yValue)
-        }
-
-        // Left stick - primary movement/scroll
-        gamepad.leftThumbstick.valueChangedHandler = { [weak self] _, xValue, yValue in
-            self?.handleLeftStick(x: xValue, y: yValue)
-        }
-
-        // Right stick - fine movement/scroll
-        gamepad.rightThumbstick.valueChangedHandler = { [weak self] _, xValue, yValue in
-            self?.handleRightStick(x: xValue, y: yValue)
-        }
-
-        // Left stick click - middle click
-        if let leftStickButton = gamepad.leftThumbstickButton {
-            leftStickButton.pressedChangedHandler = { [weak self] _, _, pressed in
-                guard pressed else { return }
-                self?.inputController.middleClick()
-            }
-        }
-
-        // Right stick click - precision mode toggle
-        if let rightStickButton = gamepad.rightThumbstickButton {
-            rightStickButton.pressedChangedHandler = { [weak self] _, _, pressed in
-                self?.inputController.setPrecisionMode(pressed)
-            }
-        }
-
-        // Shoulder buttons - precision mode activation + modifiers
-        gamepad.leftShoulder.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard let self = self else { return }
-            self.modifiers.option = pressed
-            self.updateModifierDisplay()
-            self.updateSpecialMode()  // Check for L+R precision mode
-        }
-
-        gamepad.rightShoulder.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard let self = self else { return }
-            self.modifiers.shift = pressed
-            self.updateModifierDisplay()
-            self.updateSpecialMode()  // Check for L+R precision mode
-        }
-
-
-        // ZL trigger - right click + voice activation combo
-        var zlPressTime: Date?
-        gamepad.leftTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard let self = self else { return }
-
-            self.isZLHeld = pressed
-
-            if pressed {
-                zlPressTime = Date()
-            } else {
-                // Check if this was a quick press for right click
-                // (only if not in voice mode)
-                if let pressTime = zlPressTime,
-                   Date().timeIntervalSince(pressTime) < 0.3,
-                   self.specialMode != .voice {
-                    self.log("🕹️ ZL (quick) → Right click")
-                    self.inputController.rightClick()
-                }
-                zlPressTime = nil
-            }
-
-            // Update special modes (voice activation)
-            self.updateSpecialMode()
-        }
-
-        // ZR trigger - left click + voice activation combo
-        var zrPressTime: Date?
-        gamepad.rightTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard let self = self else { return }
-
-            self.isZRHeld = pressed
-
-            if pressed {
-                zrPressTime = Date()
-            } else {
-                // Check if this was a click or drag end
-                // (only if not in voice mode)
-                if self.specialMode != .voice {
-                    if let pressTime = zrPressTime {
-                        let duration = Date().timeIntervalSince(pressTime)
-                        if duration < 0.2 {
-                            // Quick press = click
-                            self.log("🕹️ ZR (quick) → Left click")
-                            self.inputController.leftClick()
-                        } else {
-                            // Was holding = end drag
-                            self.log("🕹️ ZR (release) → End drag")
-                            self.inputController.endDrag()
-                        }
-                    }
-                }
-                zrPressTime = nil
-            }
-
-            // Update special modes (voice activation)
-            self.updateSpecialMode()
-        }
-
-        // Long ZR hold starts drag
-        gamepad.rightTrigger.valueChangedHandler = { [weak self] _, value, pressed in
-            guard pressed, value > 0.8 else { return }
-            if let pressTime = zrPressTime, Date().timeIntervalSince(pressTime) > 0.3 {
-                self?.log("🕹️ ZR (hold) → Start drag")
-                self?.inputController.startDrag()
-            }
-        }
-
-        // Menu button - unused (could be settings in future)
-        gamepad.buttonMenu.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.log("ℹ️ Menu button - currently unassigned")
-        }
-
-        // Options button - help
-        if let buttonOptions = gamepad.buttonOptions {
-            buttonOptions.pressedChangedHandler = { [weak self] _, _, pressed in
-                guard pressed else { return }
-                self?.toggleHelp()
-            }
-        }
-    }
-    */
 
     // MARK: - JoyConSwift Handlers
 
     private func setupJoyConHandlers(_ controller: Controller) {
         log("   Setting up button handlers...")
 
-        // Enable IMU for motion data
         controller.enableIMU(enable: true)
         controller.setInputMode(mode: .standardFull)
 
-        // Button press handler
         controller.buttonPressHandler = { [weak self] button in
             guard let self = self else { return }
 
@@ -566,11 +714,9 @@ class ViewController: NSViewController {
                 self.inputController.pressSpace(modifiers: self.modifiers)
             case .L:
                 self.modifiers.option = true
-                self.updateModifierDisplay()
                 self.updateSpecialMode()
             case .R:
                 self.modifiers.shift = true
-                self.updateModifierDisplay()
                 self.updateSpecialMode()
             case .ZL:
                 self.isZLHeld = true
@@ -586,31 +732,22 @@ class ViewController: NSViewController {
                 self.handleDpadButton(direction: "left")
             case .Right:
                 self.handleDpadButton(direction: "right")
-            case .Plus:
-                self.log("ℹ️ Plus button - currently unassigned")
             case .Minus:
-                self.toggleHelp()
-            case .Home:
-                self.log("🏠 Home button pressed")
-            case .Capture:
-                self.log("📸 Capture button pressed")
+                self.toggleDebugLog(self.debugLogButton)
             default:
-                self.log("🕹️ Button: \(button)")
+                break
             }
         }
 
-        // Button release handler
         controller.buttonReleaseHandler = { [weak self] button in
             guard let self = self else { return }
 
             switch button {
             case .L:
                 self.modifiers.option = false
-                self.updateModifierDisplay()
                 self.updateSpecialMode()
             case .R:
                 self.modifiers.shift = false
-                self.updateModifierDisplay()
                 self.updateSpecialMode()
             case .ZL:
                 self.isZLHeld = false
@@ -623,7 +760,6 @@ class ViewController: NSViewController {
             }
         }
 
-        // Stick movement handler
         controller.leftStickPosHandler = { [weak self] pos in
             self?.handleLeftStick(x: Float(pos.x), y: Float(pos.y))
         }
@@ -638,38 +774,26 @@ class ViewController: NSViewController {
     private func handleDpadButton(direction: String) {
         switch direction {
         case "up":
-            log("🕹️ D-pad Up → Arrow Up")
             inputController.pressArrowUp(modifiers: modifiers)
         case "down":
-            log("🕹️ D-pad Down → Arrow Down")
             inputController.pressArrowDown(modifiers: modifiers)
         case "left":
-            log("🕹️ D-pad Left → Arrow Left")
             inputController.pressArrowLeft(modifiers: modifiers)
         case "right":
-            log("🕹️ D-pad Right → Arrow Right")
             inputController.pressArrowRight(modifiers: modifiers)
         default:
             break
         }
     }
 
-    // MARK: - Button Handlers
-
     private func handleButtonA() {
         log("🕹️ Button A → Enter")
-        if modifiers.command {
-            // Cmd+Enter - submit with newline in some apps
-            inputController.pressEnter(modifiers: modifiers)
-        } else {
-            inputController.pressEnter(modifiers: modifiers)
-        }
+        inputController.pressEnter(modifiers: modifiers)
     }
 
     private func handleButtonB() {
         if modifiers.command {
             log("🕹️ Button B + Cmd → Interrupt (Ctrl+C)")
-            // Cmd+B could be bold, or Ctrl+C for interrupt
             inputController.interruptProcess()
         } else {
             log("🕹️ Button B → Escape")
@@ -680,78 +804,64 @@ class ViewController: NSViewController {
     private func handleButtonX() {
         if modifiers.command {
             log("🕹️ Button X + Cmd → New Tab (Cmd+T)")
-            // Cmd+T for new tab in most apps
-            inputController.pressKey(CGKeyCode(0x11), modifiers: modifiers)  // T key
+            inputController.pressKey(CGKeyCode(0x11), modifiers: modifiers)
         } else {
             log("🕹️ Button X → Tab")
             inputController.pressTab(modifiers: modifiers)
         }
     }
 
-    private func handleDpad(x: Float, y: Float) {
-        guard x != 0 || y != 0 else { return }
-
-        // Unified mode: D-pad always does arrow keys
-        if y > 0.5 {
-            log("🕹️ D-pad Up → ↑")
-            inputController.pressArrowUp(modifiers: modifiers)
-        } else if y < -0.5 {
-            log("🕹️ D-pad Down → ↓")
-            inputController.pressArrowDown(modifiers: modifiers)
-        }
-        if x > 0.5 {
-            log("🕹️ D-pad Right → →")
-            inputController.pressArrowRight(modifiers: modifiers)
-        } else if x < -0.5 {
-            log("🕹️ D-pad Left → ←")
-            inputController.pressArrowLeft(modifiers: modifiers)
-        }
-    }
-
     private func handleLeftStick(x: Float, y: Float) {
-        // Log only when stick is actually moved (not centered)
-        if abs(x) > 0.1 || abs(y) > 0.1 {
-            log(String(format: "🕹️ Left stick: (%.2f, %.2f) → mouse move", x, y))
-        }
-        // Unified mode: Left stick always moves mouse
         inputController.setMouseDelta(x: x, y: y)
     }
 
     private func handleRightStick(x: Float, y: Float) {
-        // Log only when stick is actually moved (not centered)
-        if abs(x) > 0.1 || abs(y) > 0.1 {
-            log(String(format: "🕹️ Right stick: (%.2f, %.2f) → scroll", x, y))
-        }
-        // Unified mode: Right stick always scrolls (both axes)
         inputController.setScrollDelta(x: x, y: y)
     }
 
-    private func updateModifierDisplay() {
-        // Modifiers now only shown in window UI
-    }
+    // MARK: - Special Mode Management
 
-    private func toggleHelp() {
-        // Help removed - all info now in log and menu bar
-        log("ℹ️ Help: All controls are shown in the startup log above")
-    }
+    private func updateSpecialMode() {
+        let newMode: SpecialInputMode
 
-    // MARK: - Micro Gamepad (Fallback)
-
-    /*
-    private func setupMicroGamepadHandlers(_ gamepad: GCMicroGamepad) {
-        gamepad.buttonA.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.inputController.pressEnter()
+        if isZLHeld && isZRHeld {
+            newMode = .voice
+        } else if modifiers.option && modifiers.shift {
+            newMode = .precision
+        } else {
+            newMode = .none
         }
 
-        gamepad.buttonX.pressedChangedHandler = { [weak self] _, _, pressed in
-            guard pressed else { return }
-            self?.inputController.pressTab()
-        }
-
-        gamepad.dpad.valueChangedHandler = { [weak self] _, xValue, yValue in
-            self?.handleDpad(x: xValue, y: yValue)
+        if newMode != specialMode {
+            specialMode = newMode
+            handleSpecialModeChange(to: newMode)
         }
     }
-    */
+
+    private func handleSpecialModeChange(to mode: SpecialInputMode) {
+        switch mode {
+        case .voice:
+            log("🎤 Voice input activated - speak now")
+            voiceManager.startListening()
+            voiceStatusLabel.stringValue = "Status: 🎤 Listening..."
+
+        case .precision:
+            log("✨ Precision mode activated")
+            inputController.setPrecisionMode(true)
+
+        case .none:
+            if specialMode == .voice {
+                voiceManager.stopListening()
+                if !voiceManager.currentTranscript.isEmpty {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                        self?.voiceManager.typeCurrentTranscript()
+                    }
+                }
+                voiceStatusLabel.stringValue = "Status: ⏸️ Ready"
+            }
+            if specialMode == .precision {
+                inputController.setPrecisionMode(false)
+            }
+        }
+    }
 }

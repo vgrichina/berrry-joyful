@@ -80,6 +80,10 @@ class InputSettings: ObservableObject {
     // Mouse update rate in Hz
     var mouseUpdateRate: TimeInterval = 1.0 / 120.0  // 120 Hz
 
+    // Mouse settings
+    var invertY: Bool = false
+    var mouseAcceleration: Bool = false
+
     // Whether voice input is enabled
     var voiceInputEnabled: Bool = true
 
