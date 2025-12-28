@@ -104,6 +104,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             queue: nil
         ) { [weak self] notification in
             guard let controller = notification.object as? GCController else { return }
+            self?.viewController.log("🔌 GCControllerDidConnect notification received")
             self?.viewController.controllerConnected(controller)
         }
 
@@ -113,15 +114,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             queue: nil
         ) { [weak self] notification in
             guard let controller = notification.object as? GCController else { return }
+            self?.viewController.log("🔌 GCControllerDidDisconnect notification received")
             self?.viewController.controllerDisconnected(controller)
         }
 
         // Start discovery
+        viewController.log("🔍 Starting wireless controller discovery...")
         GCController.startWirelessControllerDiscovery()
 
         // Check for already connected controllers
-        for controller in GCController.controllers() {
+        let controllers = GCController.controllers()
+        viewController.log("🎮 Found \(controllers.count) controllers already connected")
+        for controller in controllers {
             viewController.controllerConnected(controller)
+        }
+
+        // Poll for controllers every 2 seconds in case they connect late
+        Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            let currentControllers = GCController.controllers()
+            let connectedCount = self?.viewController.controllers.count ?? 0
+
+            if currentControllers.count > connectedCount {
+                self?.viewController.log("🎮 New controller detected! Total: \(currentControllers.count)")
+                for controller in currentControllers {
+                    // Check if not already in our list
+                    if !(self?.viewController.controllers.contains(controller) ?? false) {
+                        self?.viewController.controllerConnected(controller)
+                    }
+                }
+            }
         }
     }
 

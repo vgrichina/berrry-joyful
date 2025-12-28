@@ -12,7 +12,7 @@ class ViewController: NSViewController {
     private var microphoneButton: NSButton?
 
     // Controllers
-    private var controllers: [GCController] = []
+    var controllers: [GCController] = [] // Internal access for AppDelegate polling
 
     // State
     private var currentMode: ControlMode = .unified
