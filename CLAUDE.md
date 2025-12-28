@@ -10,10 +10,11 @@ berrry-joyful is a macOS application that enables Mac control using Nintendo Joy
 - **Platform**: macOS 14.0+
 - **Frameworks**:
   - Cocoa (AppKit)
-  - GameController
+  - JoyConSwift (via CocoaPods) - Joy-Con controller support
   - Speech (for voice input)
-- **Build System**: XcodeGen + Xcode
-- **Project Configuration**: `project.yml`
+- **Build System**: XcodeGen + CocoaPods + Xcode
+- **Dependency Management**: CocoaPods
+- **Project Configuration**: `project.yml`, `Podfile`
 
 ## Project Structure
 
@@ -74,30 +75,45 @@ berrry-joyful/
 ### Prerequisites
 - macOS 14.0 or later
 - Xcode 15.0+
+- CocoaPods (`sudo gem install cocoapods`)
 - XcodeGen (`brew install xcodegen`)
 
-### Building
+### Initial Setup
 
-1. **Regenerate Xcode project** (required after adding/removing files):
+1. **Install dependencies via CocoaPods**:
+   ```bash
+   pod install
+   ```
+   This will:
+   - Download JoyConSwift framework
+   - Automatically apply pointer alignment patch (see Troubleshooting)
+   - Generate `berrry-joyful.xcworkspace`
+
+2. **Regenerate Xcode project** (if adding/removing source files):
    ```bash
    xcodegen
    ```
 
-2. **Build from command line**:
+### Building
+
+**IMPORTANT**: Always use the `.xcworkspace` file, not the `.xcodeproj` file!
+
+1. **Build from command line**:
    ```bash
-   xcodebuild -project berrry-joyful.xcodeproj -scheme berrry-joyful -configuration Release build
+   xcodebuild -workspace berrry-joyful.xcworkspace -scheme berrry-joyful -configuration Debug build
    ```
 
-3. **Run the app**:
+2. **Run the app**:
    ```bash
-   open /Users/$USER/Library/Developer/Xcode/DerivedData/berrry-joyful-*/Build/Products/Release/berrry-joyful.app
+   open ~/Library/Developer/Xcode/DerivedData/berrry-joyful-*/Build/Products/Debug/berrry-joyful.app
    ```
 
 ### Development Workflow
 
 1. Make code changes in `Sources/` directory
 2. If adding new `.swift` files, run `xcodegen` to update the Xcode project
-3. Build and test using Xcode or `xcodebuild`
+3. Build using Xcode (open `berrry-joyful.xcworkspace`) or `xcodebuild`
+4. If adding/updating CocoaPods dependencies, run `pod install`
 
 ## Permissions Required
 
@@ -122,9 +138,10 @@ The app will prompt for these permissions on first launch.
 
 ## Controller Support
 
-- Nintendo Joy-Con (L/R)
-- Other GameController-compatible controllers
-- Automatic controller detection and connection
+- Nintendo Joy-Con (L/R) - via JoyConSwift
+- Nintendo Pro Controller - via JoyConSwift
+- Automatic controller detection via IOHIDManager
+- Direct HID communication for full Joy-Con feature access
 
 ## Important Notes
 
@@ -163,9 +180,11 @@ This is a **Berrry Computer** branded application. The branding reflects the Ber
 ## Troubleshooting
 
 ### Build Failures
-1. Run `xcodegen` to regenerate project
-2. Clean build folder: `xcodebuild clean`
-3. Check that all Swift files in `Sources/` are valid
+1. Ensure you're using `berrry-joyful.xcworkspace`, not `.xcodeproj`
+2. Run `pod install` to ensure dependencies are installed
+3. Run `xcodegen` to regenerate project
+4. Clean build folder: `xcodebuild clean`
+5. Check that all Swift files in `Sources/` are valid
 
 ### Missing Files in Build
 - Run `xcodegen` - it automatically picks up all files in `Sources/`
@@ -173,3 +192,25 @@ This is a **Berrry Computer** branded application. The branding reflects the Ber
 ### Permissions Issues
 - Grant Accessibility and Microphone permissions in System Settings
 - Restart the app after granting permissions
+
+### JoyConSwift Pointer Alignment Crash
+
+**Issue**: JoyConSwift v0.2.1 has a pointer alignment bug that causes crashes with:
+```
+Fatal error: self must be a properly aligned pointer
+```
+
+**Solution**: This is automatically fixed by our Podfile's `post_install` hook! When you run `pod install`, it patches `Pods/JoyConSwift/Source/Utils.swift` to use safe byte-by-byte reading instead of unsafe `withMemoryRebound` calls.
+
+If you encounter this crash:
+1. Delete the `Pods/` directory
+2. Run `pod install` again
+3. Verify you see: "✓ Patched successfully" in the output
+
+### CocoaPods Issues
+
+**Error**: `[!] CocoaPods could not find compatible versions for pod "JoyConSwift"`
+- Solution: Run `pod repo update` then `pod install`
+
+**Error**: Workspace not found
+- Solution: Run `pod install` to generate the workspace

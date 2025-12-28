@@ -92,18 +92,24 @@ The app will prompt for these permissions on first launch:
 ## Building
 
 ```bash
-# Install XcodeGen if needed
+# Install dependencies
 brew install xcodegen
+sudo gem install cocoapods
+
+# Install CocoaPods dependencies (includes JoyConSwift)
+pod install
 
 # Generate Xcode project
 xcodegen generate
 
-# Build
-xcodebuild -project berrry-joyful.xcodeproj -scheme berrry-joyful -configuration Debug build
+# Build using workspace (not .xcodeproj!)
+xcodebuild -workspace berrry-joyful.xcworkspace -scheme berrry-joyful -configuration Debug build
 
 # Or open in Xcode
-open berrry-joyful.xcodeproj
+open berrry-joyful.xcworkspace
 ```
+
+**Note**: Always use `berrry-joyful.xcworkspace`, not the `.xcodeproj` file, since we use CocoaPods dependencies.
 
 ## Project Structure
 
@@ -123,10 +129,11 @@ Sources/
 ## Technical Notes
 
 - Pure Swift 5.9 with AppKit (no storyboards)
-- GameController framework for Joy-Con input
+- JoyConSwift library for direct Joy-Con HID communication (via CocoaPods)
 - CGEvent API for mouse/keyboard simulation
 - Speech framework for voice recognition
 - Supports on-device speech recognition (macOS 13+)
+- Auto-patches JoyConSwift pointer alignment bug during `pod install`
 
 ## Tips for Claude Code
 
