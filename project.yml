@@ -1,0 +1,38 @@
+name: JoyConTester
+
+options:
+  bundleIdPrefix: com.joycon
+  deploymentTarget:
+    macOS: "14.0"
+  developmentLanguage: en
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+targets:
+  JoyConTester:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "14.0"
+        NSPrincipalClass: NSApplication
+        NSMainStoryboardFile: ""
+        NSHumanReadableCopyright: "Copyright © 2025"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.joycon.tester
+        PRODUCT_NAME: JoyConTester
+        INFOPLIST_KEY_NSMainStoryboardFile: ""
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        # Enable USB/HID access
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: Sources/JoyConTester.entitlements
