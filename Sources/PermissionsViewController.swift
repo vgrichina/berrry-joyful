@@ -19,8 +19,8 @@ class PermissionsViewController: NSViewController {
 
     // Microphone Permission Card
     private let microphoneCard = NSView()
-    private let microphoneTitleLabel = NSTextField(labelWithString: "🎤  Microphone Access")
-    private let microphoneDescLabel = NSTextField(wrappingLabelWithString: "Optional. Enables voice control mode where you can speak text to type. You can enable this later.")
+    private let microphoneTitleLabel = NSTextField(labelWithString: "🎤  Speech Recognition")
+    private let microphoneDescLabel = NSTextField(wrappingLabelWithString: "Optional. Enables voice input mode where you can speak to type text. Hold ZL+ZR on your Joy-Con to activate. You can enable this later.")
     private let microphoneStatusLabel = NSTextField(labelWithString: "Status: ⏸️  Not Requested")
     private let microphoneSkipButton = NSButton(title: "SKIP", target: nil, action: #selector(skipMicrophoneClicked))
     private let microphoneGrantButton = NSButton(title: "GRANT", target: nil, action: #selector(grantMicrophoneClicked))

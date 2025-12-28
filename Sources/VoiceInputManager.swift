@@ -24,7 +24,9 @@ class VoiceInputManager: NSObject, ObservableObject {
     private override init() {
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
         super.init()
-        // Don't request authorization at init - wait until user activates voice mode
+
+        // Check current authorization status (doesn't trigger prompt)
+        isAuthorized = (SFSpeechRecognizer.authorizationStatus() == .authorized)
     }
 
     // MARK: - Authorization
@@ -72,16 +74,13 @@ class VoiceInputManager: NSObject, ObservableObject {
     // MARK: - Voice Recognition
 
     func startListening() {
-        // Request authorization if not already authorized
-        if !isAuthorized {
-            checkAuthorization()
-            // Wait a moment for authorization, then try to start
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.startListeningIfAuthorized()
-            }
+        // Only start if already authorized - don't request permission on the fly
+        guard isAuthorized else {
+            onError?("Speech recognition not authorized. Please grant permission in System Settings.")
             return
         }
 
+        // Already authorized, start listening
         startListeningIfAuthorized()
     }
 

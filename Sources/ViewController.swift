@@ -33,16 +33,13 @@ class ViewController: NSViewController {
     private var deadzoneLabel: NSTextField!
     private var invertYCheckbox: NSButton!
     private var accelerationCheckbox: NSButton!
-    private var mouseActiveButton: NSButton!
 
     // Keyboard Controls
     private var keyboardPresetPopup: NSPopUpButton!
-    private var keyboardActiveButton: NSButton!
 
     // Voice Controls
     private var voiceStatusLabel: NSTextField!
     private var voiceActivationMatrix: NSMatrix!
-    private var voiceActiveButton: NSButton!
 
     // Bottom Bar & Debug Log
     private var debugLogButton: NSButton!
@@ -293,13 +290,13 @@ class ViewController: NSViewController {
         panel.addSubview(accelerationCheckbox)
         y -= 50
 
-        // Active/Start Button
-        mouseActiveButton = NSButton(frame: NSRect(x: frame.width / 2 - 100, y: 20, width: 200, height: 32))
-        mouseActiveButton.title = "▶ Start Mouse Control"
-        mouseActiveButton.bezelStyle = .rounded
-        mouseActiveButton.target = self
-        mouseActiveButton.action = #selector(toggleMouseControl(_:))
-        panel.addSubview(mouseActiveButton)
+        // Status info
+        let statusLabel = NSTextField(wrappingLabelWithString: "Mouse control is always active when a Joy-Con is connected.\nUse the left stick to move the cursor.")
+        statusLabel.font = NSFont.systemFont(ofSize: 11)
+        statusLabel.textColor = NSColor.secondaryLabelColor
+        statusLabel.alignment = .center
+        statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 40)
+        panel.addSubview(statusLabel)
 
         return panel
     }
@@ -353,13 +350,13 @@ class ViewController: NSViewController {
         mappingLabel.frame = NSRect(x: 20, y: y - 80, width: frame.width - 40, height: 80)
         panel.addSubview(mappingLabel)
 
-        // Active/Start Button
-        keyboardActiveButton = NSButton(frame: NSRect(x: frame.width / 2 - 100, y: 20, width: 200, height: 32))
-        keyboardActiveButton.title = "▶ Start Keyboard Control"
-        keyboardActiveButton.bezelStyle = .rounded
-        keyboardActiveButton.target = self
-        keyboardActiveButton.action = #selector(toggleKeyboardControl(_:))
-        panel.addSubview(keyboardActiveButton)
+        // Status info
+        let statusLabel = NSTextField(wrappingLabelWithString: "Keyboard control is always active when a Joy-Con is connected.\nButtons send key presses immediately.")
+        statusLabel.font = NSFont.systemFont(ofSize: 11)
+        statusLabel.textColor = NSColor.secondaryLabelColor
+        statusLabel.alignment = .center
+        statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 40)
+        panel.addSubview(statusLabel)
 
         return panel
     }
@@ -438,13 +435,13 @@ class ViewController: NSViewController {
         infoLabel.frame = NSRect(x: 20, y: y - 30, width: frame.width - 40, height: 30)
         panel.addSubview(infoLabel)
 
-        // Active/Start Button
-        voiceActiveButton = NSButton(frame: NSRect(x: frame.width / 2 - 100, y: 20, width: 200, height: 32))
-        voiceActiveButton.title = "▶ Enable Voice Input"
-        voiceActiveButton.bezelStyle = .rounded
-        voiceActiveButton.target = self
-        voiceActiveButton.action = #selector(toggleVoiceControl(_:))
-        panel.addSubview(voiceActiveButton)
+        // Status info
+        let statusLabel = NSTextField(wrappingLabelWithString: "Hold ZL + ZR on your Joy-Con to activate voice input.\nSpeak naturally and release to type your words.")
+        statusLabel.font = NSFont.systemFont(ofSize: 11)
+        statusLabel.textColor = NSColor.secondaryLabelColor
+        statusLabel.alignment = .center
+        statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 40)
+        panel.addSubview(statusLabel)
 
         return panel
     }
@@ -564,20 +561,6 @@ class ViewController: NSViewController {
     @objc private func keyboardPresetChanged(_ sender: NSPopUpButton) {
         let presetName = sender.titleOfSelectedItem ?? "Unknown"
         log("Keyboard preset changed to: \(presetName)")
-    }
-
-    @objc private func toggleMouseControl(_ sender: NSButton) {
-        log("Mouse control toggled")
-        // In unified mode, mouse is always active when controller is connected
-    }
-
-    @objc private func toggleKeyboardControl(_ sender: NSButton) {
-        log("Keyboard control toggled")
-        // In unified mode, keyboard is always active when controller is connected
-    }
-
-    @objc private func toggleVoiceControl(_ sender: NSButton) {
-        log("Voice control toggled - use ZL + ZR to activate")
     }
 
     @objc private func toggleDebugLog(_ sender: NSButton) {

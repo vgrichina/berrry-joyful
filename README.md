@@ -6,88 +6,110 @@ Control your Mac with Nintendo Joy-Con controllers. Optimized for Claude Code an
 
 ## Features
 
-- **Full Mouse Control** - Move cursor with analog sticks, click with triggers
-- **Keyboard Shortcuts** - Enter, Escape, Tab, arrow keys, and modifiers
-- **Voice Input** - Hold Menu (+) to dictate text or speak commands
-- **Three Control Modes** - Mouse, Scroll, and Text modes for different tasks
-- **Status Overlay** - Floating display shows current mode and modifiers
-- **Claude Code Optimized** - Quick access to common terminal operations
+- **Unified Control Mode** - Mouse, keyboard, and scroll all active simultaneously
+- **Full Mouse Control** - Move cursor with left stick, scroll with right stick
+- **Keyboard Input** - Face buttons and D-pad for common keys and navigation
+- **Voice Input** - Hold ZL+ZR to dictate text (text-only mode)
+- **Modern Tabbed UI** - Configure mouse sensitivity, keyboard layouts, and voice settings
+- **Collapsible Debug Log** - Monitor controller events and system messages
+- **Permissions-First UX** - Friendly onboarding with clear permission explanations
 
 ## Control Scheme
 
-### Face Buttons
+### Unified Control Mode
+
+All controls are active simultaneously when a Joy-Con is connected:
+
+#### Face Buttons
 | Button | Action |
 |--------|--------|
 | **A** | Enter / Confirm |
-| **B** | Escape / Cancel (with ZL: Ctrl+C interrupt) |
-| **X** | Tab / Autocomplete (with ZL: New Tab) |
-| **Y** | Cycle through control modes |
+| **B** | Escape (with Cmd: Ctrl+C interrupt) |
+| **X** | Tab (with Cmd: New Tab) |
+| **Y** | Space |
 
-### Triggers & Shoulders
+#### Triggers & Shoulders
 | Input | Action |
 |-------|--------|
-| **ZR** | Left click (hold for drag) |
-| **ZL** | Right click / Command (⌘) modifier |
+| **ZL + ZR** | Voice input (hold to speak, release to type) |
 | **L** | Option (⌥) modifier |
 | **R** | Shift (⇧) modifier |
-| **L + R** | Control (⌃) modifier |
+| **L + R** | Precision mode (slower mouse) |
 
-### Analog Sticks
-| Input | Mouse Mode | Scroll Mode | Text Mode |
-|-------|------------|-------------|-----------|
-| **Left Stick** | Move cursor | Scroll vertically | Scroll |
-| **Right Stick** | Fine movement | Scroll horizontally | Fine scroll |
-| **L3 (click)** | Middle click | - | - |
-| **R3 (click)** | Precision mode | - | - |
+#### Analog Sticks
+| Input | Function |
+|-------|----------|
+| **Left Stick** | Move mouse cursor |
+| **Right Stick** | Scroll (vertical & horizontal) |
 
-### D-Pad
-| Input | Mouse/Text Mode | Scroll Mode |
-|-------|-----------------|-------------|
-| **D-Pad** | Arrow keys | Page Up/Down |
-| **+ L** | Word navigation (⌥+Arrow) | - |
-| **+ ZL** | Line start/end (⌘+Arrow) | - |
+#### D-Pad
+| Input | Action |
+|-------|--------|
+| **↑↓←→** | Arrow keys |
+| **+ Modifiers** | Works with L/R for modified arrow keys |
 
-### Menu Buttons
+#### Menu Buttons
 | Button | Action |
 |--------|--------|
-| **Menu (+)** | Hold for voice input |
-| **Options (-)** | Show/hide help overlay |
+| **Minus (-)** | Toggle debug log visibility |
+| **Plus (+)** | (Currently unassigned) |
 
 ## Voice Input
 
-Hold **Menu (+)** to speak. Release to type the transcribed text.
+**Hold ZL + ZR** to activate voice input. Speak naturally, then **release both buttons** to type what you said.
 
-### Voice Commands
-Say these commands to perform actions instead of typing:
-- "enter" / "submit" / "confirm" - Press Enter
-- "escape" / "cancel" / "back" - Press Escape
-- "tab" / "autocomplete" - Press Tab
-- "click" / "select" - Left click
-- "right click" - Right click
-- "scroll up" / "scroll down" - Page navigation
-- "delete" / "backspace" - Delete character
-- "stop" / "interrupt" - Send Ctrl+C
+Voice input is **text-only** - it types whatever you speak. There are no voice commands.
+
+Example:
+1. Hold ZL + ZR
+2. Say: "git commit dash m quote added new feature quote"
+3. Release buttons
+4. Text appears: "git commit -m added new feature"
+
+## User Interface
+
+The app features a modern tabbed interface:
+
+### Connection Header
+Shows controller status, battery level (when available), and LED indicators.
+
+### Configuration Tabs
+
+**🖱️ Mouse Tab**
+- Sensitivity slider (0.5x - 3.0x)
+- Deadzone control (0% - 30%)
+- Invert Y-Axis option
+- Mouse acceleration toggle
+
+**⌨️ Keyboard Tab**
+- Layout presets (Gaming, Text Editing, Media Controls, Custom)
+- Button mapping reference
+- Current configuration display
+
+**🎤 Voice Tab**
+- Live status indicator
+- Activation method selection
+- Speech recognition settings
+
+### Collapsible Debug Log
+Click "▼ Debug Log" to expand/collapse the event log panel at the bottom.
 
 ## Requirements
 
 - macOS 14.0+ (Sonoma)
-- Nintendo Joy-Con controllers (paired via Bluetooth)
-- Accessibility permission (for mouse/keyboard control)
-- Microphone permission (for voice input)
+- Nintendo Joy-Con controllers (L, R, or both)
+- Accessibility permission (required for mouse/keyboard control)
+- Speech Recognition permission (optional, for voice input only)
 
 ## Permissions
 
-The app will prompt for these permissions on first launch:
+The app shows a permissions screen on first launch:
 
-1. **Accessibility** - Required for mouse movement and keyboard input
-   - Go to: System Settings → Privacy & Security → Accessibility
-   - Enable berrry-joyful
+### Required: Accessibility
+Needed to control mouse and keyboard. Click **GRANT** to open System Settings, enable berrry-joyful in Accessibility, then click Continue.
 
-2. **Microphone** - Required for voice input
-   - Go to: System Settings → Privacy & Security → Microphone
-   - Enable berrry-joyful
-
-3. **Bluetooth** - Automatically requested for Joy-Con connection
+### Optional: Speech Recognition
+Needed for voice input (ZL+ZR). You can skip this and enable it later if desired.
 
 ## Building
 
@@ -99,9 +121,6 @@ sudo gem install cocoapods
 # Install CocoaPods dependencies (includes JoyConSwift)
 pod install
 
-# Generate Xcode project
-xcodegen generate
-
 # Build using workspace (not .xcodeproj!)
 xcodebuild -workspace berrry-joyful.xcworkspace -scheme berrry-joyful -configuration Debug build
 
@@ -109,39 +128,73 @@ xcodebuild -workspace berrry-joyful.xcworkspace -scheme berrry-joyful -configura
 open berrry-joyful.xcworkspace
 ```
 
-**Note**: Always use `berrry-joyful.xcworkspace`, not the `.xcodeproj` file, since we use CocoaPods dependencies.
+**Important**:
+- Always use `berrry-joyful.xcworkspace`, not `.xcodeproj`
+- `pod install` automatically patches JoyConSwift pointer alignment bug
+- Run `xcodegen` only when adding/removing source files
 
 ## Project Structure
 
 ```
 Sources/
-├── main.swift              # App entry point
-├── AppDelegate.swift       # Application lifecycle & menus
-├── ViewController.swift    # Main UI and Joy-Con input handling
-├── InputController.swift   # Mouse/keyboard simulation via CGEvent
-├── VoiceInputManager.swift # Speech recognition via Speech framework
-├── ControlMode.swift       # Control modes and settings
-├── StatusOverlay.swift     # Floating status window and help
-├── Info.plist              # App configuration
-└── berrry-joyful.entitlements
+├── main.swift                      # App entry point
+├── AppDelegate.swift               # Application lifecycle & controller monitoring
+├── PermissionsViewController.swift # First-launch permissions UI
+├── ViewController.swift            # Main tabbed UI & Joy-Con input handling
+├── InputController.swift           # Mouse/keyboard simulation via CGEvent
+├── VoiceInputManager.swift         # Speech recognition (text-only)
+├── ControlMode.swift               # Unified control mode & settings
+├── Info.plist                      # App configuration
+└── berrry-joyful.entitlements      # Security entitlements
 ```
+
+## Configuration
+
+All settings are accessible via the tabbed UI and persist automatically:
+
+- **Mouse Sensitivity**: Adjust cursor speed (default: 15.0)
+- **Deadzone**: Ignore small stick movements (default: 15%)
+- **Invert Y**: Flip vertical axis
+- **Acceleration**: Enable mouse acceleration curve
+- **Keyboard Presets**: Choose layout optimized for different tasks
 
 ## Technical Notes
 
-- Pure Swift 5.9 with AppKit (no storyboards)
+- Pure Swift 5.9 with AppKit (no storyboards, all programmatic UI)
 - JoyConSwift library for direct Joy-Con HID communication (via CocoaPods)
 - CGEvent API for mouse/keyboard simulation
-- Speech framework for voice recognition
-- Supports on-device speech recognition (macOS 13+)
+- Speech framework for voice recognition (on-device, macOS 13+)
 - Auto-patches JoyConSwift pointer alignment bug during `pod install`
+- Unified control mode: all input methods active simultaneously
 
 ## Tips for Claude Code
 
-1. **Mouse Mode** - Navigate the UI, click buttons, scroll output
-2. **Text Mode** - Use D-pad for cursor movement in text fields
-3. **Voice Input** - Quickly dictate prompts or commands
-4. **ZL + B** - Interrupt long-running processes (Ctrl+C)
-5. **Precision Mode (R3)** - Fine cursor control for small targets
+1. **Navigate quickly** - Left stick for cursor, right stick for scrolling
+2. **Voice for long prompts** - Hold ZL+ZR to dictate complex commands
+3. **Arrow keys** - Use D-pad for terminal history and cursor movement
+4. **Interrupt processes** - Cmd+B (B button with Cmd modifier)
+5. **Precision control** - Hold L+R for slow, accurate mouse movement
+6. **Debug visibility** - Toggle log with Minus (-) button when troubleshooting
+
+## Troubleshooting
+
+**Controller not detected?**
+- Pair Joy-Con via Bluetooth in System Settings
+- Check app logs (toggle debug panel with Minus button)
+
+**Mouse/keyboard not working?**
+- Grant Accessibility permission in System Settings
+- Restart the app after granting permission
+
+**Voice input not working?**
+- Grant Speech Recognition permission
+- Check microphone privacy settings
+- Verify ZL+ZR button combination
+
+**Build errors?**
+- Use `.xcworkspace` not `.xcodeproj`
+- Run `pod install` to get dependencies
+- Clean build folder if issues persist
 
 ---
 
