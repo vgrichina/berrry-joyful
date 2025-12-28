@@ -1,35 +1,39 @@
 import Foundation
 
 /// Control modes for Joy-Con input handling
-enum ControlMode: String, CaseIterable {
-    case mouse = "Mouse"
-    case scroll = "Scroll"
-    case text = "Text"
+/// Simplified to unified default mode with hold-to-activate special modes
+enum ControlMode: String {
+    case unified = "Unified"
 
     var description: String {
-        switch self {
-        case .mouse:
-            return "Mouse Control - Move cursor with sticks, click with triggers"
-        case .scroll:
-            return "Scroll Mode - Navigate documents and terminal output"
-        case .text:
-            return "Text Mode - D-pad for arrow keys, optimized for text editing"
-        }
+        return "Unified Control - Mouse, scroll, and keys all accessible"
     }
 
     var icon: String {
+        return "🎮"
+    }
+}
+
+/// Special input modes activated by holding button combinations
+enum SpecialInputMode {
+    case voice           // ZL + ZR held
+    case precision       // L + R held (future: autocomplete/snippets)
+    case none
+
+    var icon: String {
         switch self {
-        case .mouse: return "🖱️"
-        case .scroll: return "📜"
-        case .text: return "⌨️"
+        case .voice: return "🎤"
+        case .precision: return "✨"
+        case .none: return ""
         }
     }
 
-    func next() -> ControlMode {
-        let allCases = ControlMode.allCases
-        guard let currentIndex = allCases.firstIndex(of: self) else { return .mouse }
-        let nextIndex = (currentIndex + 1) % allCases.count
-        return allCases[nextIndex]
+    var description: String {
+        switch self {
+        case .voice: return "Voice Input - Speak to type or command"
+        case .precision: return "Precision Mode - Slow mouse, arrow keys"
+        case .none: return ""
+        }
     }
 }
 

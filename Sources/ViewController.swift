@@ -7,23 +7,25 @@ class ViewController: NSViewController {
     private var scrollView: NSScrollView!
     private var modeIndicator: NSTextField!
     private var connectionIndicator: NSTextField!
+    private var permissionPanel: NSView?
+    private var accessibilityButton: NSButton?
+    private var microphoneButton: NSButton?
 
     // Controllers
     private var controllers: [GCController] = []
 
     // State
-    private var currentMode: ControlMode = .mouse
+    private var currentMode: ControlMode = .unified
+    private var specialMode: SpecialInputMode = .none
     private var modifiers = ModifierState()
-    private var isVoiceHeld: Bool = false
+    private var isZLHeld: Bool = false
+    private var isZRHeld: Bool = false
 
     // Managers
     private let inputController = InputController.shared
     private let voiceManager = VoiceInputManager.shared
     private let settings = InputSettings.shared
 
-    // Overlays
-    private var statusOverlay: StatusOverlayWindow?
-    private var helpOverlay: HelpOverlayWindow?
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 700, height: 500))
@@ -34,7 +36,6 @@ class ViewController: NSViewController {
         setupUI()
         setupInputController()
         setupVoiceManager()
-        setupStatusOverlay()
         checkPermissions()
     }
 
@@ -53,10 +54,10 @@ class ViewController: NSViewController {
         headerView.layer?.backgroundColor = NSColor(white: 0.15, alpha: 1.0).cgColor
 
         // Mode indicator
-        modeIndicator = NSTextField(labelWithString: "🖱️ Mouse Mode")
+        modeIndicator = NSTextField(labelWithString: "🎮 Unified Control")
         modeIndicator.font = NSFont.systemFont(ofSize: 18, weight: .semibold)
         modeIndicator.textColor = .white
-        modeIndicator.frame = NSRect(x: 16, y: 10, width: 200, height: 30)
+        modeIndicator.frame = NSRect(x: 16, y: 10, width: 300, height: 30)
         headerView.addSubview(modeIndicator)
 
         // Connection indicator
@@ -70,8 +71,9 @@ class ViewController: NSViewController {
 
         view.addSubview(headerView)
 
-        // Log scroll view
-        let logFrame = NSRect(x: 0, y: 0, width: view.bounds.width, height: view.bounds.height - headerHeight)
+        // Log scroll view - calculate frame accounting for potential permission panel
+        let permissionPanelHeight: CGFloat = 80
+        let logFrame = NSRect(x: 0, y: 0, width: view.bounds.width, height: view.bounds.height - headerHeight - permissionPanelHeight)
         scrollView = NSScrollView(frame: logFrame)
         scrollView.autoresizingMask = [.width, .height]
         scrollView.hasVerticalScroller = true
@@ -97,23 +99,66 @@ class ViewController: NSViewController {
         scrollView.documentView = textView
         view.addSubview(scrollView)
 
+        // Permission panel (add AFTER scrollView so it's on top)
+        let permissionPanelY = view.bounds.height - headerHeight - permissionPanelHeight
+        permissionPanel = NSView(frame: NSRect(x: 0, y: permissionPanelY, width: view.bounds.width, height: permissionPanelHeight))
+        permissionPanel?.autoresizingMask = [.width, .minYMargin]
+        permissionPanel?.wantsLayer = true
+        permissionPanel?.layer?.backgroundColor = NSColor(red: 0.8, green: 0.4, blue: 0.2, alpha: 1.0).cgColor
+        permissionPanel?.isHidden = true // Start hidden
+
+        let warningLabel = NSTextField(labelWithString: "⚠️ Permissions Required")
+        warningLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        warningLabel.textColor = .white
+        warningLabel.frame = NSRect(x: 16, y: 45, width: 300, height: 25)
+        permissionPanel?.addSubview(warningLabel)
+
+        // Accessibility button
+        accessibilityButton = NSButton(frame: NSRect(x: 16, y: 10, width: 200, height: 28))
+        accessibilityButton?.title = "Grant Accessibility"
+        accessibilityButton?.bezelStyle = .rounded
+        accessibilityButton?.target = self
+        accessibilityButton?.action = #selector(requestAccessibilityPermission)
+        permissionPanel?.addSubview(accessibilityButton!)
+
+        // Microphone button
+        microphoneButton = NSButton(frame: NSRect(x: 230, y: 10, width: 200, height: 28))
+        microphoneButton?.title = "Grant Microphone"
+        microphoneButton?.bezelStyle = .rounded
+        microphoneButton?.target = self
+        microphoneButton?.action = #selector(requestMicrophonePermission)
+        permissionPanel?.addSubview(microphoneButton!)
+
+        // Refresh button
+        let refreshButton = NSButton(frame: NSRect(x: 445, y: 10, width: 120, height: 28))
+        refreshButton.title = "↻ Refresh"
+        refreshButton.bezelStyle = .rounded
+        refreshButton.target = self
+        refreshButton.action = #selector(refreshPermissions)
+        permissionPanel?.addSubview(refreshButton)
+
+        view.addSubview(permissionPanel!)
+
         // Initial messages
         log("🫐 berrry-joyful - Joy-Con Mac Controller")
         log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         log("Optimized for Claude Code and terminal workflows")
         log("")
-        log("Controls:")
-        log("  Y        → Cycle modes (Mouse/Scroll/Text)")
-        log("  A        → Enter  |  B → Escape  |  X → Tab")
-        log("  Menu (+) → Voice input  |  Options (-) → Help")
+        log("Unified Control Mode:")
+        log("  Left Stick   → Move mouse cursor")
+        log("  Right Stick  → Scroll vertically/horizontally")
+        log("  ZR           → Left click")
+        log("  ZL           → Right click")
+        log("  D-Pad        → Arrow keys (↑↓←→)")
+        log("  A/B/X/Y      → Enter / Escape / Tab / Space")
+        log("")
+        log("Special Modes (hold):")
+        log("  ZL + ZR      → 🎤 Voice input (speak to type)")
+        log("  L + R        → ✨ Precision mode")
+        log("  Options (-)  → Help overlay")
         log("")
         log("Waiting for controller connection...")
         log("")
-    }
-
-    private func setupStatusOverlay() {
-        statusOverlay = StatusOverlayWindow()
-        statusOverlay?.updateMode(currentMode)
     }
 
     private func setupInputController() {
@@ -128,7 +173,8 @@ class ViewController: NSViewController {
             self?.log(message)
         }
         voiceManager.onTranscriptUpdate = { [weak self] transcript in
-            self?.statusOverlay?.updateVoiceStatus(listening: true, transcript: transcript)
+            // Show transcript in log
+            self?.log("🎤 \(transcript)")
         }
         voiceManager.onFinalTranscript = { [weak self] transcript in
             guard let self = self else { return }
@@ -144,25 +190,76 @@ class ViewController: NSViewController {
     }
 
     private func checkPermissions() {
+        updatePermissionPanel()
+    }
+
+    private func updatePermissionPanel() {
+        var needsPermissions = false
+
         // Check accessibility permission
-        if !InputController.checkAccessibilityPermission() {
+        let hasAccessibility = InputController.checkAccessibilityPermission()
+        if !hasAccessibility {
             log("⚠️  Accessibility permission required for mouse/keyboard control")
-            log("   Go to: System Preferences → Privacy & Security → Accessibility")
-            log("   Add berrry-joyful to the allowed apps")
+            log("   Click 'Grant Accessibility' button above to open System Settings")
             log("")
-            InputController.requestAccessibilityPermission()
+            needsPermissions = true
+            accessibilityButton?.isEnabled = true
+            accessibilityButton?.title = "Grant Accessibility"
         } else {
             log("✅ Accessibility permission granted")
+            accessibilityButton?.isEnabled = false
+            accessibilityButton?.title = "✅ Accessibility OK"
         }
 
-        // Check microphone permission
-        VoiceInputManager.requestMicrophonePermission { [weak self] granted in
-            if granted {
-                self?.log("✅ Microphone permission granted")
-            } else {
-                self?.log("⚠️  Microphone permission denied - voice input disabled")
+        // Check microphone permission (don't request at startup)
+        let hasMicrophone = VoiceInputManager.checkMicrophonePermission()
+        if !hasMicrophone {
+            // Don't log warning - only show in panel if user tries to use voice
+            microphoneButton?.isEnabled = true
+            microphoneButton?.title = "Grant Microphone"
+        } else {
+            log("✅ Microphone permission granted")
+            microphoneButton?.isEnabled = false
+            microphoneButton?.title = "✅ Microphone OK"
+        }
+
+        // Show panel only if accessibility missing (critical)
+        // Microphone is optional - only needed for voice mode
+        DispatchQueue.main.async { [weak self] in
+            self?.permissionPanel?.isHidden = !needsPermissions
+            if needsPermissions {
+                self?.log("🔧 Permission panel shown - look for red banner at top of window")
             }
         }
+    }
+
+    @objc private func requestAccessibilityPermission() {
+        log("📋 Opening Accessibility settings...")
+        InputController.requestAccessibilityPermission()
+
+        // Check again after a delay (user needs to grant in System Settings)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.updatePermissionPanel()
+        }
+    }
+
+    @objc private func requestMicrophonePermission() {
+        log("📋 Requesting microphone permission...")
+        VoiceInputManager.requestMicrophonePermission { [weak self] granted in
+            DispatchQueue.main.async {
+                if granted {
+                    self?.log("✅ Microphone permission granted")
+                } else {
+                    self?.log("❌ Microphone permission denied")
+                }
+                self?.updatePermissionPanel()
+            }
+        }
+    }
+
+    @objc private func refreshPermissions() {
+        log("🔄 Refreshing permissions...")
+        updatePermissionPanel()
     }
 
     // MARK: - Logging
@@ -196,8 +293,6 @@ class ViewController: NSViewController {
         DispatchQueue.main.async { [weak self] in
             self?.connectionIndicator.stringValue = "🎮 \(name)"
             self?.connectionIndicator.textColor = .white
-            self?.statusOverlay?.updateConnectionStatus(connected: true, controllerName: name)
-            self?.statusOverlay?.show()
         }
 
         // Setup input handlers
@@ -212,7 +307,6 @@ class ViewController: NSViewController {
         // Monitor battery
         if let battery = controller.battery {
             log(String(format: "   Battery: %.0f%%", battery.batteryLevel * 100))
-            statusOverlay?.updateBattery(level: battery.batteryLevel)
         }
 
         log("")
@@ -226,21 +320,68 @@ class ViewController: NSViewController {
             if self?.controllers.isEmpty == true {
                 self?.connectionIndicator.stringValue = "🎮 No Controller"
                 self?.connectionIndicator.textColor = NSColor.secondaryLabelColor
-                self?.statusOverlay?.updateConnectionStatus(connected: false)
             }
         }
     }
 
-    // MARK: - Mode Switching
+    // MARK: - Special Mode Management
 
-    private func cycleMode() {
-        currentMode = currentMode.next()
-        log("\(currentMode.icon) Switched to \(currentMode.rawValue) Mode")
+    private func updateSpecialMode() {
+        let newMode: SpecialInputMode
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.modeIndicator.stringValue = "\(self.currentMode.icon) \(self.currentMode.rawValue) Mode"
-            self.statusOverlay?.updateMode(self.currentMode)
+        // ZL + ZR = Voice mode
+        if isZLHeld && isZRHeld {
+            newMode = .voice
+        }
+        // L + R = Precision mode
+        else if modifiers.option && modifiers.shift {
+            newMode = .precision
+        } else {
+            newMode = .none
+        }
+
+        // Mode changed?
+        if newMode != specialMode {
+            specialMode = newMode
+            handleSpecialModeChange(to: newMode)
+        }
+    }
+
+    private func handleSpecialModeChange(to mode: SpecialInputMode) {
+        switch mode {
+        case .voice:
+            // Start voice input
+            log("🎤 Voice input activated - speak now")
+            voiceManager.startListening()
+            DispatchQueue.main.async { [weak self] in
+                self?.modeIndicator.stringValue = "🎤 Voice Input"
+            }
+
+        case .precision:
+            // Activate precision mode
+            log("✨ Precision mode activated")
+            inputController.setPrecisionMode(true)
+            DispatchQueue.main.async { [weak self] in
+                self?.modeIndicator.stringValue = "✨ Precision Mode"
+            }
+
+        case .none:
+            // Return to unified mode
+            if specialMode == .voice {
+                voiceManager.stopListening()
+                // Type the transcript if we have one
+                if !voiceManager.currentTranscript.isEmpty {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                        self?.voiceManager.typeCurrentTranscript()
+                    }
+                }
+            }
+            if specialMode == .precision {
+                inputController.setPrecisionMode(false)
+            }
+            DispatchQueue.main.async { [weak self] in
+                self?.modeIndicator.stringValue = "🎮 Unified Control"
+            }
         }
     }
 
@@ -265,7 +406,9 @@ class ViewController: NSViewController {
 
         gamepad.buttonY.pressedChangedHandler = { [weak self] _, _, pressed in
             guard let self = self, pressed else { return }
-            self.cycleMode()
+            // Y button now presses Space
+            self.log("🕹️ Button Y → Space")
+            self.inputController.pressSpace(modifiers: self.modifiers)
         }
 
         // D-pad
@@ -298,91 +441,93 @@ class ViewController: NSViewController {
             }
         }
 
-        // Shoulder buttons - modifiers
+        // Shoulder buttons - precision mode activation + modifiers
         gamepad.leftShoulder.pressedChangedHandler = { [weak self] _, _, pressed in
-            self?.modifiers.option = pressed
-            self?.updateModifierDisplay()
+            guard let self = self else { return }
+            self.modifiers.option = pressed
+            self.updateModifierDisplay()
+            self.updateSpecialMode()  // Check for L+R precision mode
         }
 
         gamepad.rightShoulder.pressedChangedHandler = { [weak self] _, _, pressed in
-            self?.modifiers.shift = pressed
-            self?.updateModifierDisplay()
-            // L + R = Control
-            if let self = self {
-                self.modifiers.control = self.modifiers.option && self.modifiers.shift
-            }
-        }
-
-        // Triggers
-        gamepad.leftTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
             guard let self = self else { return }
-            self.modifiers.command = pressed
+            self.modifiers.shift = pressed
             self.updateModifierDisplay()
-
-            if !pressed && self.currentMode == .mouse {
-                // ZL release = right click (if it was a quick press)
-            }
+            self.updateSpecialMode()  // Check for L+R precision mode
         }
 
-        gamepad.leftTrigger.valueChangedHandler = { [weak self] _, value, pressed in
-            guard let self = self, pressed else { return }
-            // Just update command modifier state
-            self.modifiers.command = true
-        }
 
-        // ZL quick press for right click
+        // ZL trigger - right click + voice activation combo
         var zlPressTime: Date?
         gamepad.leftTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
             guard let self = self else { return }
-            self.modifiers.command = pressed
-            self.updateModifierDisplay()
+
+            self.isZLHeld = pressed
 
             if pressed {
                 zlPressTime = Date()
             } else {
-                // If quick press (< 0.3s), do right click
-                if let pressTime = zlPressTime, Date().timeIntervalSince(pressTime) < 0.3 {
-                    if self.currentMode == .mouse {
-                        self.inputController.rightClick()
-                    }
+                // Check if this was a quick press for right click
+                // (only if not in voice mode)
+                if let pressTime = zlPressTime,
+                   Date().timeIntervalSince(pressTime) < 0.3,
+                   self.specialMode != .voice {
+                    self.log("🕹️ ZL (quick) → Right click")
+                    self.inputController.rightClick()
                 }
                 zlPressTime = nil
             }
+
+            // Update special modes (voice activation)
+            self.updateSpecialMode()
         }
 
-        // ZR for left click / drag
+        // ZR trigger - left click + voice activation combo
         var zrPressTime: Date?
         gamepad.rightTrigger.pressedChangedHandler = { [weak self] _, _, pressed in
             guard let self = self else { return }
 
+            self.isZRHeld = pressed
+
             if pressed {
                 zrPressTime = Date()
             } else {
-                if let pressTime = zrPressTime {
-                    let duration = Date().timeIntervalSince(pressTime)
-                    if duration < 0.2 {
-                        // Quick press = click
-                        self.inputController.leftClick()
-                    } else {
-                        // Was holding = end drag
-                        self.inputController.endDrag()
+                // Check if this was a click or drag end
+                // (only if not in voice mode)
+                if self.specialMode != .voice {
+                    if let pressTime = zrPressTime {
+                        let duration = Date().timeIntervalSince(pressTime)
+                        if duration < 0.2 {
+                            // Quick press = click
+                            self.log("🕹️ ZR (quick) → Left click")
+                            self.inputController.leftClick()
+                        } else {
+                            // Was holding = end drag
+                            self.log("🕹️ ZR (release) → End drag")
+                            self.inputController.endDrag()
+                        }
                     }
                 }
                 zrPressTime = nil
             }
+
+            // Update special modes (voice activation)
+            self.updateSpecialMode()
         }
 
         // Long ZR hold starts drag
         gamepad.rightTrigger.valueChangedHandler = { [weak self] _, value, pressed in
             guard pressed, value > 0.8 else { return }
             if let pressTime = zrPressTime, Date().timeIntervalSince(pressTime) > 0.3 {
+                self?.log("🕹️ ZR (hold) → Start drag")
                 self?.inputController.startDrag()
             }
         }
 
-        // Menu button - voice input
+        // Menu button - unused (could be settings in future)
         gamepad.buttonMenu.pressedChangedHandler = { [weak self] _, _, pressed in
-            self?.handleVoiceButton(pressed: pressed)
+            guard pressed else { return }
+            self?.log("ℹ️ Menu button - currently unassigned")
         }
 
         // Options button - help
@@ -397,142 +542,82 @@ class ViewController: NSViewController {
     // MARK: - Button Handlers
 
     private func handleButtonA() {
+        log("🕹️ Button A → Enter")
         if modifiers.command {
             // Cmd+Enter - submit with newline in some apps
             inputController.pressEnter(modifiers: modifiers)
         } else {
             inputController.pressEnter(modifiers: modifiers)
         }
-        statusOverlay?.showAction("⏎ Enter")
     }
 
     private func handleButtonB() {
         if modifiers.command {
+            log("🕹️ Button B + Cmd → Interrupt (Ctrl+C)")
             // Cmd+B could be bold, or Ctrl+C for interrupt
             inputController.interruptProcess()
-            statusOverlay?.showAction("⌃C Interrupt")
         } else {
+            log("🕹️ Button B → Escape")
             inputController.pressEscape()
-            statusOverlay?.showAction("⎋ Escape")
         }
     }
 
     private func handleButtonX() {
         if modifiers.command {
+            log("🕹️ Button X + Cmd → New Tab (Cmd+T)")
             // Cmd+T for new tab in most apps
             inputController.pressKey(CGKeyCode(0x11), modifiers: modifiers)  // T key
-            statusOverlay?.showAction("⌘T New Tab")
         } else {
+            log("🕹️ Button X → Tab")
             inputController.pressTab(modifiers: modifiers)
-            statusOverlay?.showAction("⇥ Tab")
         }
     }
 
     private func handleDpad(x: Float, y: Float) {
         guard x != 0 || y != 0 else { return }
 
-        switch currentMode {
-        case .mouse, .text:
-            // Arrow key navigation
-            if y > 0.5 {
-                inputController.pressArrowUp(modifiers: modifiers)
-            } else if y < -0.5 {
-                inputController.pressArrowDown(modifiers: modifiers)
-            }
-            if x > 0.5 {
-                inputController.pressArrowRight(modifiers: modifiers)
-            } else if x < -0.5 {
-                inputController.pressArrowLeft(modifiers: modifiers)
-            }
-
-        case .scroll:
-            // Page navigation
-            if y > 0.5 {
-                inputController.pageUp()
-            } else if y < -0.5 {
-                inputController.pageDown()
-            }
+        // Unified mode: D-pad always does arrow keys
+        if y > 0.5 {
+            log("🕹️ D-pad Up → ↑")
+            inputController.pressArrowUp(modifiers: modifiers)
+        } else if y < -0.5 {
+            log("🕹️ D-pad Down → ↓")
+            inputController.pressArrowDown(modifiers: modifiers)
+        }
+        if x > 0.5 {
+            log("🕹️ D-pad Right → →")
+            inputController.pressArrowRight(modifiers: modifiers)
+        } else if x < -0.5 {
+            log("🕹️ D-pad Left → ←")
+            inputController.pressArrowLeft(modifiers: modifiers)
         }
     }
 
     private func handleLeftStick(x: Float, y: Float) {
-        switch currentMode {
-        case .mouse:
-            inputController.setMouseDelta(x: x, y: y)
-
-        case .scroll:
-            inputController.setScrollDelta(x: 0, y: y)
-
-        case .text:
-            // In text mode, left stick can be used for quick scrolling
-            inputController.setScrollDelta(x: 0, y: y * 0.5)
+        // Log only when stick is actually moved (not centered)
+        if abs(x) > 0.1 || abs(y) > 0.1 {
+            log(String(format: "🕹️ Left stick: (%.2f, %.2f) → mouse move", x, y))
         }
+        // Unified mode: Left stick always moves mouse
+        inputController.setMouseDelta(x: x, y: y)
     }
 
     private func handleRightStick(x: Float, y: Float) {
-        switch currentMode {
-        case .mouse:
-            // Fine movement or scrolling
-            if modifiers.shift {
-                inputController.setScrollDelta(x: x, y: y)
-            } else {
-                // Add to mouse movement for fine control
-                inputController.setMouseDelta(x: x * 0.3, y: y * 0.3)
-            }
-
-        case .scroll:
-            // Horizontal scroll
-            inputController.setScrollDelta(x: x, y: 0)
-
-        case .text:
-            // Fine scroll
-            inputController.setScrollDelta(x: x * 0.5, y: y * 0.5)
+        // Log only when stick is actually moved (not centered)
+        if abs(x) > 0.1 || abs(y) > 0.1 {
+            log(String(format: "🕹️ Right stick: (%.2f, %.2f) → scroll", x, y))
         }
-    }
-
-    private func handleVoiceButton(pressed: Bool) {
-        guard settings.voiceInputEnabled else {
-            if pressed {
-                log("⚠️ Voice input disabled in settings")
-            }
-            return
-        }
-
-        isVoiceHeld = pressed
-
-        if pressed {
-            voiceManager.startListening()
-            statusOverlay?.updateVoiceStatus(listening: true)
-            statusOverlay?.showPersistent()
-        } else {
-            voiceManager.stopListening()
-            statusOverlay?.updateVoiceStatus(listening: false)
-
-            // Type the transcript if there is one
-            if !voiceManager.currentTranscript.isEmpty {
-                // Small delay to ensure final transcript is processed
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                    self?.voiceManager.typeCurrentTranscript()
-                }
-            }
-        }
+        // Unified mode: Right stick always scrolls (both axes)
+        inputController.setScrollDelta(x: x, y: y)
     }
 
     private func updateModifierDisplay() {
-        statusOverlay?.updateModifiers(modifiers)
+        // Modifiers now only shown in window UI
     }
 
     private func toggleHelp() {
-        if helpOverlay?.isVisible == true {
-            helpOverlay?.orderOut(nil)
-            log("📖 Help closed")
-        } else {
-            if helpOverlay == nil {
-                helpOverlay = HelpOverlayWindow()
-            }
-            helpOverlay?.makeKeyAndOrderFront(nil)
-            log("📖 Help opened - Press Options (-) to close")
-        }
+        // Help removed - all info now in log and menu bar
+        log("ℹ️ Help: All controls are shown in the startup log above")
     }
 
     // MARK: - Micro Gamepad (Fallback)

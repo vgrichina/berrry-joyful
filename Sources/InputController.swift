@@ -22,11 +22,13 @@ class InputController {
     // MARK: - Accessibility Check
 
     static func checkAccessibilityPermission() -> Bool {
-        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
+        // Check without showing prompt
+        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: false] as CFDictionary
         return AXIsProcessTrustedWithOptions(options)
     }
 
     static func requestAccessibilityPermission() {
+        // Request with prompt to open System Settings
         let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
     }
