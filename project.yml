@@ -1,7 +1,7 @@
-name: JoyConTester
+name: berrry-joyful
 
 options:
-  bundleIdPrefix: com.joycon
+  bundleIdPrefix: app.berrry
   deploymentTarget:
     macOS: "14.0"
   developmentLanguage: en
@@ -12,7 +12,7 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
 
 targets:
-  JoyConTester:
+  berrry-joyful:
     type: application
     platform: macOS
     deploymentTarget: "14.0"
@@ -26,13 +26,13 @@ targets:
         LSMinimumSystemVersion: "14.0"
         NSPrincipalClass: NSApplication
         NSMainStoryboardFile: ""
-        NSHumanReadableCopyright: "Copyright © 2025"
+        NSHumanReadableCopyright: "Copyright © 2025 Berrry Computer"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.joycon.tester
-        PRODUCT_NAME: JoyConTester
+        PRODUCT_BUNDLE_IDENTIFIER: app.berrry.joyful
+        PRODUCT_NAME: berrry-joyful
         INFOPLIST_KEY_NSMainStoryboardFile: ""
         INFOPLIST_KEY_NSPrincipalClass: NSApplication
         # Enable USB/HID access
         ENABLE_HARDENED_RUNTIME: YES
-        CODE_SIGN_ENTITLEMENTS: Sources/JoyConTester.entitlements
+        CODE_SIGN_ENTITLEMENTS: Sources/berrry-joyful.entitlements

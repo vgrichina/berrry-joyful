@@ -19,7 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = mainMenu
 
         let appMenu = NSMenu()
-        let quitMenuItem = NSMenuItem(title: "Quit JoyConTester",
+        let quitMenuItem = NSMenuItem(title: "Quit berrry-joyful",
                                       action: #selector(NSApplication.terminate(_:)),
                                       keyEquivalent: "q")
         appMenu.addItem(quitMenuItem)
@@ -38,7 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "🎮 Joy-Con Tester"
+        window.title = "🫐 berrry-joyful"
         window.contentViewController = viewController
         print("✅ Created window: \(window)")
 

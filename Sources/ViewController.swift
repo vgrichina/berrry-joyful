@@ -36,7 +36,7 @@ class ViewController: NSViewController {
 
         view.addSubview(scrollView)
 
-        log("🎮 Joy-Con Tester Started")
+        log("🫐 berrry-joyful - Joy-Con Tester")
         log("Waiting for controller connections...")
         log("")
     }

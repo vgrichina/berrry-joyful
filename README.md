@@ -1,6 +1,8 @@
-# Joy-Con Tester
+# 🫐 berrry-joyful
 
-A simple macOS app to test Nintendo Joy-Con controllers using the GameController framework.
+A simple macOS app to test and map Nintendo Joy-Con controllers using the GameController framework.
+
+**By Berrry Computer**
 
 ## Features
 
@@ -26,10 +28,10 @@ A simple macOS app to test Nintendo Joy-Con controllers using the GameController
 xcodegen generate
 
 # Build
-xcodebuild -project JoyConTester.xcodeproj -scheme JoyConTester -configuration Debug build
+xcodebuild -project berrry-joyful.xcodeproj -scheme berrry-joyful -configuration Debug build
 
 # Or open in Xcode
-open JoyConTester.xcodeproj
+open berrry-joyful.xcodeproj
 ```
 
 ## Usage
@@ -43,3 +45,7 @@ open JoyConTester.xcodeproj
 - Uses programmatic AppKit (no storyboards)
 - Explicit `main.swift` for proper NSApplication setup
 - GameController framework for controller input handling
+
+---
+
+**© 2025 Berrry Computer**
