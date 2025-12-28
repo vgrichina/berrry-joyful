@@ -27,6 +27,8 @@ targets:
         NSPrincipalClass: NSApplication
         NSMainStoryboardFile: ""
         NSHumanReadableCopyright: "Copyright © 2025 Berrry Computer"
+        NSSpeechRecognitionUsageDescription: "This app uses speech recognition to enable voice commands and voice-based text input for controlling your Mac with Joy-Con controllers."
+        NSMicrophoneUsageDescription: "This app needs microphone access to listen for voice commands when using Joy-Con controllers."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.berrry.joyful

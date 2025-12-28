@@ -1,6 +1,7 @@
 # Xcode
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
+# Using xcodegen - ignore generated files
+*.xcodeproj/
+Sources/Info.plist
 !*.xcworkspace/contents.xcworkspacedata
 DerivedData/
 *.xcuserstate
