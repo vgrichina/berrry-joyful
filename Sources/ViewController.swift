@@ -1,5 +1,5 @@
 import Cocoa
-import GameController
+import JoyConSwift
 
 class ViewController: NSViewController {
     // UI Components
@@ -12,7 +12,7 @@ class ViewController: NSViewController {
     private var microphoneButton: NSButton?
 
     // Controllers
-    var controllers: [GCController] = [] // Internal access for AppDelegate polling
+    var controllers: [Controller] = [] // JoyConSwift controllers
 
     // State
     private var currentMode: ControlMode = .unified
@@ -281,45 +281,48 @@ class ViewController: NSViewController {
         }
     }
 
-    // MARK: - Controller Connection
+    // MARK: - Controller Connection (JoyConSwift)
 
-    func controllerConnected(_ controller: GCController) {
+    func joyConConnected(_ controller: Controller) {
         controllers.append(controller)
 
-        let name = controller.vendorName ?? "Controller"
-        log("✅ Controller Connected: \(name)")
-        log("   Product: \(controller.productCategory)")
+        let name = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
+        log("✅ Joy-Con Connected: \(name)")
 
         DispatchQueue.main.async { [weak self] in
-            self?.connectionIndicator.stringValue = "🎮 \(name)"
-            self?.connectionIndicator.textColor = .white
+            guard let self = self else { return }
+            let count = self.controllers.count
+            self.connectionIndicator.stringValue = "🎮 \(count) Joy-Con\(count > 1 ? "s" : "")"
+            self.connectionIndicator.textColor = .white
         }
 
-        // Setup input handlers
-        if let gamepad = controller.extendedGamepad {
-            log("   Type: Extended Gamepad")
-            setupExtendedGamepadHandlers(gamepad)
-        } else if let micro = controller.microGamepad {
-            log("   Type: Micro Gamepad")
-            setupMicroGamepadHandlers(micro)
-        }
+        // Setup Joy-Con input handlers
+        setupJoyConHandlers(controller)
 
-        // Monitor battery
-        if let battery = controller.battery {
-            log(String(format: "   Battery: %.0f%%", battery.batteryLevel * 100))
+        // Set player lights
+        let playerIndex = controllers.count - 1
+        switch playerIndex {
+        case 0: controller.setPlayerLights(l1: .on, l2: .off, l3: .off, l4: .off)
+        case 1: controller.setPlayerLights(l1: .off, l2: .on, l3: .off, l4: .off)
+        default: controller.setPlayerLights(l1: .on, l2: .on, l3: .off, l4: .off)
         }
 
         log("")
     }
 
-    func controllerDisconnected(_ controller: GCController) {
-        controllers.removeAll { $0 == controller }
-        log("❌ Controller Disconnected: \(controller.vendorName ?? "Unknown")")
+    func joyConDisconnected(_ controller: Controller) {
+        controllers.removeAll { $0 === controller }
+        let name = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
+        log("❌ Joy-Con Disconnected: \(name)")
 
         DispatchQueue.main.async { [weak self] in
-            if self?.controllers.isEmpty == true {
-                self?.connectionIndicator.stringValue = "🎮 No Controller"
-                self?.connectionIndicator.textColor = NSColor.secondaryLabelColor
+            guard let self = self else { return }
+            if self.controllers.isEmpty {
+                self.connectionIndicator.stringValue = "🎮 No Controller"
+                self.connectionIndicator.textColor = NSColor.secondaryLabelColor
+            } else {
+                let count = self.controllers.count
+                self.connectionIndicator.stringValue = "🎮 \(count) Joy-Con\(count > 1 ? "s" : "")"
             }
         }
     }
@@ -385,8 +388,9 @@ class ViewController: NSViewController {
         }
     }
 
-    // MARK: - Extended Gamepad Handlers
+    // MARK: - Extended Gamepad Handlers (REMOVED - Using JoyConSwift)
 
+    /*
     private func setupExtendedGamepadHandlers(_ gamepad: GCExtendedGamepad) {
         // Face buttons
         gamepad.buttonA.pressedChangedHandler = { [weak self] _, _, pressed in
@@ -538,6 +542,120 @@ class ViewController: NSViewController {
             }
         }
     }
+    */
+
+    // MARK: - JoyConSwift Handlers
+
+    private func setupJoyConHandlers(_ controller: Controller) {
+        log("   Setting up button handlers...")
+
+        // Enable IMU for motion data
+        controller.enableIMU(enable: true)
+        controller.setInputMode(mode: .standardFull)
+
+        // Button press handler
+        controller.buttonPressHandler = { [weak self] button in
+            guard let self = self else { return }
+
+            switch button {
+            case .A:
+                self.handleButtonA()
+            case .B:
+                self.handleButtonB()
+            case .X:
+                self.handleButtonX()
+            case .Y:
+                self.log("🕹️ Button Y → Space")
+                self.inputController.pressSpace(modifiers: self.modifiers)
+            case .L:
+                self.modifiers.option = true
+                self.updateModifierDisplay()
+                self.updateSpecialMode()
+            case .R:
+                self.modifiers.shift = true
+                self.updateModifierDisplay()
+                self.updateSpecialMode()
+            case .ZL:
+                self.isZLHeld = true
+                self.updateSpecialMode()
+            case .ZR:
+                self.isZRHeld = true
+                self.updateSpecialMode()
+            case .Up:
+                self.handleDpadButton(direction: "up")
+            case .Down:
+                self.handleDpadButton(direction: "down")
+            case .Left:
+                self.handleDpadButton(direction: "left")
+            case .Right:
+                self.handleDpadButton(direction: "right")
+            case .Plus:
+                self.log("ℹ️ Plus button - currently unassigned")
+            case .Minus:
+                self.toggleHelp()
+            case .Home:
+                self.log("🏠 Home button pressed")
+            case .Capture:
+                self.log("📸 Capture button pressed")
+            default:
+                self.log("🕹️ Button: \(button)")
+            }
+        }
+
+        // Button release handler
+        controller.buttonReleaseHandler = { [weak self] button in
+            guard let self = self else { return }
+
+            switch button {
+            case .L:
+                self.modifiers.option = false
+                self.updateModifierDisplay()
+                self.updateSpecialMode()
+            case .R:
+                self.modifiers.shift = false
+                self.updateModifierDisplay()
+                self.updateSpecialMode()
+            case .ZL:
+                self.isZLHeld = false
+                self.updateSpecialMode()
+            case .ZR:
+                self.isZRHeld = false
+                self.updateSpecialMode()
+            default:
+                break
+            }
+        }
+
+        // Stick movement handler
+        controller.leftStickPosHandler = { [weak self] pos in
+            self?.handleLeftStick(x: Float(pos.x), y: Float(pos.y))
+        }
+
+        controller.rightStickPosHandler = { [weak self] pos in
+            self?.handleRightStick(x: Float(pos.x), y: Float(pos.y))
+        }
+
+        log("   ✅ Handlers configured")
+    }
+
+    private func handleDpadButton(direction: String) {
+        switch direction {
+        case "up":
+            log("🕹️ D-pad Up → Arrow Up")
+            inputController.pressArrowUp(modifiers: modifiers)
+        case "down":
+            log("🕹️ D-pad Down → Arrow Down")
+            inputController.pressArrowDown(modifiers: modifiers)
+        case "left":
+            log("🕹️ D-pad Left → Arrow Left")
+            inputController.pressArrowLeft(modifiers: modifiers)
+        case "right":
+            log("🕹️ D-pad Right → Arrow Right")
+            inputController.pressArrowRight(modifiers: modifiers)
+        default:
+            break
+        }
+    }
 
     // MARK: - Button Handlers
 
@@ -622,6 +740,7 @@ class ViewController: NSViewController {
 
     // MARK: - Micro Gamepad (Fallback)
 
+    /*
     private func setupMicroGamepadHandlers(_ gamepad: GCMicroGamepad) {
         gamepad.buttonA.pressedChangedHandler = { [weak self] _, _, pressed in
             guard pressed else { return }
@@ -637,4 +756,5 @@ class ViewController: NSViewController {
             self?.handleDpad(x: xValue, y: yValue)
         }
     }
+    */
 }

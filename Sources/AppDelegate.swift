@@ -1,9 +1,10 @@
 import Cocoa
-import GameController
+import JoyConSwift
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
     var viewController: ViewController!
+    var joyConManager: JoyConManager!
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // Setup application
@@ -97,53 +98,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func setupControllerMonitoring() {
-        // Listen for controller connections
-        NotificationCenter.default.addObserver(
-            forName: .GCControllerDidConnect,
-            object: nil,
-            queue: nil
-        ) { [weak self] notification in
-            guard let controller = notification.object as? GCController else { return }
-            self?.viewController.log("🔌 GCControllerDidConnect notification received")
-            self?.viewController.controllerConnected(controller)
+        // Initialize JoyConSwift manager
+        joyConManager = JoyConManager()
+
+        viewController.log("🔍 Starting Joy-Con monitoring with JoyConSwift...")
+
+        // Set up connection handler
+        joyConManager.connectHandler = { [weak self] controller in
+            guard let self = self else { return }
+
+            let controllerType = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
+            self.viewController.log("✅ Joy-Con Connected: \(controllerType)")
+            self.viewController.log("   Type: \(controller.type)")
+
+            // Store controller and configure handlers
+            self.viewController.joyConConnected(controller)
         }
 
-        NotificationCenter.default.addObserver(
-            forName: .GCControllerDidDisconnect,
-            object: nil,
-            queue: nil
-        ) { [weak self] notification in
-            guard let controller = notification.object as? GCController else { return }
-            self?.viewController.log("🔌 GCControllerDidDisconnect notification received")
-            self?.viewController.controllerDisconnected(controller)
+        // Set up disconnection handler
+        joyConManager.disconnectHandler = { [weak self] controller in
+            guard let self = self else { return }
+
+            let controllerType = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
+            self.viewController.log("❌ Joy-Con Disconnected: \(controllerType)")
+
+            self.viewController.joyConDisconnected(controller)
         }
 
-        // Start discovery
-        viewController.log("🔍 Starting wireless controller discovery...")
-        GCController.startWirelessControllerDiscovery()
-
-        // Check for already connected controllers
-        let controllers = GCController.controllers()
-        viewController.log("🎮 Found \(controllers.count) controllers already connected")
-        for controller in controllers {
-            viewController.controllerConnected(controller)
-        }
-
-        // Poll for controllers every 2 seconds in case they connect late
-        Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            let currentControllers = GCController.controllers()
-            let connectedCount = self?.viewController.controllers.count ?? 0
-
-            if currentControllers.count > connectedCount {
-                self?.viewController.log("🎮 New controller detected! Total: \(currentControllers.count)")
-                for controller in currentControllers {
-                    // Check if not already in our list
-                    if !(self?.viewController.controllers.contains(controller) ?? false) {
-                        self?.viewController.controllerConnected(controller)
-                    }
-                }
-            }
-        }
+        // Start async monitoring
+        joyConManager.runAsync()
+        viewController.log("🎮 JoyConSwift monitoring started")
+        viewController.log("💡 Make sure Joy-Cons are paired via System Settings → Bluetooth")
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -151,7 +136,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        GCController.stopWirelessControllerDiscovery()
         InputController.shared.stopMouseUpdates()
         VoiceInputManager.shared.stopListening()
     }
