@@ -26,5 +26,11 @@
 	<string></string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>berrry-joyful uses the microphone for voice input to control your Mac with speech commands while using the Joy-Con controller.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>berrry-joyful uses speech recognition to convert your voice into text and commands when using voice input mode.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>berrry-joyful needs Bluetooth access to connect to your Joy-Con controllers.</string>
 </dict>
 </plist>
