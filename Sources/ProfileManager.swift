@@ -85,6 +85,58 @@ class ProfileManager {
         onProfileChanged?(activeProfile)
     }
 
+    /// Reset a specific profile to its default settings
+    func resetProfileToDefault(named name: String) {
+        // Find the default profile with this name
+        guard let defaultProfile = ButtonProfile.allDefaultProfiles.first(where: { $0.name == name }) else {
+            return
+        }
+
+        // Update the profile
+        updateProfile(defaultProfile)
+    }
+
+    /// Duplicate a profile with a new name
+    func duplicateProfile(named sourceName: String, newName: String) -> ButtonProfile? {
+        guard let sourceProfile = profiles.first(where: { $0.name == sourceName }) else {
+            return nil
+        }
+
+        // Create a copy with new name
+        let newProfile = ButtonProfile(
+            name: newName,
+            description: sourceProfile.description,
+            buttonA: sourceProfile.buttonA,
+            buttonB: sourceProfile.buttonB,
+            buttonX: sourceProfile.buttonX,
+            buttonY: sourceProfile.buttonY,
+            dpadUp: sourceProfile.dpadUp,
+            dpadDown: sourceProfile.dpadDown,
+            dpadLeft: sourceProfile.dpadLeft,
+            dpadRight: sourceProfile.dpadRight,
+            bumperL: sourceProfile.bumperL,
+            bumperR: sourceProfile.bumperR,
+            triggerZL: sourceProfile.triggerZL,
+            triggerZR: sourceProfile.triggerZR,
+            triggerZLZR: sourceProfile.triggerZLZR,
+            buttonMinus: sourceProfile.buttonMinus,
+            buttonPlus: sourceProfile.buttonPlus,
+            enableSmartTabbing: sourceProfile.enableSmartTabbing,
+            enableCmdClick: sourceProfile.enableCmdClick,
+            leftStickFunction: sourceProfile.leftStickFunction,
+            rightStickFunction: sourceProfile.rightStickFunction
+        )
+
+        addProfile(newProfile)
+        return newProfile
+    }
+
+    /// Switch to profile by index (for quick-switch)
+    func switchToProfileAtIndex(_ index: Int) {
+        guard index >= 0 && index < profiles.count else { return }
+        setActiveProfile(profiles[index])
+    }
+
     // MARK: - Persistence
 
     private func loadProfilesFromUserDefaults() -> [ButtonProfile]? {

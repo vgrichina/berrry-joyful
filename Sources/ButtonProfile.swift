@@ -12,6 +12,7 @@ enum ButtonAction: Codable, Equatable {
     case pressSpace
     case pressBackspace
     case customKey(keyCode: Int, description: String)
+    case keyCombo(keyCode: UInt16?, command: Bool, shift: Bool, option: Bool, control: Bool, description: String)  // Arbitrary key combo with modifiers
     case voiceInput
     case none
 
@@ -27,6 +28,7 @@ enum ButtonAction: Codable, Equatable {
         case .pressSpace: return "Space"
         case .pressBackspace: return "Backspace"
         case .customKey(_, let desc): return desc
+        case .keyCombo(_, _, _, _, _, let desc): return desc
         case .voiceInput: return "Voice Input"
         case .none: return "None"
         }

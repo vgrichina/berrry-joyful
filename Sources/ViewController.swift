@@ -62,12 +62,18 @@ class ViewController: NSViewController {
     private var modifiers = ModifierState()
     private var isZLHeld: Bool = false
     private var isZRHeld: Bool = false
+    private var isMinusHeld: Bool = false  // For quick profile switching
 
     // Managers
     private let inputController = InputController.shared
     private let voiceManager = VoiceInputManager.shared
     private let settings = InputSettings.shared
     private let profileManager = ProfileManager.shared
+
+    // Profile editing state
+    private var editingProfile: ButtonProfile?  // Temporary copy during editing
+    private var isProfileDirty: Bool = false    // Track unsaved changes
+    private var keyCaptureWindow: NSWindow?     // Retain the key capture window
 
     // MARK: - Lifecycle
 
@@ -353,7 +359,7 @@ class ViewController: NSViewController {
         profileLabel.drawsBackground = false
         panel.addSubview(profileLabel)
 
-        keyboardPresetPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 5, width: 250, height: 25))
+        keyboardPresetPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 5, width: 200, height: 25))
         keyboardPresetPopup.addItems(withTitles: profileManager.getProfileNames())
         if let activeIndex = profileManager.getProfileNames().firstIndex(of: profileManager.activeProfile.name) {
             keyboardPresetPopup.selectItem(at: activeIndex)
@@ -361,6 +367,23 @@ class ViewController: NSViewController {
         keyboardPresetPopup.target = self
         keyboardPresetPopup.action = #selector(profileSelectionChanged(_:))
         panel.addSubview(keyboardPresetPopup)
+
+        // Reset button
+        let resetButton = NSButton(frame: NSRect(x: 340, y: y - 5, width: 70, height: 25))
+        resetButton.title = "Reset"
+        resetButton.bezelStyle = .rounded
+        resetButton.target = self
+        resetButton.action = #selector(resetProfileToDefaults(_:))
+        panel.addSubview(resetButton)
+
+        // Clone button
+        let cloneButton = NSButton(frame: NSRect(x: 420, y: y - 5, width: 70, height: 25))
+        cloneButton.title = "Clone"
+        cloneButton.bezelStyle = .rounded
+        cloneButton.target = self
+        cloneButton.action = #selector(cloneProfile(_:))
+        panel.addSubview(cloneButton)
+
         y -= 50
 
         // Profile description
@@ -369,21 +392,100 @@ class ViewController: NSViewController {
         descLabel.textColor = NSColor.secondaryLabelColor
         descLabel.frame = NSRect(x: 20, y: y - 20, width: frame.width - 40, height: 20)
         panel.addSubview(descLabel)
-        y -= 35
+        y -= 40
 
-        // Button mapping guide
-        let mappingText = generateMappingText(for: profileManager.activeProfile)
-        let mappingLabel = NSTextField(wrappingLabelWithString: mappingText)
-        mappingLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-        mappingLabel.frame = NSRect(x: 20, y: y - 100, width: frame.width - 40, height: 100)
-        panel.addSubview(mappingLabel)
+        // Scrollable button mapping editor
+        let scrollViewHeight: CGFloat = 180
+        let scrollViewWidth: CGFloat = frame.width - 40
+        let scrollView = NSScrollView(frame: NSRect(x: 20, y: 60, width: scrollViewWidth, height: scrollViewHeight))
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = false  // Always show for clarity
+        scrollView.borderType = .bezelBorder
 
-        // Status info
-        let statusLabel = NSTextField(wrappingLabelWithString: "Keyboard control is always active when a Joy-Con is connected.\nButtons send key presses immediately.")
-        statusLabel.font = NSFont.systemFont(ofSize: 11)
+        let documentView = NSView(frame: NSRect(x: 0, y: 0, width: scrollViewWidth - 20, height: 420))
+        documentView.wantsLayer = true
+        documentView.layer?.backgroundColor = NSColor.white.cgColor
+
+        var rowY: CGFloat = 380  // Start from top
+
+        // Helper to create button row
+        let createRow: (String, ButtonAction, Int) -> Void = { buttonName, action, tag in
+            // Button name label
+            let nameLabel = NSTextField(labelWithString: buttonName)
+            nameLabel.frame = NSRect(x: 10, y: rowY, width: 100, height: 20)
+            nameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+            documentView.addSubview(nameLabel)
+
+            // Current mapping label
+            let mappingLabel = NSTextField(labelWithString: action.description)
+            mappingLabel.frame = NSRect(x: 120, y: rowY, width: 280, height: 20)
+            mappingLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+            mappingLabel.textColor = NSColor.secondaryLabelColor
+            documentView.addSubview(mappingLabel)
+
+            // Edit button (positioned on right side)
+            let editBtn = NSButton(frame: NSRect(x: documentView.bounds.width - 70, y: rowY - 2, width: 60, height: 22))
+            editBtn.title = "✏️ Edit"
+            editBtn.bezelStyle = .rounded
+            editBtn.font = NSFont.systemFont(ofSize: 10)
+            editBtn.tag = tag
+            editBtn.target = self
+            editBtn.action = #selector(self.editButtonMapping(_:))
+            documentView.addSubview(editBtn)
+
+            // Debug log
+            print("📝 Created Edit button for \(buttonName) at x:\(editBtn.frame.origin.x), visible in documentView width:\(documentView.bounds.width)")
+
+            rowY -= 25
+        }
+
+        // Face Buttons section
+        let faceHeader = NSTextField(labelWithString: "▸ Face Buttons")
+        faceHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
+        faceHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        documentView.addSubview(faceHeader)
+        rowY -= 25
+
+        createRow("A Button", profileManager.activeProfile.buttonA, 1)
+        createRow("B Button", profileManager.activeProfile.buttonB, 2)
+        createRow("X Button", profileManager.activeProfile.buttonX, 3)
+        createRow("Y Button", profileManager.activeProfile.buttonY, 4)
+        rowY -= 10
+
+        // D-Pad section
+        let dpadHeader = NSTextField(labelWithString: "▸ D-Pad")
+        dpadHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
+        dpadHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        documentView.addSubview(dpadHeader)
+        rowY -= 25
+
+        createRow("Up", profileManager.activeProfile.dpadUp, 5)
+        createRow("Right", profileManager.activeProfile.dpadRight, 6)
+        createRow("Down", profileManager.activeProfile.dpadDown, 7)
+        createRow("Left", profileManager.activeProfile.dpadLeft, 8)
+        rowY -= 10
+
+        // Triggers section
+        let triggerHeader = NSTextField(labelWithString: "▸ Triggers & Bumpers")
+        triggerHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
+        triggerHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        documentView.addSubview(triggerHeader)
+        rowY -= 25
+
+        // Note: L/R bumpers are ModifierActions and handled separately
+        createRow("ZL Trigger", profileManager.activeProfile.triggerZL, 11)
+        createRow("ZR Trigger", profileManager.activeProfile.triggerZR, 12)
+        createRow("ZL+ZR Combo", profileManager.activeProfile.triggerZLZR, 13)
+
+        scrollView.documentView = documentView
+        panel.addSubview(scrollView)
+
+        // Status info at bottom
+        let statusLabel = NSTextField(wrappingLabelWithString: "Click Edit to customize any button mapping. Changes take effect immediately.")
+        statusLabel.font = NSFont.systemFont(ofSize: 10)
         statusLabel.textColor = NSColor.secondaryLabelColor
         statusLabel.alignment = .center
-        statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 40)
+        statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 30)
         panel.addSubview(statusLabel)
 
         return panel
@@ -641,6 +743,10 @@ class ViewController: NSViewController {
         log("✅ Profile changed to: \(profileName)")
 
         // Refresh the keyboard config panel to show new mapping
+        refreshKeyboardPanel()
+    }
+
+    private func refreshKeyboardPanel() {
         keyboardConfigPanel.removeFromSuperview()
         let yPosition = mouseConfigPanel.frame.minY
         keyboardConfigPanel = createKeyboardConfigPanel(
@@ -660,6 +766,162 @@ class ViewController: NSViewController {
         Minus: \(profile.buttonMinus.description)  Plus: \(profile.buttonPlus.description)
         Left Stick: \(profile.leftStickFunction.rawValue)  Right Stick: \(profile.rightStickFunction.rawValue)
         """
+    }
+
+    @objc private func resetProfileToDefaults(_ sender: NSButton) {
+        let currentProfileName = profileManager.activeProfile.name
+
+        let alert = NSAlert()
+        alert.messageText = "Reset Profile to Defaults?"
+        alert.informativeText = "This will reset \"\(currentProfileName)\" to its default button mappings. This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            profileManager.resetProfileToDefault(named: currentProfileName)
+            log("🔄 Profile \"\(currentProfileName)\" reset to defaults")
+            refreshKeyboardPanel()
+        }
+    }
+
+    @objc private func cloneProfile(_ sender: NSButton) {
+        let currentProfileName = profileManager.activeProfile.name
+
+        let alert = NSAlert()
+        alert.messageText = "Clone Profile"
+        alert.informativeText = "Enter a name for the new profile:"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Create")
+        alert.addButton(withTitle: "Cancel")
+
+        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        inputField.stringValue = "\(currentProfileName) Copy"
+        inputField.placeholderString = "Profile name"
+        alert.accessoryView = inputField
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let newName = inputField.stringValue.trimmingCharacters(in: .whitespaces)
+            if !newName.isEmpty {
+                profileManager.duplicateProfile(named: currentProfileName, newName: newName)
+                log("📋 Cloned profile \"\(currentProfileName)\" to \"\(newName)\"")
+
+                // Switch to the new profile
+                profileManager.setActiveProfile(named: newName)
+
+                // Refresh the keyboard panel to show new profile in dropdown
+                refreshKeyboardPanel()
+            }
+        }
+    }
+
+    @objc private func editButtonMapping(_ sender: NSButton) {
+        let tag = sender.tag
+
+        // Map tag to button name and current action
+        let (buttonName, currentAction) = getButtonInfo(forTag: tag)
+
+        log("🎹 Editing \(buttonName)...")
+
+        // Create key capture view
+        let captureView = KeyCaptureView(
+            buttonName: buttonName,
+            currentMapping: currentAction.description
+        )
+
+        captureView.onKeyCaptured = { [weak self] capturedKey in
+            self?.handleKeyCaptured(capturedKey, forTag: tag, buttonName: buttonName)
+            // Close the window
+            self?.keyCaptureWindow?.close()
+            self?.keyCaptureWindow = nil
+        }
+
+        captureView.onCancelled = { [weak self] in
+            print("Cancelled key capture")
+            // Close the window
+            self?.keyCaptureWindow?.close()
+            self?.keyCaptureWindow = nil
+        }
+
+        // Show as a modal window
+        keyCaptureWindow = NSWindow(contentViewController: NSViewController())
+        keyCaptureWindow!.contentView = captureView
+        keyCaptureWindow!.styleMask = [.titled, .closable]
+        keyCaptureWindow!.setContentSize(NSSize(width: 400, height: 250))
+        keyCaptureWindow!.title = "Capture Key for \(buttonName)"
+        keyCaptureWindow!.center()
+        keyCaptureWindow!.makeKeyAndOrderFront(nil)
+        keyCaptureWindow!.level = .floating
+
+        // Make the window respond to Esc key for closing
+        keyCaptureWindow!.standardWindowButton(.closeButton)?.isEnabled = true
+    }
+
+    private func getButtonInfo(forTag tag: Int) -> (String, ButtonAction) {
+        let profile = profileManager.activeProfile
+        switch tag {
+        case 1: return ("A Button", profile.buttonA)
+        case 2: return ("B Button", profile.buttonB)
+        case 3: return ("X Button", profile.buttonX)
+        case 4: return ("Y Button", profile.buttonY)
+        case 5: return ("D-Pad Up", profile.dpadUp)
+        case 6: return ("D-Pad Right", profile.dpadRight)
+        case 7: return ("D-Pad Down", profile.dpadDown)
+        case 8: return ("D-Pad Left", profile.dpadLeft)
+        case 11: return ("ZL Trigger", profile.triggerZL)
+        case 12: return ("ZR Trigger", profile.triggerZR)
+        case 13: return ("ZL+ZR Combo", profile.triggerZLZR)
+        default: return ("Unknown", .none)
+        }
+    }
+
+    private func handleKeyCaptured(_ capturedKey: CapturedKey, forTag tag: Int, buttonName: String) {
+        // Convert CapturedKey to ButtonAction
+        let newAction = ButtonAction.keyCombo(
+            keyCode: capturedKey.keyCode,
+            command: capturedKey.modifiers.contains(.command),
+            shift: capturedKey.modifiers.contains(.shift),
+            option: capturedKey.modifiers.contains(.option),
+            control: capturedKey.modifiers.contains(.control),
+            description: capturedKey.description
+        )
+
+        // Update the profile on main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            self.updateButtonAction(forTag: tag, newAction: newAction)
+            self.log("✅ Updated \(buttonName) → \(newAction.description)")
+
+            // Refresh the keyboard panel to show new mapping
+            self.refreshKeyboardPanel()
+        }
+    }
+
+    private func updateButtonAction(forTag tag: Int, newAction: ButtonAction) {
+        // Get mutable copy of active profile
+        var updatedProfile = profileManager.activeProfile
+
+        // Update the specific button based on tag
+        switch tag {
+        case 1: updatedProfile.buttonA = newAction
+        case 2: updatedProfile.buttonB = newAction
+        case 3: updatedProfile.buttonX = newAction
+        case 4: updatedProfile.buttonY = newAction
+        case 5: updatedProfile.dpadUp = newAction
+        case 6: updatedProfile.dpadRight = newAction
+        case 7: updatedProfile.dpadDown = newAction
+        case 8: updatedProfile.dpadLeft = newAction
+        case 11: updatedProfile.triggerZL = newAction
+        case 12: updatedProfile.triggerZR = newAction
+        case 13: updatedProfile.triggerZLZR = newAction
+        default: break
+        }
+
+        // Save back to profile manager
+        profileManager.updateProfile(updatedProfile)
     }
 
     @objc private func grantVoicePermissionsClicked() {
@@ -846,6 +1108,7 @@ class ViewController: NSViewController {
             case .Right:
                 self.handleDpadButton(direction: "right")
             case .Minus:
+                self.isMinusHeld = true
                 self.executeButtonAction(self.profileManager.activeProfile.buttonMinus, buttonName: "Minus")
             case .Plus:
                 self.executeButtonAction(self.profileManager.activeProfile.buttonPlus, buttonName: "Plus")
@@ -870,6 +1133,8 @@ class ViewController: NSViewController {
             case .ZR:
                 self.isZRHeld = false
                 self.updateSpecialMode()
+            case .Minus:
+                self.isMinusHeld = false
             default:
                 break
             }
@@ -942,6 +1207,9 @@ class ViewController: NSViewController {
         case .customKey(let keyCode, let desc):
             log("🕹️ \(buttonName) → \(desc)")
             inputController.pressKey(CGKeyCode(keyCode), modifiers: modifiers)
+        case .keyCombo(let keyCode, let cmd, let shift, let opt, let ctrl, let desc):
+            log("🕹️ \(buttonName) → \(desc)")
+            inputController.pressKeyCombo(keyCode: keyCode, command: cmd, shift: shift, option: opt, control: ctrl)
         case .voiceInput:
             log("🕹️ \(buttonName) → Voice Input")
             // Voice input is handled separately through ZL+ZR combo
@@ -952,6 +1220,32 @@ class ViewController: NSViewController {
     }
 
     private func handleDpadButton(direction: String) {
+        // Check for quick profile switch: Minus + D-Pad
+        if isMinusHeld {
+            let profileIndex: Int
+            switch direction {
+            case "up": profileIndex = 0      // Desktop+Terminal
+            case "right": profileIndex = 1   // Gaming
+            case "down": profileIndex = 2    // Media
+            case "left": profileIndex = 3    // Classic
+            default: return
+            }
+
+            profileManager.switchToProfileAtIndex(profileIndex)
+            log("🎮 Quick Switch → Profile \(profileIndex): \(profileManager.activeProfile.name)")
+
+            // Show profile overlay with cheat sheet
+            ProfileOverlay.show(profile: profileManager.activeProfile)
+
+            // Refresh keyboard panel if on keyboard tab
+            if currentTab == .keyboard {
+                refreshKeyboardPanel()
+            }
+
+            return
+        }
+
+        // Normal D-Pad behavior
         let profile = profileManager.activeProfile
         switch direction {
         case "up": executeButtonAction(profile.dpadUp, buttonName: "D-Pad Up")

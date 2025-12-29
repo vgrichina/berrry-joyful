@@ -254,6 +254,41 @@ class InputController {
         }
     }
 
+    /// Press a key combo with specified modifiers (for custom keybindings)
+    func pressKeyCombo(keyCode: UInt16?, command: Bool, shift: Bool, option: Bool, control: Bool) {
+        if debugMode {
+            // Log in debug mode
+            var modDesc = ""
+            if control { modDesc += "⌃" }
+            if option { modDesc += "⌥" }
+            if shift { modDesc += "⇧" }
+            if command { modDesc += "⌘" }
+            let keyDesc = keyCode.map { CapturedKey.keyCodeToString($0) } ?? "None"
+            onLog?("⌨️  DEBUG: \(modDesc)\(keyDesc)")
+            return
+        }
+
+        var modifiers = ModifierState()
+        modifiers.command = command
+        modifiers.shift = shift
+        modifiers.option = option
+        modifiers.control = control
+
+        if let code = keyCode {
+            pressKey(CGKeyCode(code), modifiers: modifiers)
+        } else {
+            // Pure modifier press - just send modifier flags
+            guard let event = CGEvent(keyboardEventSource: nil, virtualKey: 0, keyDown: true) else { return }
+            var flags: CGEventFlags = []
+            if command { flags.insert(.maskCommand) }
+            if option { flags.insert(.maskAlternate) }
+            if shift { flags.insert(.maskShift) }
+            if control { flags.insert(.maskControl) }
+            event.flags = flags
+            event.post(tap: .cghidEventTap)
+        }
+    }
+
     func typeText(_ text: String) {
         for char in text {
             if let keyCode = keyCodeForCharacter(char) {
