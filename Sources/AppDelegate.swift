@@ -171,6 +171,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         InputController.shared.stopMouseUpdates()
-        VoiceInputManager.shared.stopListening()
+
+        // Only clean up voice manager if it was actually used
+        // Accessing it unnecessarily can trigger microphone permission prompts
+        let voiceManager = VoiceInputManager.shared
+        if voiceManager.wasUsed {
+            voiceManager.stopListening()
+        }
     }
 }

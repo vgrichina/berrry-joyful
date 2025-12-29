@@ -6,10 +6,13 @@ import AVFoundation
 class VoiceInputManager: NSObject, ObservableObject {
     static let shared = VoiceInputManager()
 
+    // Track if this manager was ever actually used
+    private(set) var wasUsed: Bool = false
+
     private let speechRecognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
-    private let audioEngine = AVAudioEngine()
+    private lazy var audioEngine = AVAudioEngine()  // Lazy to avoid triggering mic permission on init
 
     @Published var isListening: Bool = false
     @Published var currentTranscript: String = ""
@@ -25,14 +28,16 @@ class VoiceInputManager: NSObject, ObservableObject {
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
         super.init()
 
-        // Check current authorization status (doesn't trigger prompt)
-        // Need BOTH microphone AND speech recognition
-        isAuthorized = VoiceInputManager.checkVoiceInputPermissions()
+        // Don't check permissions on init - only check when actually needed
+        // This prevents triggering permission dialogs just from accessing the singleton
+        isAuthorized = false
     }
 
     // MARK: - Authorization
 
     func checkAuthorization() {
+        wasUsed = true  // Mark as used
+
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
                 switch status {
@@ -85,6 +90,8 @@ class VoiceInputManager: NSObject, ObservableObject {
     // MARK: - Voice Recognition
 
     func startListening() {
+        wasUsed = true  // Mark as used
+
         // Only start if already authorized - don't request permission on the fly
         guard isAuthorized else {
             onError?("Speech recognition not authorized. Please grant permission in System Settings.")
