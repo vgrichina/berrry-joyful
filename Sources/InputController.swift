@@ -17,6 +17,13 @@ class InputController {
     // Callback for logging
     var onLog: ((String) -> Void)?
 
+    // Debug mode - skips actual input events (for testing without permissions)
+    #if DEBUG
+    var debugMode: Bool = true  // Default to true in debug builds
+    #else
+    var debugMode: Bool = false
+    #endif
+
     private init() {}
 
     // MARK: - Accessibility Check
@@ -100,6 +107,8 @@ class InputController {
     }
 
     private func moveMouse(deltaX: CGFloat, deltaY: CGFloat) {
+        if debugMode { return }  // Skip in debug mode
+
         guard let currentPos = CGEvent(source: nil)?.location else { return }
 
         let newX = currentPos.x + deltaX
@@ -126,6 +135,8 @@ class InputController {
     }
 
     private func scroll(deltaX: CGFloat, deltaY: CGFloat) {
+        if debugMode { return }  // Skip in debug mode
+
         if let scrollEvent = CGEvent(scrollWheelEvent2Source: nil,
                                       units: .pixel,
                                       wheelCount: 2,
@@ -139,6 +150,11 @@ class InputController {
     // MARK: - Mouse Clicking
 
     func leftClick(modifiers: ModifierState = ModifierState()) {
+        let modStr = modifiers.isEmpty ? "" : " (\(modifiers.description))"
+        onLog?("🖱️ Left click\(modStr)")
+
+        if debugMode { return }  // Skip in debug mode
+
         guard let pos = CGEvent(source: nil)?.location else { return }
 
         var flags: CGEventFlags = []
@@ -158,12 +174,13 @@ class InputController {
             upEvent.flags = flags
             upEvent.post(tap: .cghidEventTap)
         }
-
-        let modStr = modifiers.isEmpty ? "" : " (\(modifiers.description))"
-        onLog?("🖱️ Left click\(modStr)")
     }
 
     func rightClick() {
+        onLog?("🖱️ Right click")
+
+        if debugMode { return }  // Skip in debug mode
+
         guard let pos = CGEvent(source: nil)?.location else { return }
 
         if let downEvent = CGEvent(mouseEventSource: nil, mouseType: .rightMouseDown,
@@ -175,8 +192,6 @@ class InputController {
                                  mouseCursorPosition: pos, mouseButton: .right) {
             upEvent.post(tap: .cghidEventTap)
         }
-
-        onLog?("🖱️ Right click")
     }
 
     func middleClick() {
@@ -220,6 +235,8 @@ class InputController {
     // MARK: - Keyboard Input
 
     func pressKey(_ keyCode: CGKeyCode, modifiers: ModifierState = ModifierState()) {
+        if debugMode { return }  // Skip in debug mode
+
         guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) else { return }
 
         var flags: CGEventFlags = []

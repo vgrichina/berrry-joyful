@@ -38,6 +38,11 @@ class ViewController: NSViewController {
     // Keyboard Controls
     private var keyboardPresetPopup: NSPopUpButton!
 
+    // Debug Controls
+    #if DEBUG
+    private var debugModeCheckbox: NSButton!
+    #endif
+
     // Voice Controls
     private var voiceStatusLabel: NSTextField!
     private var voiceActivationMatrix: NSMatrix!
@@ -106,10 +111,15 @@ class ViewController: NSViewController {
         headerView.layer?.backgroundColor = NSColor(white: 0.2, alpha: 1.0).cgColor
 
         // Connection status
-        connectionLabel = NSTextField(labelWithString: "🔍 No Joy-Con detected")
+        #if DEBUG
+        let debugSuffix = inputController.debugMode ? " [DEBUG MODE]" : ""
+        #else
+        let debugSuffix = ""
+        #endif
+        connectionLabel = NSTextField(labelWithString: "🔍 No Joy-Con detected\(debugSuffix)")
         connectionLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
         connectionLabel.textColor = NSColor(white: 0.7, alpha: 1.0)
-        connectionLabel.frame = NSRect(x: 20, y: 20, width: 400, height: 25)
+        connectionLabel.frame = NSRect(x: 20, y: 20, width: 500, height: 25)
         headerView.addSubview(connectionLabel)
 
         // Battery indicator
@@ -293,12 +303,27 @@ class ViewController: NSViewController {
         y -= 50
 
         // Status info
-        let statusLabel = NSTextField(wrappingLabelWithString: "Mouse control is always active when a Joy-Con is connected.\nUse the left stick to move the cursor.")
+        #if DEBUG
+        let statusText = inputController.debugMode ?
+            "⚠️ DEBUG MODE: Input events are logged but not sent to the system.\nNo accessibility permissions needed for testing." :
+            "Mouse control is always active when a Joy-Con is connected.\nUse the left stick to move the cursor."
+        #else
+        let statusText = "Mouse control is always active when a Joy-Con is connected.\nUse the left stick to move the cursor."
+        #endif
+        let statusLabel = NSTextField(wrappingLabelWithString: statusText)
         statusLabel.font = NSFont.systemFont(ofSize: 11)
         statusLabel.textColor = NSColor.secondaryLabelColor
         statusLabel.alignment = .center
         statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 40)
         panel.addSubview(statusLabel)
+
+        // Debug mode toggle (only in debug builds)
+        #if DEBUG
+        debugModeCheckbox = NSButton(checkboxWithTitle: "Debug Mode (skip system input events)", target: self, action: #selector(debugModeChanged(_:)))
+        debugModeCheckbox.frame = NSRect(x: 20, y: y - 30, width: 300, height: 20)
+        debugModeCheckbox.state = inputController.debugMode ? .on : .off
+        panel.addSubview(debugModeCheckbox)
+        #endif
 
         return panel
     }
@@ -582,6 +607,33 @@ class ViewController: NSViewController {
         settings.mouseAcceleration = (sender.state == .on)
         log("Mouse acceleration: \(settings.mouseAcceleration)")
     }
+
+    #if DEBUG
+    @objc private func debugModeChanged(_ sender: NSButton) {
+        inputController.debugMode = (sender.state == .on)
+        let status = inputController.debugMode ? "enabled" : "disabled"
+        log("🐛 Debug mode \(status) - input events will \(inputController.debugMode ? "NOT" : "") be sent to system")
+
+        // Update header label
+        let debugSuffix = inputController.debugMode ? " [DEBUG MODE]" : ""
+        if controllers.isEmpty {
+            connectionLabel.stringValue = "🔍 No Joy-Con detected\(debugSuffix)"
+        } else {
+            let names = controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
+            connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))\(debugSuffix)"
+        }
+
+        // Refresh mouse config panel to update status text
+        mouseConfigPanel.removeFromSuperview()
+        let yPosition = mouseConfigPanel.frame.minY
+        mouseConfigPanel = createMouseConfigPanel(
+            frame: NSRect(x: 0, y: yPosition, width: view.bounds.width, height: 300)
+        )
+        mouseConfigPanel.autoresizingMask = [.width, .minYMargin]
+        mouseConfigPanel.isHidden = (currentTab != .mouse)
+        view.addSubview(mouseConfigPanel)
+    }
+    #endif
 
     @objc private func profileSelectionChanged(_ sender: NSPopUpButton) {
         guard let profileName = sender.titleOfSelectedItem else { return }

@@ -29,7 +29,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = "berrry-joyful"
         window.backgroundColor = NSColor.windowBackgroundColor
 
-        if !hasAccessibility {
+        // Skip permissions screen in debug mode
+        #if DEBUG
+        let skipPermissions = InputController.shared.debugMode
+        #else
+        let skipPermissions = false
+        #endif
+
+        if !hasAccessibility && !skipPermissions {
             // Show permissions screen first
             showPermissionsScreen()
         } else {
