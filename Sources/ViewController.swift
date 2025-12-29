@@ -416,11 +416,13 @@ class ViewController: NSViewController, NSTabViewDelegate {
         scrollView.borderType = .bezelBorder
         scrollView.autoresizingMask = [.width, .height]  // Resize with window
 
-        let documentView = NSView(frame: NSRect(x: 0, y: 0, width: scrollViewWidth - 20, height: 420))
+        // Use FlippedView for top-down coordinates (will set final height after adding content)
+        let documentView = FlippedView(frame: NSRect(x: 0, y: 0, width: scrollViewWidth - 20, height: 500))
         documentView.wantsLayer = true
         documentView.layer?.backgroundColor = NSColor.white.cgColor
+        documentView.autoresizingMask = [.width]  // Resize width with scroll view
 
-        var rowY: CGFloat = 380  // Start from top
+        var rowY: CGFloat = 10  // Start from top
 
         // Helper to create button row
         let createRow: (String, ButtonAction, Int) -> Void = { buttonName, action, tag in
@@ -445,12 +447,13 @@ class ViewController: NSViewController, NSTabViewDelegate {
             editBtn.tag = tag
             editBtn.target = self
             editBtn.action = #selector(self.editButtonMapping(_:))
+            editBtn.autoresizingMask = [.minXMargin]  // Keep on right when resizing
             documentView.addSubview(editBtn)
 
             // Debug log
             print("📝 Created Edit button for \(buttonName) at x:\(editBtn.frame.origin.x), visible in documentView width:\(documentView.bounds.width)")
 
-            rowY -= 25
+            rowY += 25  // Move down for next row
         }
 
         // Face Buttons section
@@ -458,51 +461,45 @@ class ViewController: NSViewController, NSTabViewDelegate {
         faceHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
         faceHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         documentView.addSubview(faceHeader)
-        rowY -= 25
+        rowY += 25
 
         createRow("A Button", profileManager.activeProfile.buttonA, 1)
         createRow("B Button", profileManager.activeProfile.buttonB, 2)
         createRow("X Button", profileManager.activeProfile.buttonX, 3)
         createRow("Y Button", profileManager.activeProfile.buttonY, 4)
-        rowY -= 10
+        rowY += 10
 
         // D-Pad section
         let dpadHeader = NSTextField(labelWithString: "▸ D-Pad")
         dpadHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
         dpadHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         documentView.addSubview(dpadHeader)
-        rowY -= 25
+        rowY += 25
 
         createRow("Up", profileManager.activeProfile.dpadUp, 5)
         createRow("Right", profileManager.activeProfile.dpadRight, 6)
         createRow("Down", profileManager.activeProfile.dpadDown, 7)
         createRow("Left", profileManager.activeProfile.dpadLeft, 8)
-        rowY -= 10
+        rowY += 10
 
         // Triggers section
         let triggerHeader = NSTextField(labelWithString: "▸ Triggers & Bumpers")
         triggerHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
         triggerHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         documentView.addSubview(triggerHeader)
-        rowY -= 25
+        rowY += 25
 
         // Note: L/R bumpers are ModifierActions and handled separately
         createRow("ZL Trigger", profileManager.activeProfile.triggerZL, 11)
         createRow("ZR Trigger", profileManager.activeProfile.triggerZR, 12)
         createRow("ZL+ZR Combo", profileManager.activeProfile.triggerZLZR, 13)
 
+        // Set final documentView height based on actual content
+        let finalHeight = rowY + 20  // Add padding at bottom
+        documentView.frame = NSRect(x: 0, y: 0, width: scrollViewWidth - 20, height: finalHeight)
+
         scrollView.documentView = documentView
         panel.addSubview(scrollView)
-        y += scrollViewHeight + 10
-
-        // Status info at bottom
-        let statusLabel = NSTextField(wrappingLabelWithString: "Click Edit to customize any button mapping. Changes take effect immediately.")
-        statusLabel.font = NSFont.systemFont(ofSize: 10)
-        statusLabel.textColor = NSColor.secondaryLabelColor
-        statusLabel.alignment = .center
-        statusLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 30)
-        statusLabel.autoresizingMask = [.width]
-        panel.addSubview(statusLabel)
 
         return panel
     }
