@@ -2,13 +2,18 @@ import Cocoa
 import JoyConSwift
 import Carbon.HIToolbox
 
+// FlippedView: Custom view with flipped coordinates (y=0 at top)
+class FlippedView: NSView {
+    override var isFlipped: Bool { return true }
+}
+
 enum ControlModeTab: String {
     case mouse = "Mouse"
     case keyboard = "Keyboard"
     case voice = "Voice"
 }
 
-class ViewController: NSViewController {
+class ViewController: NSViewController, NSTabViewDelegate {
     // MARK: - UI Components
 
     // Header
@@ -16,16 +21,15 @@ class ViewController: NSViewController {
     private var batteryLabel: NSTextField!
     private var ledIndicator: NSTextField!
 
-    // Mode Tabs
-    private var mouseTabButton: NSButton!
-    private var keyboardTabButton: NSButton!
-    private var voiceTabButton: NSButton!
-    private var currentTab: ControlModeTab = .mouse
+    // Layout containers
+    private var mainStackView: NSStackView!
+    private var contentSplitView: NSSplitView!
 
-    // Configuration Panels (one for each mode)
-    private var mouseConfigPanel: NSView!
-    private var keyboardConfigPanel: NSView!
-    private var voiceConfigPanel: NSView!
+    // Mode Tabs - Using native NSTabView
+    private var tabView: NSTabView!
+    private var mouseTabViewItem: NSTabViewItem!
+    private var keyboardTabViewItem: NSTabViewItem!
+    private var voiceTabViewItem: NSTabViewItem!
 
     // Mouse Controls
     private var sensitivitySlider: NSSlider!
@@ -52,7 +56,8 @@ class ViewController: NSViewController {
     private var debugLogContainer: NSView!
     private var scrollView: NSScrollView!
     private var textView: NSTextView!
-    private var isDebugLogExpanded: Bool = true
+    private var isDebugLogExpanded: Bool = false
+    private var hasPerformedInitialLayout: Bool = false
 
     // MARK: - Controllers & State
 
@@ -78,7 +83,7 @@ class ViewController: NSViewController {
     // MARK: - Lifecycle
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 700, height: 600))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 700))
     }
 
     override func viewDidLoad() {
@@ -89,32 +94,84 @@ class ViewController: NSViewController {
         log("🫐 berrry-joyful initialized - waiting for controllers...")
     }
 
+    override func viewDidLayout() {
+        super.viewDidLayout()
+
+        // Set initial split position after layout (only once)
+        if !hasPerformedInitialLayout && contentSplitView.bounds.height > 0 {
+            hasPerformedInitialLayout = true
+            let splitHeight = contentSplitView.bounds.height
+
+            if isDebugLogExpanded {
+                // Start with debug log visible at 200px
+                let dividerPosition = splitHeight - 200
+                contentSplitView.setPosition(dividerPosition, ofDividerAt: 0)
+                debugLogContainer.isHidden = false
+            } else {
+                // Start collapsed
+                contentSplitView.setPosition(splitHeight - 1, ofDividerAt: 0)
+                debugLogContainer.isHidden = true
+            }
+        }
+    }
+
     // MARK: - UI Setup
 
     private func setupUI() {
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor(white: 0.95, alpha: 1.0).cgColor
 
-        let yOffset = setupHeader()
-        let yAfterTabs = setupModeTabs(below: yOffset)
-        let yAfterConfig = setupConfigurationPanels(below: yAfterTabs)
-        setupBottomBarAndDebugLog(below: yAfterConfig)
+        // Create main vertical stack view
+        mainStackView = NSStackView(frame: view.bounds)
+        mainStackView.orientation = .vertical
+        mainStackView.spacing = 0
+        mainStackView.distribution = .fill
+        mainStackView.autoresizingMask = [.width, .height]
 
-        // Show initial tab
-        switchToTab(.mouse)
+        // Create header (fixed height)
+        let headerView = createHeaderView()
+
+        // Create split view for tab view + debug log
+        contentSplitView = NSSplitView()
+        contentSplitView.isVertical = false  // Horizontal split
+        contentSplitView.dividerStyle = .thin
+
+        // Create tab view
+        createTabView()
+
+        // Create debug log container
+        createDebugLogView()
+
+        // Add to split view
+        contentSplitView.addArrangedSubview(tabView)
+        contentSplitView.addArrangedSubview(debugLogContainer)
+
+        // Set holding priorities so tab view can shrink but debug log stays at preferred size
+        contentSplitView.setHoldingPriority(.defaultLow - 1, forSubviewAt: 0)  // Tab view
+        contentSplitView.setHoldingPriority(.defaultHigh, forSubviewAt: 1)  // Debug log
+
+        // Create bottom bar (fixed height)
+        let bottomBar = createBottomBar()
+
+        // Add all to main stack
+        mainStackView.addArrangedSubview(headerView)
+        mainStackView.addArrangedSubview(contentSplitView)
+        mainStackView.addArrangedSubview(bottomBar)
+
+        // Set hugging priorities so header and bottom bar stay fixed size
+        headerView.setContentHuggingPriority(.defaultHigh, for: .vertical)
+        bottomBar.setContentHuggingPriority(.defaultHigh, for: .vertical)
+        contentSplitView.setContentHuggingPriority(.defaultLow, for: .vertical)
+
+        view.addSubview(mainStackView)
     }
 
-    private func setupHeader() -> CGFloat {
+    private func createHeaderView() -> NSView {
         let headerHeight: CGFloat = 60
-        let headerView = NSView(frame: NSRect(
-            x: 0,
-            y: view.bounds.height - headerHeight,
-            width: view.bounds.width,
-            height: headerHeight
-        ))
-        headerView.autoresizingMask = [.width, .minYMargin]
+        let headerView = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: headerHeight))
         headerView.wantsLayer = true
         headerView.layer?.backgroundColor = NSColor(white: 0.2, alpha: 1.0).cgColor
+        headerView.heightAnchor.constraint(equalToConstant: headerHeight).isActive = true
 
         // Connection status
         #if DEBUG
@@ -133,7 +190,7 @@ class ViewController: NSViewController {
         batteryLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
         batteryLabel.textColor = NSColor(white: 0.6, alpha: 1.0)
         batteryLabel.alignment = .right
-        batteryLabel.frame = NSRect(x: view.bounds.width - 180, y: 25, width: 100, height: 20)
+        batteryLabel.frame = NSRect(x: 600, y: 25, width: 100, height: 20)
         batteryLabel.autoresizingMask = [.minXMargin]
         headerView.addSubview(batteryLabel)
 
@@ -142,101 +199,51 @@ class ViewController: NSViewController {
         ledIndicator.font = NSFont.systemFont(ofSize: 12, weight: .regular)
         ledIndicator.textColor = NSColor(white: 0.6, alpha: 1.0)
         ledIndicator.alignment = .right
-        ledIndicator.frame = NSRect(x: view.bounds.width - 70, y: 25, width: 60, height: 20)
+        ledIndicator.frame = NSRect(x: 710, y: 25, width: 60, height: 20)
         ledIndicator.autoresizingMask = [.minXMargin]
         headerView.addSubview(ledIndicator)
 
-        view.addSubview(headerView)
-        return view.bounds.height - headerHeight
+        return headerView
     }
 
-    private func setupModeTabs(below yPosition: CGFloat) -> CGFloat {
-        let tabHeight: CGFloat = 50
-        let tabsView = NSView(frame: NSRect(
-            x: 0,
-            y: yPosition - tabHeight,
-            width: view.bounds.width,
-            height: tabHeight
-        ))
-        tabsView.autoresizingMask = [.width, .minYMargin]
-        tabsView.wantsLayer = true
-        tabsView.layer?.backgroundColor = NSColor(white: 0.9, alpha: 1.0).cgColor
+    private func createTabView() {
+        // Create NSTabView
+        tabView = NSTabView(frame: NSRect(x: 0, y: 0, width: 800, height: 400))
+        tabView.tabViewType = .topTabsBezelBorder
 
-        let tabWidth: CGFloat = 150
-        let spacing: CGFloat = 10
-        let startX: CGFloat = 20
+        // Use tab view bounds for initial sizing - autoresizing will handle the rest
+        let panelFrame = tabView.bounds
 
-        // Mouse Tab
-        mouseTabButton = createTabButton(
-            title: "🖱️ Mouse",
-            frame: NSRect(x: startX, y: 10, width: tabWidth, height: 30),
-            tag: 0
-        )
-        tabsView.addSubview(mouseTabButton)
+        // Create Mouse tab
+        mouseTabViewItem = NSTabViewItem(identifier: "mouse")
+        mouseTabViewItem.label = "Mouse"
+        mouseTabViewItem.view = createMouseConfigPanel(frame: panelFrame)
+        tabView.addTabViewItem(mouseTabViewItem)
 
-        // Keyboard Tab
-        keyboardTabButton = createTabButton(
-            title: "⌨️ Keyboard",
-            frame: NSRect(x: startX + tabWidth + spacing, y: 10, width: tabWidth, height: 30),
-            tag: 1
-        )
-        tabsView.addSubview(keyboardTabButton)
+        // Create Keyboard tab
+        keyboardTabViewItem = NSTabViewItem(identifier: "keyboard")
+        keyboardTabViewItem.label = "Keyboard"
+        keyboardTabViewItem.view = createKeyboardConfigPanel(frame: panelFrame)
+        tabView.addTabViewItem(keyboardTabViewItem)
 
-        // Voice Tab
-        voiceTabButton = createTabButton(
-            title: "🎤 Voice",
-            frame: NSRect(x: startX + (tabWidth + spacing) * 2, y: 10, width: tabWidth, height: 30),
-            tag: 2
-        )
-        tabsView.addSubview(voiceTabButton)
+        // Create Voice tab
+        voiceTabViewItem = NSTabViewItem(identifier: "voice")
+        voiceTabViewItem.label = "Voice"
+        voiceTabViewItem.view = createVoiceConfigPanel(frame: panelFrame)
+        tabView.addTabViewItem(voiceTabViewItem)
 
-        view.addSubview(tabsView)
-        return yPosition - tabHeight
-    }
-
-    private func createTabButton(title: String, frame: NSRect, tag: Int) -> NSButton {
-        let button = NSButton(frame: frame)
-        button.title = title
-        button.bezelStyle = .rounded
-        button.target = self
-        button.action = #selector(tabButtonClicked(_:))
-        button.tag = tag
-        return button
-    }
-
-    private func setupConfigurationPanels(below yPosition: CGFloat) -> CGFloat {
-        let configHeight: CGFloat = 300
-
-        // Mouse Config Panel
-        mouseConfigPanel = createMouseConfigPanel(
-            frame: NSRect(x: 0, y: yPosition - configHeight, width: view.bounds.width, height: configHeight)
-        )
-        mouseConfigPanel.autoresizingMask = [.width, .minYMargin]
-        view.addSubview(mouseConfigPanel)
-
-        // Keyboard Config Panel
-        keyboardConfigPanel = createKeyboardConfigPanel(
-            frame: NSRect(x: 0, y: yPosition - configHeight, width: view.bounds.width, height: configHeight)
-        )
-        keyboardConfigPanel.autoresizingMask = [.width, .minYMargin]
-        view.addSubview(keyboardConfigPanel)
-
-        // Voice Config Panel
-        voiceConfigPanel = createVoiceConfigPanel(
-            frame: NSRect(x: 0, y: yPosition - configHeight, width: view.bounds.width, height: configHeight)
-        )
-        voiceConfigPanel.autoresizingMask = [.width, .minYMargin]
-        view.addSubview(voiceConfigPanel)
-
-        return yPosition - configHeight
+        // Log tab switch
+        tabView.delegate = self
     }
 
     private func createMouseConfigPanel(frame: NSRect) -> NSView {
-        let panel = NSView(frame: frame)
+        // Use flipped view so y=0 is at top
+        let panel = FlippedView(frame: frame)
         panel.wantsLayer = true
         panel.layer?.backgroundColor = NSColor.white.cgColor
+        panel.autoresizingMask = [.width, .height]
 
-        var y: CGFloat = frame.height - 40
+        var y: CGFloat = 20  // Start from top
 
         // Title
         let titleLabel = NSTextField(labelWithString: "Mouse Control Settings")
@@ -246,7 +253,7 @@ class ViewController: NSViewController {
         titleLabel.isEditable = false
         titleLabel.drawsBackground = false
         panel.addSubview(titleLabel)
-        y -= 50
+        y += 35
 
         // Sensitivity Slider
         let sensitivityTitleLabel = NSTextField(labelWithString: "Sensitivity:")
@@ -270,7 +277,7 @@ class ViewController: NSViewController {
         sensitivityLabel.isEditable = false
         sensitivityLabel.drawsBackground = false
         panel.addSubview(sensitivityLabel)
-        y -= 35
+        y += 30
 
         // Deadzone Slider
         let deadzoneTitleLabel = NSTextField(labelWithString: "Deadzone:")
@@ -294,7 +301,7 @@ class ViewController: NSViewController {
         deadzoneLabel.isEditable = false
         deadzoneLabel.drawsBackground = false
         panel.addSubview(deadzoneLabel)
-        y -= 40
+        y += 30
 
         // Checkboxes
         invertYCheckbox = NSButton(checkboxWithTitle: "Invert Y-Axis", target: self, action: #selector(invertYChanged(_:)))
@@ -306,7 +313,16 @@ class ViewController: NSViewController {
         accelerationCheckbox.frame = NSRect(x: 200, y: y, width: 150, height: 20)
         accelerationCheckbox.state = settings.mouseAcceleration ? .on : .off
         panel.addSubview(accelerationCheckbox)
-        y -= 50
+        y += 30
+
+        // Debug mode toggle (only in debug builds)
+        #if DEBUG
+        debugModeCheckbox = NSButton(checkboxWithTitle: "Debug Mode (skip system input events)", target: self, action: #selector(debugModeChanged(_:)))
+        debugModeCheckbox.frame = NSRect(x: 20, y: y, width: 300, height: 20)
+        debugModeCheckbox.state = inputController.debugMode ? .on : .off
+        panel.addSubview(debugModeCheckbox)
+        y += 30
+        #endif
 
         // Status info
         #if DEBUG
@@ -320,26 +336,20 @@ class ViewController: NSViewController {
         statusLabel.font = NSFont.systemFont(ofSize: 11)
         statusLabel.textColor = NSColor.secondaryLabelColor
         statusLabel.alignment = .center
-        statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 40)
+        statusLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 60)
         panel.addSubview(statusLabel)
-
-        // Debug mode toggle (only in debug builds)
-        #if DEBUG
-        debugModeCheckbox = NSButton(checkboxWithTitle: "Debug Mode (skip system input events)", target: self, action: #selector(debugModeChanged(_:)))
-        debugModeCheckbox.frame = NSRect(x: 20, y: y - 30, width: 300, height: 20)
-        debugModeCheckbox.state = inputController.debugMode ? .on : .off
-        panel.addSubview(debugModeCheckbox)
-        #endif
 
         return panel
     }
 
     private func createKeyboardConfigPanel(frame: NSRect) -> NSView {
-        let panel = NSView(frame: frame)
+        // Use flipped view so y=0 is at top
+        let panel = FlippedView(frame: frame)
         panel.wantsLayer = true
         panel.layer?.backgroundColor = NSColor.white.cgColor
+        panel.autoresizingMask = [.width, .height]
 
-        var y: CGFloat = frame.height - 40
+        var y: CGFloat = 20  // Start from top
 
         // Title
         let titleLabel = NSTextField(labelWithString: "Keyboard Layout & Mapping")
@@ -349,7 +359,7 @@ class ViewController: NSViewController {
         titleLabel.isEditable = false
         titleLabel.drawsBackground = false
         panel.addSubview(titleLabel)
-        y -= 50
+        y += 35
 
         // Profile Selection
         let profileLabel = NSTextField(labelWithString: "Button Profile:")
@@ -374,6 +384,7 @@ class ViewController: NSViewController {
         resetButton.bezelStyle = .rounded
         resetButton.target = self
         resetButton.action = #selector(resetProfileToDefaults(_:))
+        resetButton.autoresizingMask = [.minXMargin]
         panel.addSubview(resetButton)
 
         // Clone button
@@ -382,25 +393,28 @@ class ViewController: NSViewController {
         cloneButton.bezelStyle = .rounded
         cloneButton.target = self
         cloneButton.action = #selector(cloneProfile(_:))
+        cloneButton.autoresizingMask = [.minXMargin]
         panel.addSubview(cloneButton)
 
-        y -= 50
+        y += 30
 
         // Profile description
         let descLabel = NSTextField(wrappingLabelWithString: profileManager.activeProfile.description)
         descLabel.font = NSFont.systemFont(ofSize: 11)
         descLabel.textColor = NSColor.secondaryLabelColor
-        descLabel.frame = NSRect(x: 20, y: y - 20, width: frame.width - 40, height: 20)
+        descLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 20)
+        descLabel.autoresizingMask = [.width]
         panel.addSubview(descLabel)
-        y -= 40
+        y += 30
 
         // Scrollable button mapping editor
-        let scrollViewHeight: CGFloat = 180
+        let scrollViewHeight: CGFloat = 250
         let scrollViewWidth: CGFloat = frame.width - 40
-        let scrollView = NSScrollView(frame: NSRect(x: 20, y: 60, width: scrollViewWidth, height: scrollViewHeight))
+        let scrollView = NSScrollView(frame: NSRect(x: 20, y: y, width: scrollViewWidth, height: scrollViewHeight))
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = false  // Always show for clarity
         scrollView.borderType = .bezelBorder
+        scrollView.autoresizingMask = [.width, .height]  // Resize with window
 
         let documentView = NSView(frame: NSRect(x: 0, y: 0, width: scrollViewWidth - 20, height: 420))
         documentView.wantsLayer = true
@@ -479,24 +493,28 @@ class ViewController: NSViewController {
 
         scrollView.documentView = documentView
         panel.addSubview(scrollView)
+        y += scrollViewHeight + 10
 
         // Status info at bottom
         let statusLabel = NSTextField(wrappingLabelWithString: "Click Edit to customize any button mapping. Changes take effect immediately.")
         statusLabel.font = NSFont.systemFont(ofSize: 10)
         statusLabel.textColor = NSColor.secondaryLabelColor
         statusLabel.alignment = .center
-        statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 30)
+        statusLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 30)
+        statusLabel.autoresizingMask = [.width]
         panel.addSubview(statusLabel)
 
         return panel
     }
 
     private func createVoiceConfigPanel(frame: NSRect) -> NSView {
-        let panel = NSView(frame: frame)
+        // Use flipped view so y=0 is at top
+        let panel = FlippedView(frame: frame)
         panel.wantsLayer = true
         panel.layer?.backgroundColor = NSColor.white.cgColor
+        panel.autoresizingMask = [.width, .height]
 
-        var y: CGFloat = frame.height - 40
+        var y: CGFloat = 20  // Start from top
 
         // Title
         let titleLabel = NSTextField(labelWithString: "Voice Recognition")
@@ -506,7 +524,7 @@ class ViewController: NSViewController {
         titleLabel.isEditable = false
         titleLabel.drawsBackground = false
         panel.addSubview(titleLabel)
-        y -= 40
+        y += 35
 
         // Permission Status
         let hasPermissions = VoiceInputManager.checkVoiceInputPermissions()
@@ -528,7 +546,7 @@ class ViewController: NSViewController {
             grantButton.action = #selector(grantVoicePermissionsClicked)
             panel.addSubview(grantButton)
         }
-        y -= 40
+        y += 30
 
         // Status
         voiceStatusLabel = NSTextField(labelWithString: "Status: ⏸️ Ready")
@@ -538,7 +556,7 @@ class ViewController: NSViewController {
         voiceStatusLabel.isEditable = false
         voiceStatusLabel.drawsBackground = false
         panel.addSubview(voiceStatusLabel)
-        y -= 40
+        y += 30
 
         // Activation method
         let activationLabel = NSTextField(labelWithString: "Activation Method:")
@@ -548,10 +566,10 @@ class ViewController: NSViewController {
         activationLabel.isEditable = false
         activationLabel.drawsBackground = false
         panel.addSubview(activationLabel)
-        y -= 30
+        y += 25
 
         // Create radio buttons using NSMatrix (legacy but simple for radio groups)
-        voiceActivationMatrix = NSMatrix(frame: NSRect(x: 30, y: y - 80, width: 400, height: 80))
+        voiceActivationMatrix = NSMatrix(frame: NSRect(x: 30, y: y, width: 400, height: 80))
         voiceActivationMatrix.cellSize = NSSize(width: 400, height: 20)
         voiceActivationMatrix.prototype = NSButtonCell()
         voiceActivationMatrix.addRow()
@@ -578,58 +596,48 @@ class ViewController: NSViewController {
         }
 
         panel.addSubview(voiceActivationMatrix)
-        y -= 100
+        y += 90
 
         // Info text
         let infoLabel = NSTextField(wrappingLabelWithString: "Voice input is text-only. Speak naturally and your words will be typed automatically.")
         infoLabel.font = NSFont.systemFont(ofSize: 11)
         infoLabel.textColor = NSColor.secondaryLabelColor
-        infoLabel.frame = NSRect(x: 20, y: y - 30, width: frame.width - 40, height: 30)
+        infoLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 30)
         panel.addSubview(infoLabel)
+        y += 35
 
         // Status info
         let statusLabel = NSTextField(wrappingLabelWithString: "Hold ZL + ZR on your Joy-Con to activate voice input.\nSpeak naturally and release to type your words.")
         statusLabel.font = NSFont.systemFont(ofSize: 11)
         statusLabel.textColor = NSColor.secondaryLabelColor
         statusLabel.alignment = .center
-        statusLabel.frame = NSRect(x: 20, y: 20, width: frame.width - 40, height: 40)
+        statusLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 60)
         panel.addSubview(statusLabel)
 
         return panel
     }
 
-    private func setupBottomBarAndDebugLog(below yPosition: CGFloat) {
-        // Bottom bar with debug toggle
+    private func createBottomBar() -> NSView {
         let bottomBarHeight: CGFloat = 40
-        let bottomBar = NSView(frame: NSRect(
-            x: 0,
-            y: yPosition - bottomBarHeight,
-            width: view.bounds.width,
-            height: bottomBarHeight
-        ))
-        bottomBar.autoresizingMask = [.width, .minYMargin]
+        let bottomBar = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: bottomBarHeight))
         bottomBar.wantsLayer = true
         bottomBar.layer?.backgroundColor = NSColor(white: 0.9, alpha: 1.0).cgColor
+        bottomBar.heightAnchor.constraint(equalToConstant: bottomBarHeight).isActive = true
 
-        debugLogButton = NSButton(frame: NSRect(x: view.bounds.width - 150, y: 5, width: 130, height: 30))
-        debugLogButton.title = "▼ Debug Log"
+        debugLogButton = NSButton(frame: NSRect(x: 650, y: 5, width: 130, height: 30))
+        debugLogButton.title = "▶ Debug Log"  // Start collapsed
         debugLogButton.bezelStyle = .rounded
         debugLogButton.target = self
         debugLogButton.action = #selector(toggleDebugLog(_:))
         debugLogButton.autoresizingMask = [.minXMargin]
         bottomBar.addSubview(debugLogButton)
 
-        view.addSubview(bottomBar)
+        return bottomBar
+    }
 
+    private func createDebugLogView() {
         // Debug log container
-        let logHeight: CGFloat = 150
-        debugLogContainer = NSView(frame: NSRect(
-            x: 0,
-            y: yPosition - bottomBarHeight - logHeight,
-            width: view.bounds.width,
-            height: logHeight
-        ))
-        debugLogContainer.autoresizingMask = [.width, .minYMargin]
+        debugLogContainer = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 200))
 
         scrollView = NSScrollView(frame: debugLogContainer.bounds)
         scrollView.autoresizingMask = [.width, .height]
@@ -655,37 +663,14 @@ class ViewController: NSViewController {
 
         scrollView.documentView = textView
         debugLogContainer.addSubview(scrollView)
-        view.addSubview(debugLogContainer)
-
-        // Start with log expanded
-        debugLogContainer.isHidden = false
     }
 
-    // MARK: - UI Actions
+    // MARK: - UI Actions & Delegates
 
-    @objc private func tabButtonClicked(_ sender: NSButton) {
-        switch sender.tag {
-        case 0: switchToTab(.mouse)
-        case 1: switchToTab(.keyboard)
-        case 2: switchToTab(.voice)
-        default: break
-        }
-    }
-
-    private func switchToTab(_ tab: ControlModeTab) {
-        currentTab = tab
-
-        // Update button states
-        mouseTabButton.state = (tab == .mouse) ? .on : .off
-        keyboardTabButton.state = (tab == .keyboard) ? .on : .off
-        voiceTabButton.state = (tab == .voice) ? .on : .off
-
-        // Show/hide panels
-        mouseConfigPanel.isHidden = (tab != .mouse)
-        keyboardConfigPanel.isHidden = (tab != .keyboard)
-        voiceConfigPanel.isHidden = (tab != .voice)
-
-        log("Switched to \(tab.rawValue) tab")
+    // NSTabViewDelegate
+    func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        guard let identifier = tabViewItem?.identifier as? String else { return }
+        log("Switched to \(identifier.capitalized) tab")
     }
 
     @objc private func sensitivityChanged(_ sender: NSSlider) {
@@ -726,14 +711,10 @@ class ViewController: NSViewController {
         }
 
         // Refresh mouse config panel to update status text
-        mouseConfigPanel.removeFromSuperview()
-        let yPosition = mouseConfigPanel.frame.minY
-        mouseConfigPanel = createMouseConfigPanel(
-            frame: NSRect(x: 0, y: yPosition, width: view.bounds.width, height: 300)
+        let newMouseView = createMouseConfigPanel(
+            frame: NSRect(x: 0, y: 0, width: view.bounds.width - 20, height: 300)
         )
-        mouseConfigPanel.autoresizingMask = [.width, .minYMargin]
-        mouseConfigPanel.isHidden = (currentTab != .mouse)
-        view.addSubview(mouseConfigPanel)
+        mouseTabViewItem.view = newMouseView
     }
     #endif
 
@@ -747,14 +728,11 @@ class ViewController: NSViewController {
     }
 
     private func refreshKeyboardPanel() {
-        keyboardConfigPanel.removeFromSuperview()
-        let yPosition = mouseConfigPanel.frame.minY
-        keyboardConfigPanel = createKeyboardConfigPanel(
-            frame: NSRect(x: 0, y: yPosition, width: view.bounds.width, height: 300)
+        // Recreate the keyboard tab content
+        let newKeyboardView = createKeyboardConfigPanel(
+            frame: NSRect(x: 0, y: 0, width: view.bounds.width - 20, height: 300)
         )
-        keyboardConfigPanel.autoresizingMask = [.width, .minYMargin]
-        keyboardConfigPanel.isHidden = (currentTab != .keyboard)
-        view.addSubview(keyboardConfigPanel)
+        keyboardTabViewItem.view = newKeyboardView
     }
 
     private func generateMappingText(for profile: ButtonProfile) -> String {
@@ -932,15 +910,11 @@ class ViewController: NSViewController {
                     self?.log("✅ Voice input permissions granted!")
                     self?.voiceManager.isAuthorized = true
                     // Recreate the voice panel to update UI
-                    if let panel = self?.voiceConfigPanel {
-                        panel.removeFromSuperview()
-                        self?.voiceConfigPanel = self?.createVoiceConfigPanel(
-                            frame: NSRect(x: 0, y: panel.frame.minY, width: panel.frame.width, height: panel.frame.height)
-                        )
-                        self?.voiceConfigPanel.autoresizingMask = [.width, .minYMargin]
-                        self?.voiceConfigPanel.isHidden = (self?.currentTab != .voice)
-                        self?.view.addSubview(self?.voiceConfigPanel ?? NSView())
-                    }
+                    guard let self = self else { return }
+                    let newVoiceView = self.createVoiceConfigPanel(
+                        frame: NSRect(x: 0, y: 0, width: self.view.bounds.width - 20, height: 300)
+                    )
+                    self.voiceTabViewItem.view = newVoiceView
                 } else {
                     self?.log("❌ Voice input permissions denied")
                 }
@@ -951,12 +925,31 @@ class ViewController: NSViewController {
     @objc private func toggleDebugLog(_ sender: NSButton) {
         isDebugLogExpanded = !isDebugLogExpanded
 
+        print("🐛 Debug Log toggle - expanding: \(isDebugLogExpanded)")
+        print("🐛 Split view height: \(contentSplitView.bounds.height)")
+
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.25
-            debugLogContainer.animator().isHidden = !isDebugLogExpanded
-        }, completionHandler: {
-            self.debugLogButton.title = self.isDebugLogExpanded ? "▼ Debug Log" : "▶ Debug Log"
-        })
+            context.allowsImplicitAnimation = true
+
+            if self.isDebugLogExpanded {
+                // Expand: show debug log at 200px height
+                let splitHeight = self.contentSplitView.bounds.height
+                let dividerPosition = splitHeight - 200
+                print("🐛 Expanding to position: \(dividerPosition)")
+                self.contentSplitView.setPosition(dividerPosition, ofDividerAt: 0)
+                self.debugLogButton.title = "▼ Debug Log"
+                self.debugLogContainer.isHidden = false
+            } else {
+                // Collapse: hide debug log (position at max)
+                let splitHeight = self.contentSplitView.bounds.height
+                let collapsePosition = splitHeight - 1
+                print("🐛 Collapsing to position: \(collapsePosition)")
+                self.contentSplitView.setPosition(collapsePosition, ofDividerAt: 0)  // -1 to avoid divider
+                self.debugLogButton.title = "▶ Debug Log"
+                self.debugLogContainer.isHidden = true
+            }
+        }, completionHandler: nil)
     }
 
     // MARK: - Input Setup
@@ -1238,7 +1231,7 @@ class ViewController: NSViewController {
             ProfileOverlay.show(profile: profileManager.activeProfile)
 
             // Refresh keyboard panel if on keyboard tab
-            if currentTab == .keyboard {
+            if tabView.selectedTabViewItem === keyboardTabViewItem {
                 refreshKeyboardPanel()
             }
 

@@ -19,7 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let hasAccessibility = AXIsProcessTrusted()
 
         // Create window
-        let contentRect = NSRect(x: 100, y: 100, width: 700, height: 600)
+        let contentRect = NSRect(x: 100, y: 100, width: 800, height: 700)
         window = NSWindow(
             contentRect: contentRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -63,7 +63,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create view controller
         viewController = ViewController()
         window.contentViewController = viewController
-        window.minSize = NSSize(width: 500, height: 350)
+        window.minSize = NSSize(width: 700, height: 600)
 
         // Setup controller monitoring
         setupControllerMonitoring()
