@@ -138,20 +138,29 @@ class InputController {
 
     // MARK: - Mouse Clicking
 
-    func leftClick() {
+    func leftClick(modifiers: ModifierState = ModifierState()) {
         guard let pos = CGEvent(source: nil)?.location else { return }
+
+        var flags: CGEventFlags = []
+        if modifiers.command { flags.insert(.maskCommand) }
+        if modifiers.option { flags.insert(.maskAlternate) }
+        if modifiers.shift { flags.insert(.maskShift) }
+        if modifiers.control { flags.insert(.maskControl) }
 
         if let downEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
                                    mouseCursorPosition: pos, mouseButton: .left) {
+            downEvent.flags = flags
             downEvent.post(tap: .cghidEventTap)
         }
 
         if let upEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp,
                                  mouseCursorPosition: pos, mouseButton: .left) {
+            upEvent.flags = flags
             upEvent.post(tap: .cghidEventTap)
         }
 
-        onLog?("🖱️ Left click")
+        let modStr = modifiers.isEmpty ? "" : " (\(modifiers.description))"
+        onLog?("🖱️ Left click\(modStr)")
     }
 
     func rightClick() {

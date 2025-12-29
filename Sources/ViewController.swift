@@ -1,5 +1,6 @@
 import Cocoa
 import JoyConSwift
+import Carbon.HIToolbox
 
 enum ControlModeTab: String {
     case mouse = "Mouse"
@@ -341,10 +342,12 @@ class ViewController: NSViewController {
 
         // Button mapping guide
         let mappingLabel = NSTextField(wrappingLabelWithString: """
-        Current Mapping:
-        A → Enter    B → Escape    X → Tab    Y → Space
-        D-Pad → Arrow Keys    L → Option    R → Shift
-        ZL + ZR → Voice Input
+        Desktop + Terminal Profile:
+        A → Enter    B → Escape    X → Tab    Y → Enter
+        D-Pad → Number Keys 1-4    L → Cmd    R → Shift
+        R+X → Shift+Tab    L+X → Cmd+Tab    L+R+X → Cmd+Shift+Tab
+        ZL → Cmd+Shift+[    ZR → Cmd+Shift+]    ZL+ZR → Voice Input
+        Minus → Backspace    L+A → Cmd+Click
         """)
         mappingLabel.font = NSFont.systemFont(ofSize: 11)
         mappingLabel.frame = NSRect(x: 20, y: y - 80, width: frame.width - 40, height: 80)
@@ -376,7 +379,29 @@ class ViewController: NSViewController {
         titleLabel.isEditable = false
         titleLabel.drawsBackground = false
         panel.addSubview(titleLabel)
-        y -= 50
+        y -= 40
+
+        // Permission Status
+        let hasPermissions = VoiceInputManager.checkVoiceInputPermissions()
+        let permissionLabel = NSTextField(labelWithString: hasPermissions ? "✅ Permissions Granted" : "⚠️ Permissions Required")
+        permissionLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        permissionLabel.textColor = hasPermissions ? NSColor.systemGreen : NSColor.systemOrange
+        permissionLabel.frame = NSRect(x: 20, y: y, width: 300, height: 20)
+        permissionLabel.isBezeled = false
+        permissionLabel.isEditable = false
+        permissionLabel.drawsBackground = false
+        panel.addSubview(permissionLabel)
+
+        // Grant Permissions button (if not granted)
+        if !hasPermissions {
+            let grantButton = NSButton(frame: NSRect(x: 320, y: y - 2, width: 150, height: 24))
+            grantButton.title = "Grant Permissions"
+            grantButton.bezelStyle = .rounded
+            grantButton.target = self
+            grantButton.action = #selector(grantVoicePermissionsClicked)
+            panel.addSubview(grantButton)
+        }
+        y -= 40
 
         // Status
         voiceStatusLabel = NSTextField(labelWithString: "Status: ⏸️ Ready")
@@ -563,6 +588,30 @@ class ViewController: NSViewController {
         log("Keyboard preset changed to: \(presetName)")
     }
 
+    @objc private func grantVoicePermissionsClicked() {
+        log("Requesting voice input permissions...")
+        VoiceInputManager.requestVoiceInputPermissions { [weak self] granted in
+            DispatchQueue.main.async {
+                if granted {
+                    self?.log("✅ Voice input permissions granted!")
+                    self?.voiceManager.isAuthorized = true
+                    // Recreate the voice panel to update UI
+                    if let panel = self?.voiceConfigPanel {
+                        panel.removeFromSuperview()
+                        self?.voiceConfigPanel = self?.createVoiceConfigPanel(
+                            frame: NSRect(x: 0, y: panel.frame.minY, width: panel.frame.width, height: panel.frame.height)
+                        )
+                        self?.voiceConfigPanel.autoresizingMask = [.width, .minYMargin]
+                        self?.voiceConfigPanel.isHidden = (self?.currentTab != .voice)
+                        self?.view.addSubview(self?.voiceConfigPanel ?? NSView())
+                    }
+                } else {
+                    self?.log("❌ Voice input permissions denied")
+                }
+            }
+        }
+    }
+
     @objc private func toggleDebugLog(_ sender: NSButton) {
         isDebugLogExpanded = !isDebugLogExpanded
 
@@ -693,18 +742,34 @@ class ViewController: NSViewController {
             case .X:
                 self.handleButtonX()
             case .Y:
-                self.log("🕹️ Button Y → Space")
-                self.inputController.pressSpace(modifiers: self.modifiers)
+                self.log("🕹️ Button Y → Enter")
+                self.inputController.pressEnter(modifiers: self.modifiers)
             case .L:
-                self.modifiers.option = true
+                self.modifiers.command = true
                 self.updateSpecialMode()
             case .R:
                 self.modifiers.shift = true
                 self.updateSpecialMode()
             case .ZL:
+                // If ZR is not held, this is a single ZL press → Cmd+Shift+[ (previous tab)
+                if !self.isZRHeld {
+                    self.log("🕹️ ZL → Cmd+Shift+[ (previous tab)")
+                    var mods = ModifierState()
+                    mods.command = true
+                    mods.shift = true
+                    self.inputController.pressKey(CGKeyCode(kVK_ANSI_LeftBracket), modifiers: mods)
+                }
                 self.isZLHeld = true
                 self.updateSpecialMode()
             case .ZR:
+                // If ZL is not held, this is a single ZR press → Cmd+Shift+] (next tab)
+                if !self.isZLHeld {
+                    self.log("🕹️ ZR → Cmd+Shift+] (next tab)")
+                    var mods = ModifierState()
+                    mods.command = true
+                    mods.shift = true
+                    self.inputController.pressKey(CGKeyCode(kVK_ANSI_RightBracket), modifiers: mods)
+                }
                 self.isZRHeld = true
                 self.updateSpecialMode()
             case .Up:
@@ -716,7 +781,8 @@ class ViewController: NSViewController {
             case .Right:
                 self.handleDpadButton(direction: "right")
             case .Minus:
-                self.toggleDebugLog(self.debugLogButton)
+                self.log("🕹️ Button Minus → Backspace")
+                self.inputController.pressBackspace(modifiers: self.modifiers)
             default:
                 break
             }
@@ -727,7 +793,7 @@ class ViewController: NSViewController {
 
             switch button {
             case .L:
-                self.modifiers.option = false
+                self.modifiers.command = false
                 self.updateSpecialMode()
             case .R:
                 self.modifiers.shift = false
@@ -755,23 +821,33 @@ class ViewController: NSViewController {
     }
 
     private func handleDpadButton(direction: String) {
+        // New mapping: D-Pad → Number keys 1-4 for menu options
         switch direction {
         case "up":
-            inputController.pressArrowUp(modifiers: modifiers)
+            log("🕹️ D-Pad Up → 1 key")
+            inputController.pressKey(CGKeyCode(kVK_ANSI_1), modifiers: modifiers)
         case "down":
-            inputController.pressArrowDown(modifiers: modifiers)
+            log("🕹️ D-Pad Down → 2 key")
+            inputController.pressKey(CGKeyCode(kVK_ANSI_2), modifiers: modifiers)
         case "left":
-            inputController.pressArrowLeft(modifiers: modifiers)
+            log("🕹️ D-Pad Left → 3 key")
+            inputController.pressKey(CGKeyCode(kVK_ANSI_3), modifiers: modifiers)
         case "right":
-            inputController.pressArrowRight(modifiers: modifiers)
+            log("🕹️ D-Pad Right → 4 key")
+            inputController.pressKey(CGKeyCode(kVK_ANSI_4), modifiers: modifiers)
         default:
             break
         }
     }
 
     private func handleButtonA() {
-        log("🕹️ Button A → Enter")
-        inputController.pressEnter(modifiers: modifiers)
+        if modifiers.command {
+            log("🕹️ L+A → Cmd+Click")
+            inputController.leftClick(modifiers: modifiers)
+        } else {
+            log("🕹️ Button A → Click")
+            inputController.leftClick()
+        }
     }
 
     private func handleButtonB() {
@@ -785,12 +861,24 @@ class ViewController: NSViewController {
     }
 
     private func handleButtonX() {
-        if modifiers.command {
-            log("🕹️ Button X + Cmd → New Tab (Cmd+T)")
-            inputController.pressKey(CGKeyCode(0x11), modifiers: modifiers)
-        } else {
-            log("🕹️ Button X → Tab")
+        // New mapping:
+        // X alone → Tab
+        // R + X → Shift+Tab (always/reverse)
+        // L + X → Cmd+Tab (app switcher)
+        // L + R + X → Cmd+Shift+Tab (reverse app switch)
+
+        if modifiers.command && modifiers.shift {
+            log("🕹️ L+R+X → Cmd+Shift+Tab (reverse app switch)")
             inputController.pressTab(modifiers: modifiers)
+        } else if modifiers.command {
+            log("🕹️ L+X → Cmd+Tab (app switcher)")
+            inputController.pressTab(modifiers: modifiers)
+        } else if modifiers.shift {
+            log("🕹️ R+X → Shift+Tab (always/reverse)")
+            inputController.pressTab(modifiers: modifiers)
+        } else {
+            log("🕹️ X → Tab")
+            inputController.pressTab()
         }
     }
 
