@@ -18,11 +18,8 @@ class InputController {
     var onLog: ((String) -> Void)?
 
     // Debug mode - skips actual input events (for testing without permissions)
-    #if DEBUG
-    var debugMode: Bool = true  // Default to true in debug builds
-    #else
+    // Always defaults to false - user must explicitly enable via checkbox
     var debugMode: Bool = false
-    #endif
 
     private init() {}
 
