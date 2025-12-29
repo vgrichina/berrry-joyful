@@ -17,10 +17,10 @@ class PermissionsViewController: NSViewController {
     private let accessibilityStatusLabel = NSTextField(labelWithString: "Status: ⚠️  Not Granted")
     private let accessibilityGrantButton = NSButton(title: "GRANT", target: nil, action: #selector(grantAccessibilityClicked))
 
-    // Microphone Permission Card
+    // Voice Input Permission Card (Microphone + Speech Recognition)
     private let microphoneCard = NSView()
-    private let microphoneTitleLabel = NSTextField(labelWithString: "🎤  Speech Recognition")
-    private let microphoneDescLabel = NSTextField(wrappingLabelWithString: "Optional. Enables voice input mode where you can speak to type text. Hold ZL+ZR on your Joy-Con to activate. You can enable this later.")
+    private let microphoneTitleLabel = NSTextField(labelWithString: "🎤  Voice Input")
+    private let microphoneDescLabel = NSTextField(wrappingLabelWithString: "Optional. Enables voice input where you can speak to type text. Requires both Microphone and Speech Recognition permissions. Hold ZL+ZR on your Joy-Con to activate. You can enable this later.")
     private let microphoneStatusLabel = NSTextField(labelWithString: "Status: ⏸️  Not Requested")
     private let microphoneSkipButton = NSButton(title: "SKIP", target: nil, action: #selector(skipMicrophoneClicked))
     private let microphoneGrantButton = NSButton(title: "GRANT", target: nil, action: #selector(grantMicrophoneClicked))
@@ -190,16 +190,15 @@ class PermissionsViewController: NSViewController {
         microphoneTitleLabel.translatesAutoresizingMaskIntoConstraints = false
         microphoneCard.addSubview(microphoneTitleLabel)
 
-        // Skip button
+        // Grant button (visible by default)
+        microphoneGrantButton.bezelStyle = .rounded
+        microphoneGrantButton.translatesAutoresizingMaskIntoConstraints = false
+        microphoneCard.addSubview(microphoneGrantButton)
+
+        // Skip button (visible by default)
         microphoneSkipButton.bezelStyle = .rounded
         microphoneSkipButton.translatesAutoresizingMaskIntoConstraints = false
         microphoneCard.addSubview(microphoneSkipButton)
-
-        // Grant button (hidden initially)
-        microphoneGrantButton.bezelStyle = .rounded
-        microphoneGrantButton.isHidden = true
-        microphoneGrantButton.translatesAutoresizingMaskIntoConstraints = false
-        microphoneCard.addSubview(microphoneGrantButton)
 
         // Description
         microphoneDescLabel.font = NSFont.systemFont(ofSize: 12)
@@ -217,12 +216,14 @@ class PermissionsViewController: NSViewController {
             microphoneTitleLabel.topAnchor.constraint(equalTo: microphoneCard.topAnchor, constant: 16),
             microphoneTitleLabel.leadingAnchor.constraint(equalTo: microphoneCard.leadingAnchor, constant: 16),
 
+            // Skip button on the right
             microphoneSkipButton.centerYAnchor.constraint(equalTo: microphoneTitleLabel.centerYAnchor),
             microphoneSkipButton.trailingAnchor.constraint(equalTo: microphoneCard.trailingAnchor, constant: -16),
-            microphoneSkipButton.widthAnchor.constraint(equalToConstant: 80),
+            microphoneSkipButton.widthAnchor.constraint(equalToConstant: 70),
 
+            // Grant button to the left of Skip
             microphoneGrantButton.centerYAnchor.constraint(equalTo: microphoneTitleLabel.centerYAnchor),
-            microphoneGrantButton.trailingAnchor.constraint(equalTo: microphoneCard.trailingAnchor, constant: -16),
+            microphoneGrantButton.trailingAnchor.constraint(equalTo: microphoneSkipButton.leadingAnchor, constant: -8),
             microphoneGrantButton.widthAnchor.constraint(equalToConstant: 80),
 
             microphoneDescLabel.topAnchor.constraint(equalTo: microphoneTitleLabel.bottomAnchor, constant: 12),
@@ -260,10 +261,10 @@ class PermissionsViewController: NSViewController {
     }
 
     private func checkMicrophoneStatus() {
-        let hasAccess = VoiceInputManager.checkMicrophonePermission()
+        let hasAccess = VoiceInputManager.checkVoiceInputPermissions()
 
         if hasAccess {
-            microphoneStatusLabel.stringValue = "Status: ✅ Granted"
+            microphoneStatusLabel.stringValue = "Status: ✅ Granted (Microphone + Speech)"
             microphoneStatusLabel.textColor = NSColor.systemGreen
             microphoneSkipButton.isHidden = true
             microphoneGrantButton.isHidden = true
@@ -290,8 +291,14 @@ class PermissionsViewController: NSViewController {
     }
 
     @objc private func grantMicrophoneClicked() {
-        VoiceInputManager.requestMicrophonePermission { [weak self] granted in
-            self?.checkMicrophoneStatus()
+        VoiceInputManager.requestVoiceInputPermissions { [weak self] granted in
+            DispatchQueue.main.async {
+                self?.checkMicrophoneStatus()
+                if granted {
+                    // Update VoiceInputManager's authorization status
+                    VoiceInputManager.shared.isAuthorized = true
+                }
+            }
         }
     }
 

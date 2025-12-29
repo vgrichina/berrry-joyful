@@ -26,7 +26,8 @@ class VoiceInputManager: NSObject, ObservableObject {
         super.init()
 
         // Check current authorization status (doesn't trigger prompt)
-        isAuthorized = (SFSpeechRecognizer.authorizationStatus() == .authorized)
+        // Need BOTH microphone AND speech recognition
+        isAuthorized = VoiceInputManager.checkVoiceInputPermissions()
     }
 
     // MARK: - Authorization
@@ -54,19 +55,29 @@ class VoiceInputManager: NSObject, ObservableObject {
         }
     }
 
-    static func checkMicrophonePermission() -> Bool {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
-            return true
-        default:
-            return false
-        }
+    /// Check if BOTH microphone and speech recognition are authorized
+    static func checkVoiceInputPermissions() -> Bool {
+        let hasMicrophone = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        let hasSpeech = SFSpeechRecognizer.authorizationStatus() == .authorized
+        return hasMicrophone && hasSpeech
     }
 
-    static func requestMicrophonePermission(completion: @escaping (Bool) -> Void) {
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            DispatchQueue.main.async {
-                completion(granted)
+    /// Request BOTH microphone and speech recognition permissions
+    static func requestVoiceInputPermissions(completion: @escaping (Bool) -> Void) {
+        // First request microphone
+        AVCaptureDevice.requestAccess(for: .audio) { micGranted in
+            guard micGranted else {
+                DispatchQueue.main.async {
+                    completion(false)
+                }
+                return
+            }
+
+            // Then request speech recognition
+            SFSpeechRecognizer.requestAuthorization { speechStatus in
+                DispatchQueue.main.async {
+                    completion(speechStatus == .authorized)
+                }
             }
         }
     }

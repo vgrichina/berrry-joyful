@@ -62,6 +62,7 @@ class ViewController: NSViewController {
     private let inputController = InputController.shared
     private let voiceManager = VoiceInputManager.shared
     private let settings = InputSettings.shared
+    private let profileManager = ProfileManager.shared
 
     // MARK: - Lifecycle
 
@@ -319,38 +320,37 @@ class ViewController: NSViewController {
         panel.addSubview(titleLabel)
         y -= 50
 
-        // Layout Preset
-        let presetLabel = NSTextField(labelWithString: "Layout Preset:")
-        presetLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        presetLabel.isBezeled = false
-        presetLabel.isEditable = false
-        presetLabel.drawsBackground = false
-        panel.addSubview(presetLabel)
+        // Profile Selection
+        let profileLabel = NSTextField(labelWithString: "Button Profile:")
+        profileLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        profileLabel.isBezeled = false
+        profileLabel.isEditable = false
+        profileLabel.drawsBackground = false
+        panel.addSubview(profileLabel)
 
         keyboardPresetPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 5, width: 250, height: 25))
-        keyboardPresetPopup.addItems(withTitles: [
-            "Gaming (WASD + Space/Jump)",
-            "Text Editing (Arrow keys, Delete)",
-            "Media Controls (Play/Pause, Volume)",
-            "Custom Mapping"
-        ])
-        keyboardPresetPopup.selectItem(at: 3) // Default to custom
+        keyboardPresetPopup.addItems(withTitles: profileManager.getProfileNames())
+        if let activeIndex = profileManager.getProfileNames().firstIndex(of: profileManager.activeProfile.name) {
+            keyboardPresetPopup.selectItem(at: activeIndex)
+        }
         keyboardPresetPopup.target = self
-        keyboardPresetPopup.action = #selector(keyboardPresetChanged(_:))
+        keyboardPresetPopup.action = #selector(profileSelectionChanged(_:))
         panel.addSubview(keyboardPresetPopup)
         y -= 50
 
+        // Profile description
+        let descLabel = NSTextField(wrappingLabelWithString: profileManager.activeProfile.description)
+        descLabel.font = NSFont.systemFont(ofSize: 11)
+        descLabel.textColor = NSColor.secondaryLabelColor
+        descLabel.frame = NSRect(x: 20, y: y - 20, width: frame.width - 40, height: 20)
+        panel.addSubview(descLabel)
+        y -= 35
+
         // Button mapping guide
-        let mappingLabel = NSTextField(wrappingLabelWithString: """
-        Desktop + Terminal Profile:
-        A → Enter    B → Escape    X → Tab    Y → Enter
-        D-Pad → Number Keys 1-4    L → Cmd    R → Shift
-        R+X → Shift+Tab    L+X → Cmd+Tab    L+R+X → Cmd+Shift+Tab
-        ZL → Cmd+Shift+[    ZR → Cmd+Shift+]    ZL+ZR → Voice Input
-        Minus → Backspace    L+A → Cmd+Click
-        """)
-        mappingLabel.font = NSFont.systemFont(ofSize: 11)
-        mappingLabel.frame = NSRect(x: 20, y: y - 80, width: frame.width - 40, height: 80)
+        let mappingText = generateMappingText(for: profileManager.activeProfile)
+        let mappingLabel = NSTextField(wrappingLabelWithString: mappingText)
+        mappingLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        mappingLabel.frame = NSRect(x: 20, y: y - 100, width: frame.width - 40, height: 100)
         panel.addSubview(mappingLabel)
 
         // Status info
@@ -583,9 +583,31 @@ class ViewController: NSViewController {
         log("Mouse acceleration: \(settings.mouseAcceleration)")
     }
 
-    @objc private func keyboardPresetChanged(_ sender: NSPopUpButton) {
-        let presetName = sender.titleOfSelectedItem ?? "Unknown"
-        log("Keyboard preset changed to: \(presetName)")
+    @objc private func profileSelectionChanged(_ sender: NSPopUpButton) {
+        guard let profileName = sender.titleOfSelectedItem else { return }
+        profileManager.setActiveProfile(named: profileName)
+        log("✅ Profile changed to: \(profileName)")
+
+        // Refresh the keyboard config panel to show new mapping
+        keyboardConfigPanel.removeFromSuperview()
+        let yPosition = mouseConfigPanel.frame.minY
+        keyboardConfigPanel = createKeyboardConfigPanel(
+            frame: NSRect(x: 0, y: yPosition, width: view.bounds.width, height: 300)
+        )
+        keyboardConfigPanel.autoresizingMask = [.width, .minYMargin]
+        keyboardConfigPanel.isHidden = (currentTab != .keyboard)
+        view.addSubview(keyboardConfigPanel)
+    }
+
+    private func generateMappingText(for profile: ButtonProfile) -> String {
+        return """
+        A: \(profile.buttonA.description)  B: \(profile.buttonB.description)  X: \(profile.buttonX.description)  Y: \(profile.buttonY.description)
+        D-Pad: ↑\(profile.dpadUp.description)  ↓\(profile.dpadDown.description)  ←\(profile.dpadLeft.description)  →\(profile.dpadRight.description)
+        L: \(profile.bumperL.description)  R: \(profile.bumperR.description)
+        ZL: \(profile.triggerZL.description)  ZR: \(profile.triggerZR.description)  ZL+ZR: \(profile.triggerZLZR.description)
+        Minus: \(profile.buttonMinus.description)  Plus: \(profile.buttonPlus.description)
+        Left Stick: \(profile.leftStickFunction.rawValue)  Right Stick: \(profile.rightStickFunction.rawValue)
+        """
     }
 
     @objc private func grantVoicePermissionsClicked() {
@@ -742,33 +764,24 @@ class ViewController: NSViewController {
             case .X:
                 self.handleButtonX()
             case .Y:
-                self.log("🕹️ Button Y → Enter")
-                self.inputController.pressEnter(modifiers: self.modifiers)
+                self.handleButtonY()
             case .L:
-                self.modifiers.command = true
+                self.applyModifier(self.profileManager.activeProfile.bumperL)
                 self.updateSpecialMode()
             case .R:
-                self.modifiers.shift = true
+                self.applyModifier(self.profileManager.activeProfile.bumperR)
                 self.updateSpecialMode()
             case .ZL:
-                // If ZR is not held, this is a single ZL press → Cmd+Shift+[ (previous tab)
+                // If ZR is not held, execute single ZL action
                 if !self.isZRHeld {
-                    self.log("🕹️ ZL → Cmd+Shift+[ (previous tab)")
-                    var mods = ModifierState()
-                    mods.command = true
-                    mods.shift = true
-                    self.inputController.pressKey(CGKeyCode(kVK_ANSI_LeftBracket), modifiers: mods)
+                    self.executeButtonAction(self.profileManager.activeProfile.triggerZL, buttonName: "ZL")
                 }
                 self.isZLHeld = true
                 self.updateSpecialMode()
             case .ZR:
-                // If ZL is not held, this is a single ZR press → Cmd+Shift+] (next tab)
+                // If ZL is not held, execute single ZR action
                 if !self.isZLHeld {
-                    self.log("🕹️ ZR → Cmd+Shift+] (next tab)")
-                    var mods = ModifierState()
-                    mods.command = true
-                    mods.shift = true
-                    self.inputController.pressKey(CGKeyCode(kVK_ANSI_RightBracket), modifiers: mods)
+                    self.executeButtonAction(self.profileManager.activeProfile.triggerZR, buttonName: "ZR")
                 }
                 self.isZRHeld = true
                 self.updateSpecialMode()
@@ -781,8 +794,9 @@ class ViewController: NSViewController {
             case .Right:
                 self.handleDpadButton(direction: "right")
             case .Minus:
-                self.log("🕹️ Button Minus → Backspace")
-                self.inputController.pressBackspace(modifiers: self.modifiers)
+                self.executeButtonAction(self.profileManager.activeProfile.buttonMinus, buttonName: "Minus")
+            case .Plus:
+                self.executeButtonAction(self.profileManager.activeProfile.buttonPlus, buttonName: "Plus")
             default:
                 break
             }
@@ -793,10 +807,10 @@ class ViewController: NSViewController {
 
             switch button {
             case .L:
-                self.modifiers.command = false
+                self.removeModifier(self.profileManager.activeProfile.bumperL)
                 self.updateSpecialMode()
             case .R:
-                self.modifiers.shift = false
+                self.removeModifier(self.profileManager.activeProfile.bumperR)
                 self.updateSpecialMode()
             case .ZL:
                 self.isZLHeld = false
@@ -820,66 +834,121 @@ class ViewController: NSViewController {
         log("   ✅ Handlers configured")
     }
 
-    private func handleDpadButton(direction: String) {
-        // New mapping: D-Pad → Number keys 1-4 for menu options
-        switch direction {
-        case "up":
-            log("🕹️ D-Pad Up → 1 key")
-            inputController.pressKey(CGKeyCode(kVK_ANSI_1), modifiers: modifiers)
-        case "down":
-            log("🕹️ D-Pad Down → 2 key")
-            inputController.pressKey(CGKeyCode(kVK_ANSI_2), modifiers: modifiers)
-        case "left":
-            log("🕹️ D-Pad Left → 3 key")
-            inputController.pressKey(CGKeyCode(kVK_ANSI_3), modifiers: modifiers)
-        case "right":
-            log("🕹️ D-Pad Right → 4 key")
-            inputController.pressKey(CGKeyCode(kVK_ANSI_4), modifiers: modifiers)
-        default:
+    // MARK: - Profile-based Button Execution
+
+    private func applyModifier(_ modifier: ModifierAction) {
+        switch modifier {
+        case .command: modifiers.command = true
+        case .option: modifiers.option = true
+        case .shift: modifiers.shift = true
+        case .control: modifiers.control = true
+        case .none: break
+        }
+    }
+
+    private func removeModifier(_ modifier: ModifierAction) {
+        switch modifier {
+        case .command: modifiers.command = false
+        case .option: modifiers.option = false
+        case .shift: modifiers.shift = false
+        case .control: modifiers.control = false
+        case .none: break
+        }
+    }
+
+    private func executeButtonAction(_ action: ButtonAction, buttonName: String) {
+        switch action {
+        case .mouseClick:
+            log("🕹️ \(buttonName) → Click")
+            inputController.leftClick(modifiers: modifiers)
+        case .rightClick:
+            log("🕹️ \(buttonName) → Right Click")
+            inputController.rightClick()
+        case .pressKey(let keyCode, let requiresShift):
+            var mods = modifiers
+            if requiresShift {
+                mods.shift = true
+                mods.command = true
+            }
+            log("🕹️ \(buttonName) → Key(\(keyCode))")
+            inputController.pressKey(CGKeyCode(keyCode), modifiers: mods)
+        case .pressEnter:
+            log("🕹️ \(buttonName) → Enter")
+            inputController.pressEnter(modifiers: modifiers)
+        case .pressEscape:
+            log("🕹️ \(buttonName) → Escape")
+            inputController.pressEscape()
+        case .pressTab:
+            log("🕹️ \(buttonName) → Tab")
+            inputController.pressTab(modifiers: modifiers)
+        case .pressSpace:
+            log("🕹️ \(buttonName) → Space")
+            inputController.pressSpace(modifiers: modifiers)
+        case .pressBackspace:
+            log("🕹️ \(buttonName) → Backspace")
+            inputController.pressBackspace(modifiers: modifiers)
+        case .customKey(let keyCode, let desc):
+            log("🕹️ \(buttonName) → \(desc)")
+            inputController.pressKey(CGKeyCode(keyCode), modifiers: modifiers)
+        case .voiceInput:
+            log("🕹️ \(buttonName) → Voice Input")
+            // Voice input is handled separately through ZL+ZR combo
+            break
+        case .none:
             break
         }
     }
 
+    private func handleDpadButton(direction: String) {
+        let profile = profileManager.activeProfile
+        switch direction {
+        case "up": executeButtonAction(profile.dpadUp, buttonName: "D-Pad Up")
+        case "down": executeButtonAction(profile.dpadDown, buttonName: "D-Pad Down")
+        case "left": executeButtonAction(profile.dpadLeft, buttonName: "D-Pad Left")
+        case "right": executeButtonAction(profile.dpadRight, buttonName: "D-Pad Right")
+        default: break
+        }
+    }
+
     private func handleButtonA() {
-        if modifiers.command {
+        let profile = profileManager.activeProfile
+        // Handle L+A → Cmd+Click combo if enabled in profile
+        if modifiers.command && profile.enableCmdClick {
             log("🕹️ L+A → Cmd+Click")
             inputController.leftClick(modifiers: modifiers)
         } else {
-            log("🕹️ Button A → Click")
-            inputController.leftClick()
+            executeButtonAction(profile.buttonA, buttonName: "A")
         }
     }
 
     private func handleButtonB() {
-        if modifiers.command {
-            log("🕹️ Button B + Cmd → Interrupt (Ctrl+C)")
-            inputController.interruptProcess()
-        } else {
-            log("🕹️ Button B → Escape")
-            inputController.pressEscape()
-        }
+        executeButtonAction(profileManager.activeProfile.buttonB, buttonName: "B")
     }
 
     private func handleButtonX() {
-        // New mapping:
-        // X alone → Tab
-        // R + X → Shift+Tab (always/reverse)
-        // L + X → Cmd+Tab (app switcher)
-        // L + R + X → Cmd+Shift+Tab (reverse app switch)
+        let profile = profileManager.activeProfile
 
-        if modifiers.command && modifiers.shift {
-            log("🕹️ L+R+X → Cmd+Shift+Tab (reverse app switch)")
-            inputController.pressTab(modifiers: modifiers)
-        } else if modifiers.command {
-            log("🕹️ L+X → Cmd+Tab (app switcher)")
-            inputController.pressTab(modifiers: modifiers)
-        } else if modifiers.shift {
-            log("🕹️ R+X → Shift+Tab (always/reverse)")
-            inputController.pressTab(modifiers: modifiers)
+        // Handle smart tabbing if enabled in profile
+        if profile.enableSmartTabbing {
+            if modifiers.command && modifiers.shift {
+                log("🕹️ L+R+X → Cmd+Shift+Tab")
+                inputController.pressTab(modifiers: modifiers)
+            } else if modifiers.command {
+                log("🕹️ L+X → Cmd+Tab")
+                inputController.pressTab(modifiers: modifiers)
+            } else if modifiers.shift {
+                log("🕹️ R+X → Shift+Tab")
+                inputController.pressTab(modifiers: modifiers)
+            } else {
+                executeButtonAction(profile.buttonX, buttonName: "X")
+            }
         } else {
-            log("🕹️ X → Tab")
-            inputController.pressTab()
+            executeButtonAction(profile.buttonX, buttonName: "X")
         }
+    }
+
+    private func handleButtonY() {
+        executeButtonAction(profileManager.activeProfile.buttonY, buttonName: "Y")
     }
 
     private func handleLeftStick(x: Float, y: Float) {
