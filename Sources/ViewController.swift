@@ -49,7 +49,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     // Voice Controls
     private var voiceStatusLabel: NSTextField!
-    private var voiceActivationMatrix: NSMatrix!
+    private var voiceLanguagePopup: NSPopUpButton!
 
     // Bottom Bar & Debug Log
     private var debugLogButton: NSButton!
@@ -68,6 +68,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private var isZLHeld: Bool = false
     private var isZRHeld: Bool = false
     private var isMinusHeld: Bool = false  // For quick profile switching
+
+    // Track if shoulder buttons were used in a chord (to suppress individual actions)
+    private var wasZLInChord: Bool = false
+    private var wasZRInChord: Bool = false
 
     // Managers
     private let inputController = InputController.shared
@@ -451,7 +455,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             documentView.addSubview(editBtn)
 
             // Debug log
-            print("📝 Created Edit button for \(buttonName) at x:\(editBtn.frame.origin.x), visible in documentView width:\(documentView.bounds.width)")
+            self.log("📝 Created Edit button for \(buttonName) at x:\(editBtn.frame.origin.x), visible in documentView width:\(documentView.bounds.width)")
 
             rowY += 25  // Move down for next row
         }
@@ -514,7 +518,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         var y: CGFloat = 20  // Start from top
 
         // Title
-        let titleLabel = NSTextField(labelWithString: "Voice Recognition")
+        let titleLabel = NSTextField(labelWithString: "Voice Input Settings")
         titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
         titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
         titleLabel.isBezeled = false
@@ -543,73 +547,84 @@ class ViewController: NSViewController, NSTabViewDelegate {
             grantButton.action = #selector(grantVoicePermissionsClicked)
             panel.addSubview(grantButton)
         }
-        y += 30
+        y += 35
+
+        // Language Selection
+        let languageLabel = NSTextField(labelWithString: "Recognition Language:")
+        languageLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        languageLabel.frame = NSRect(x: 20, y: y, width: 150, height: 20)
+        languageLabel.isBezeled = false
+        languageLabel.isEditable = false
+        languageLabel.drawsBackground = false
+        panel.addSubview(languageLabel)
+
+        voiceLanguagePopup = NSPopUpButton(frame: NSRect(x: 180, y: y - 2, width: 250, height: 24))
+        voiceLanguagePopup.addItems(withTitles: [
+            "English (US)",
+            "English (UK)",
+            "English (Australia)",
+            "Spanish",
+            "French",
+            "German",
+            "Italian",
+            "Japanese",
+            "Chinese (Simplified)",
+            "Chinese (Traditional)",
+            "Korean",
+            "Portuguese",
+            "Russian",
+            "Arabic"
+        ])
+
+        // Select current language
+        let languageCodes = [
+            "en-US", "en-GB", "en-AU", "es-ES", "fr-FR", "de-DE", "it-IT",
+            "ja-JP", "zh-CN", "zh-TW", "ko-KR", "pt-PT", "ru-RU", "ar-SA"
+        ]
+        if let savedIndex = languageCodes.firstIndex(of: settings.voiceLanguage) {
+            voiceLanguagePopup.selectItem(at: savedIndex)
+        }
+
+        voiceLanguagePopup.target = self
+        voiceLanguagePopup.action = #selector(languageChanged)
+        panel.addSubview(voiceLanguagePopup)
+        y += 35
 
         // Status
         voiceStatusLabel = NSTextField(labelWithString: "Status: ⏸️ Ready")
         voiceStatusLabel.font = NSFont.systemFont(ofSize: 13)
-        voiceStatusLabel.frame = NSRect(x: 20, y: y, width: 300, height: 20)
+        voiceStatusLabel.frame = NSRect(x: 20, y: y, width: 400, height: 20)
         voiceStatusLabel.isBezeled = false
         voiceStatusLabel.isEditable = false
         voiceStatusLabel.drawsBackground = false
         panel.addSubview(voiceStatusLabel)
-        y += 30
+        y += 40
 
-        // Activation method
-        let activationLabel = NSTextField(labelWithString: "Activation Method:")
-        activationLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
-        activationLabel.frame = NSRect(x: 20, y: y, width: 150, height: 20)
-        activationLabel.isBezeled = false
-        activationLabel.isEditable = false
-        activationLabel.drawsBackground = false
-        panel.addSubview(activationLabel)
+        // How to use
+        let howToLabel = NSTextField(labelWithString: "How to Use:")
+        howToLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        howToLabel.frame = NSRect(x: 20, y: y, width: 150, height: 20)
+        howToLabel.isBezeled = false
+        howToLabel.isEditable = false
+        howToLabel.drawsBackground = false
+        panel.addSubview(howToLabel)
         y += 25
 
-        // Create radio buttons using NSMatrix (legacy but simple for radio groups)
-        voiceActivationMatrix = NSMatrix(frame: NSRect(x: 30, y: y, width: 400, height: 80))
-        voiceActivationMatrix.cellSize = NSSize(width: 400, height: 20)
-        voiceActivationMatrix.prototype = NSButtonCell()
-        voiceActivationMatrix.addRow()
-        voiceActivationMatrix.addRow()
-        voiceActivationMatrix.addRow()
-
-        // Configure radio buttons
-        for row in 0..<voiceActivationMatrix.numberOfRows {
-            if let cell = voiceActivationMatrix.cell(atRow: row, column: 0) as? NSButtonCell {
-                cell.setButtonType(.radio)
-                switch row {
-                case 0:
-                    cell.title = "Hold [ZL + ZR] to speak (recommended)"
-                    cell.state = .on
-                case 1:
-                    cell.title = "Always listening (experimental)"
-                case 2:
-                    cell.title = "Wake word: \"Hey Mac\" (not implemented)"
-                    cell.isEnabled = false
-                default:
-                    break
-                }
-            }
-        }
-
-        panel.addSubview(voiceActivationMatrix)
-        y += 90
+        // Instructions
+        let instructionsLabel = NSTextField(wrappingLabelWithString: "1. Hold ZL + ZR on your Joy-Con to activate voice input\n2. Speak naturally in your selected language\n3. Release ZL + ZR to type your words automatically")
+        instructionsLabel.font = NSFont.systemFont(ofSize: 11)
+        instructionsLabel.textColor = NSColor.secondaryLabelColor
+        instructionsLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 60)
+        panel.addSubview(instructionsLabel)
+        y += 70
 
         // Info text
-        let infoLabel = NSTextField(wrappingLabelWithString: "Voice input is text-only. Speak naturally and your words will be typed automatically.")
+        let infoLabel = NSTextField(wrappingLabelWithString: "Voice input converts your speech to text and types it automatically. Perfect for hands-free typing!")
         infoLabel.font = NSFont.systemFont(ofSize: 11)
-        infoLabel.textColor = NSColor.secondaryLabelColor
+        infoLabel.textColor = NSColor.tertiaryLabelColor
+        infoLabel.alignment = .center
         infoLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 30)
         panel.addSubview(infoLabel)
-        y += 35
-
-        // Status info
-        let statusLabel = NSTextField(wrappingLabelWithString: "Hold ZL + ZR on your Joy-Con to activate voice input.\nSpeak naturally and release to type your words.")
-        statusLabel.font = NSFont.systemFont(ofSize: 11)
-        statusLabel.textColor = NSColor.secondaryLabelColor
-        statusLabel.alignment = .center
-        statusLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 60)
-        panel.addSubview(statusLabel)
 
         return panel
     }
@@ -814,7 +829,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         }
 
         captureView.onCancelled = { [weak self] in
-            print("Cancelled key capture")
+            self?.log("⌨️ Cancelled key capture")
             // Close the window
             self?.keyCaptureWindow?.close()
             self?.keyCaptureWindow = nil
@@ -919,11 +934,27 @@ class ViewController: NSViewController, NSTabViewDelegate {
         }
     }
 
+    @objc private func languageChanged(_ sender: NSPopUpButton) {
+        let languageCodes = [
+            "en-US", "en-GB", "en-AU", "es-ES", "fr-FR", "de-DE", "it-IT",
+            "ja-JP", "zh-CN", "zh-TW", "ko-KR", "pt-PT", "ru-RU", "ar-SA"
+        ]
+
+        let selectedIndex = sender.indexOfSelectedItem
+        if selectedIndex >= 0 && selectedIndex < languageCodes.count {
+            let languageCode = languageCodes[selectedIndex]
+            voiceManager.setLanguage(languageCode)
+            settings.voiceLanguage = languageCode
+            settings.saveToUserDefaults()
+            log("🌍 Voice language changed to: \(sender.titleOfSelectedItem ?? languageCode)")
+        }
+    }
+
     @objc private func toggleDebugLog(_ sender: NSButton) {
         isDebugLogExpanded = !isDebugLogExpanded
 
-        print("🐛 Debug Log toggle - expanding: \(isDebugLogExpanded)")
-        print("🐛 Split view height: \(contentSplitView.bounds.height)")
+        log("🐛 Debug Log toggle - expanding: \(isDebugLogExpanded)")
+        log("🐛 Split view height: \(contentSplitView.bounds.height)")
 
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.25
@@ -933,7 +964,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 // Expand: show debug log at 200px height
                 let splitHeight = self.contentSplitView.bounds.height
                 let dividerPosition = splitHeight - 200
-                print("🐛 Expanding to position: \(dividerPosition)")
+                self.log("🐛 Expanding to position: \(dividerPosition)")
                 self.contentSplitView.setPosition(dividerPosition, ofDividerAt: 0)
                 self.debugLogButton.title = "▼ Debug Log"
                 self.debugLogContainer.isHidden = false
@@ -941,7 +972,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 // Collapse: hide debug log (position at max)
                 let splitHeight = self.contentSplitView.bounds.height
                 let collapsePosition = splitHeight - 1
-                print("🐛 Collapsing to position: \(collapsePosition)")
+                self.log("🐛 Collapsing to position: \(collapsePosition)")
                 self.contentSplitView.setPosition(collapsePosition, ofDividerAt: 0)  // -1 to avoid divider
                 self.debugLogButton.title = "▶ Debug Log"
                 self.debugLogContainer.isHidden = true
@@ -959,6 +990,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
     }
 
     private func setupVoiceManager() {
+        // The VoiceInputManager now initializes its own authorization state.
+        // We just log the status on startup.
+        if voiceManager.isAuthorized {
+            log("🎤 Voice permissions already granted")
+        } else {
+            log("⚠️ Voice permissions not yet granted")
+        }
+
         voiceManager.onLog = { [weak self] message in
             self?.log(message)
         }
@@ -967,8 +1006,9 @@ class ViewController: NSViewController, NSTabViewDelegate {
             self?.voiceStatusLabel.stringValue = "Status: 🎤 Listening... \"\(transcript)\""
         }
         voiceManager.onFinalTranscript = { [weak self] transcript in
-            guard let self = self else { return }
-            self.voiceManager.typeCurrentTranscript()
+            guard let self = self, !transcript.isEmpty else { return }
+            self.log("⌨️ Typing final transcript: \(transcript)")
+            InputController.shared.typeText(transcript)
             self.voiceStatusLabel.stringValue = "Status: ✅ Typed"
         }
         voiceManager.onError = { [weak self] error in
@@ -980,6 +1020,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
     // MARK: - Logging
 
     func log(_ message: String) {
+        // Log to console (stdout)
+        NSLog(message)
+
+        // Log to UI
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let textView = self.textView else { return }
 
@@ -1076,18 +1120,22 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 self.applyModifier(self.profileManager.activeProfile.bumperR)
                 self.updateSpecialMode()
             case .ZL:
-                // If ZR is not held, execute single ZL action
-                if !self.isZRHeld {
-                    self.executeButtonAction(self.profileManager.activeProfile.triggerZL, buttonName: "ZL")
-                }
+                // Mark as held
                 self.isZLHeld = true
+                // Check if this will form a chord with ZR
+                if self.isZRHeld {
+                    self.wasZLInChord = true
+                    self.wasZRInChord = true
+                }
                 self.updateSpecialMode()
             case .ZR:
-                // If ZL is not held, execute single ZR action
-                if !self.isZLHeld {
-                    self.executeButtonAction(self.profileManager.activeProfile.triggerZR, buttonName: "ZR")
-                }
+                // Mark as held
                 self.isZRHeld = true
+                // Check if this will form a chord with ZL
+                if self.isZLHeld {
+                    self.wasZLInChord = true
+                    self.wasZRInChord = true
+                }
                 self.updateSpecialMode()
             case .Up:
                 self.handleDpadButton(direction: "up")
@@ -1112,16 +1160,28 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
             switch button {
             case .L:
+                // L and R can participate in chords, so execute action on release
                 self.removeModifier(self.profileManager.activeProfile.bumperL)
                 self.updateSpecialMode()
             case .R:
+                // L and R can participate in chords, so execute action on release
                 self.removeModifier(self.profileManager.activeProfile.bumperR)
                 self.updateSpecialMode()
             case .ZL:
+                // Execute ZL action only if it was NOT used in a chord
+                if !self.wasZLInChord {
+                    self.executeButtonAction(self.profileManager.activeProfile.triggerZL, buttonName: "ZL")
+                }
                 self.isZLHeld = false
+                self.wasZLInChord = false  // Reset chord tracking
                 self.updateSpecialMode()
             case .ZR:
+                // Execute ZR action only if it was NOT used in a chord
+                if !self.wasZRInChord {
+                    self.executeButtonAction(self.profileManager.activeProfile.triggerZR, buttonName: "ZR")
+                }
                 self.isZRHeld = false
+                self.wasZRInChord = false  // Reset chord tracking
                 self.updateSpecialMode()
             case .Minus:
                 self.isMinusHeld = false
@@ -1308,14 +1368,17 @@ class ViewController: NSViewController, NSTabViewDelegate {
             newMode = .none
         }
 
+        log("🔘 ZL:\(isZLHeld) ZR:\(isZRHeld) → mode:\(newMode) (was:\(specialMode))")
+
         if newMode != specialMode {
+            let oldMode = specialMode
             specialMode = newMode
-            handleSpecialModeChange(to: newMode)
+            handleSpecialModeChange(from: oldMode, to: newMode)
         }
     }
 
-    private func handleSpecialModeChange(to mode: SpecialInputMode) {
-        switch mode {
+    private func handleSpecialModeChange(from oldMode: SpecialInputMode, to newMode: SpecialInputMode) {
+        switch newMode {
         case .voice:
             log("🎤 Voice input activated - speak now")
             voiceManager.startListening()
@@ -1326,16 +1389,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
             inputController.setPrecisionMode(true)
 
         case .none:
-            if specialMode == .voice {
+            if oldMode == .voice {
+                log("🎤 Voice mode ending - waiting for final transcript...")
+                // Just tell the manager to stop. The finalization and typing
+                // will happen automatically via the onFinalTranscript callback.
                 voiceManager.stopListening()
-                if !voiceManager.currentTranscript.isEmpty {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                        self?.voiceManager.typeCurrentTranscript()
-                    }
-                }
-                voiceStatusLabel.stringValue = "Status: ⏸️ Ready"
+                voiceStatusLabel.stringValue = "Status: Processing..."
             }
-            if specialMode == .precision {
+            if oldMode == .precision {
                 inputController.setPrecisionMode(false)
             }
         }

@@ -84,8 +84,8 @@ class InputSettings: ObservableObject {
     var invertY: Bool = false
     var mouseAcceleration: Bool = false
 
-    // Whether voice input is enabled
-    var voiceInputEnabled: Bool = true
+    // Voice settings
+    var voiceLanguage: String = "en-US"  // Default to US English
 
     private init() {
         loadFromUserDefaults()
@@ -102,8 +102,8 @@ class InputSettings: ObservableObject {
         if defaults.object(forKey: "stickDeadzone") != nil {
             stickDeadzone = defaults.float(forKey: "stickDeadzone")
         }
-        if defaults.object(forKey: "voiceInputEnabled") != nil {
-            voiceInputEnabled = defaults.bool(forKey: "voiceInputEnabled")
+        if let savedLanguage = defaults.string(forKey: "voiceLanguage") {
+            voiceLanguage = savedLanguage
         }
     }
 
@@ -112,6 +112,6 @@ class InputSettings: ObservableObject {
         defaults.set(Float(mouseSensitivity), forKey: "mouseSensitivity")
         defaults.set(Float(scrollSensitivity), forKey: "scrollSensitivity")
         defaults.set(stickDeadzone, forKey: "stickDeadzone")
-        defaults.set(voiceInputEnabled, forKey: "voiceInputEnabled")
+        defaults.set(voiceLanguage, forKey: "voiceLanguage")
     }
 }
