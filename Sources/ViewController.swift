@@ -1009,6 +1009,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
             guard let self = self, !transcript.isEmpty else { return }
             self.log("⌨️ Typing final transcript: \(transcript)")
             InputController.shared.typeText(transcript)
+            // Add space after voice input for easier continuous typing
+            InputController.shared.typeText(" ")
             self.voiceStatusLabel.stringValue = "Status: ✅ Typed"
         }
         voiceManager.onError = { [weak self] error in
