@@ -1423,7 +1423,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Get controller ID (use first controller or "unknown")
         let controllerId: String
         if let firstController = controllers.first {
-            controllerId = "\(firstController.type)-\(firstController.hashValue)"
+            let objectId = ObjectIdentifier(firstController)
+            controllerId = "\(firstController.type)-\(objectId)"
         } else {
             controllerId = "unknown"
         }
