@@ -123,7 +123,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     private func setupUI() {
         view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor(white: 0.95, alpha: 1.0).cgColor
+        view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
         // Create main vertical stack view
         mainStackView = NSStackView(frame: view.bounds)
@@ -174,7 +174,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let headerHeight: CGFloat = 60
         let headerView = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: headerHeight))
         headerView.wantsLayer = true
-        headerView.layer?.backgroundColor = NSColor(white: 0.2, alpha: 1.0).cgColor
+        headerView.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         headerView.heightAnchor.constraint(equalToConstant: headerHeight).isActive = true
 
         // Connection status
@@ -185,14 +185,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
         #endif
         connectionLabel = NSTextField(labelWithString: "🔍 No Joy-Con detected\(debugSuffix)")
         connectionLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
-        connectionLabel.textColor = NSColor(white: 0.7, alpha: 1.0)
+        connectionLabel.textColor = NSColor.secondaryLabelColor
         connectionLabel.frame = NSRect(x: 20, y: 20, width: 500, height: 25)
         headerView.addSubview(connectionLabel)
 
         // Battery indicator
         batteryLabel = NSTextField(labelWithString: "")
         batteryLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        batteryLabel.textColor = NSColor(white: 0.6, alpha: 1.0)
+        batteryLabel.textColor = NSColor.tertiaryLabelColor
         batteryLabel.alignment = .right
         batteryLabel.frame = NSRect(x: 600, y: 25, width: 100, height: 20)
         batteryLabel.autoresizingMask = [.minXMargin]
@@ -201,11 +201,22 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // LED indicator
         ledIndicator = NSTextField(labelWithString: "")
         ledIndicator.font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        ledIndicator.textColor = NSColor(white: 0.6, alpha: 1.0)
+        ledIndicator.textColor = NSColor.tertiaryLabelColor
         ledIndicator.alignment = .right
         ledIndicator.frame = NSRect(x: 710, y: 25, width: 60, height: 20)
         ledIndicator.autoresizingMask = [.minXMargin]
         headerView.addSubview(ledIndicator)
+
+        // Help button (only shown when no controller connected)
+        let helpButton = NSButton(frame: NSRect(x: 440, y: 18, width: 80, height: 24))
+        helpButton.title = "Need Help?"
+        helpButton.bezelStyle = .roundedDisclosure
+        helpButton.target = self
+        helpButton.action = #selector(showConnectionHelp)
+        helpButton.autoresizingMask = [.minXMargin]
+        helpButton.isHidden = true  // Hidden by default, shown when no controller
+        helpButton.tag = 999  // Tag to find it later
+        headerView.addSubview(helpButton)
 
         return headerView
     }
@@ -633,7 +644,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let bottomBarHeight: CGFloat = 40
         let bottomBar = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: bottomBarHeight))
         bottomBar.wantsLayer = true
-        bottomBar.layer?.backgroundColor = NSColor(white: 0.9, alpha: 1.0).cgColor
+        bottomBar.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         bottomBar.heightAnchor.constraint(equalToConstant: bottomBarHeight).isActive = true
 
         debugLogButton = NSButton(frame: NSRect(x: 650, y: 5, width: 130, height: 30))
@@ -980,6 +991,40 @@ class ViewController: NSViewController, NSTabViewDelegate {
         }, completionHandler: nil)
     }
 
+    @objc private func showConnectionHelp() {
+        let alert = NSAlert()
+        alert.messageText = "🎮 How to Connect Joy-Con Controllers"
+        alert.informativeText = """
+        1. Open System Settings → Bluetooth
+
+        2. Put Joy-Con in pairing mode:
+           • Hold the small sync button (on the rail)
+           • LED will start flashing
+
+        3. Click Connect when Joy-Con appears in Bluetooth list
+
+        4. Return to berrry-joyful - controller will be detected automatically
+
+        Supported Controllers:
+        • Joy-Con (L) - Left controller
+        • Joy-Con (R) - Right controller
+        • Nintendo Pro Controller
+
+        Note: Both Joy-Cons can be connected simultaneously for full control.
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Open Bluetooth Settings")
+
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            // Open Bluetooth preferences
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.bluetooth") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+
     // MARK: - Input Setup
 
     private func setupInputController() {
@@ -1073,24 +1118,32 @@ class ViewController: NSViewController, NSTabViewDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            if self.controllers.isEmpty {
-                self.connectionLabel.stringValue = "🔍 No Joy-Con detected"
-                self.connectionLabel.textColor = NSColor(white: 0.7, alpha: 1.0)
-                self.batteryLabel.stringValue = ""
-                self.ledIndicator.stringValue = ""
-            } else {
-                let names = self.controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
-                self.connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))"
-                self.connectionLabel.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
+            // Find help button by tag
+            if let headerView = self.view.subviews.first?.subviews.first as? NSStackView,
+               let header = headerView.arrangedSubviews.first,
+               let helpButton = header.viewWithTag(999) as? NSButton {
 
-                // Battery (placeholder - JoyConSwift doesn't expose battery easily)
-                if !self.controllers.isEmpty {
-                    self.batteryLabel.stringValue = "🔋 ---%"
+                if self.controllers.isEmpty {
+                    self.connectionLabel.stringValue = "🔍 No Joy-Con detected"
+                    self.connectionLabel.textColor = NSColor.secondaryLabelColor
+                    self.batteryLabel.stringValue = ""
+                    self.ledIndicator.stringValue = ""
+                    helpButton.isHidden = false  // Show help button when no controller
+                } else {
+                    let names = self.controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
+                    self.connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))"
+                    self.connectionLabel.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
+
+                    // Battery (placeholder - JoyConSwift doesn't expose battery easily)
+                    if !self.controllers.isEmpty {
+                        self.batteryLabel.stringValue = "🔋 ---%"
+                    }
+
+                    // LED indicator
+                    let count = self.controllers.count
+                    self.ledIndicator.stringValue = "🔵 LED \(count)"
+                    helpButton.isHidden = true  // Hide help button when connected
                 }
-
-                // LED indicator
-                let count = self.controllers.count
-                self.ledIndicator.stringValue = "🔵 LED \(count)"
             }
         }
     }
