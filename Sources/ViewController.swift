@@ -1199,7 +1199,13 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 self.isMinusHeld = true
                 self.executeButtonAction(self.profileManager.activeProfile.buttonMinus, buttonName: "Minus")
             case .Plus:
-                self.executeButtonAction(self.profileManager.activeProfile.buttonPlus, buttonName: "Plus")
+                // Check if drift logging is active - if so, mark drift instead of normal action
+                if DriftLogger.shared.loggingEnabled {
+                    DriftLogger.shared.markDriftNow()
+                    self.log("🚩 Drift marked! (Plus button)")
+                } else {
+                    self.executeButtonAction(self.profileManager.activeProfile.buttonPlus, buttonName: "Plus")
+                }
             default:
                 break
             }
@@ -1447,7 +1453,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
             isIdle: isIdle,
             buttonsPressed: anyButtonPressed ? 1 : 0,
             currentMode: currentMode,
-            previousSample: previous
+            previousSample: previous,
+            userMarkedDrift: false  // Drift marking is handled by DriftLogger's timer
         )
 
         DriftLogger.shared.logSample(sample)

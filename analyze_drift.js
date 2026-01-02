@@ -35,6 +35,7 @@ class DriftSample {
         this.velocityX = parseFloat(row.velocity_x);
         this.velocityY = parseFloat(row.velocity_y);
         this.mode = row.mode;
+        this.userMarkedDrift = row.user_marked_drift ? parseInt(row.user_marked_drift) === 1 : false;
     }
 }
 
@@ -151,6 +152,7 @@ function analyzeDrift(samples, currentDeadzone = 0.1) {
     // Separate idle and active samples
     const idleSamples = samples.filter(s => s.isIdle);
     const activeSamples = samples.filter(s => !s.isIdle);
+    const markedSamples = samples.filter(s => s.userMarkedDrift);
 
     const totalSamples = samples.length;
     const sessionDuration = samples[samples.length - 1].sessionTime;
@@ -219,10 +221,29 @@ function analyzeDrift(samples, currentDeadzone = 0.1) {
     const needsCalibration = hasConstantOffset && !hasRandomNoise && driftSeverity < 5;
     const replacementRecommended = driftSeverity > 7 || effectiveDriftPercent > 75;
 
+    // Analyze user-marked drift regions
+    let markedDriftStats = null;
+    if (markedSamples.length > 0) {
+        const markedX = markedSamples.map(s => s.stickX);
+        const markedY = markedSamples.map(s => s.stickY);
+        const markedDeviations = markedSamples.map(s => s.deviationMagnitude);
+
+        markedDriftStats = {
+            count: markedSamples.length,
+            meanX: mean(markedX),
+            meanY: mean(markedY),
+            stdX: stdDev(markedX),
+            stdY: stdDev(markedY),
+            maxDeviation: Math.max(...markedDeviations),
+            avgDeviation: mean(markedDeviations)
+        };
+    }
+
     return new DriftAnalysis({
         totalSamples,
         idleSamples: idleSamples.length,
         activeSamples: activeSamples.length,
+        markedSamples: markedSamples.length,
         sessionDuration,
         idleMeanX,
         idleMeanY,
@@ -240,7 +261,8 @@ function analyzeDrift(samples, currentDeadzone = 0.1) {
         driftSeverity,
         recommendedDeadzone,
         needsCalibration,
-        replacementRecommended
+        replacementRecommended,
+        markedDriftStats
     });
 }
 
@@ -279,6 +301,23 @@ function printAnalysis(analysis, controllerId = 'Unknown') {
         console.log(`   🟠 PROBLEMATIC: Frequent breakthrough drift`);
     } else {
         console.log(`   🔴 SEVERE: Deadzone insufficient for this drift`);
+    }
+
+    // User-marked drift episodes
+    if (analysis.markedSamples > 0 && analysis.markedDriftStats) {
+        console.log(`\n🚩 User-Marked Drift Episodes:`);
+        console.log(`   Marked samples: ${analysis.markedSamples} (${(analysis.markedSamples/analysis.totalSamples*100).toFixed(1)}%)`);
+        console.log(`   During marked drift:`);
+        console.log(`      Mean position: (${analysis.markedDriftStats.meanX >= 0 ? '+' : ''}${analysis.markedDriftStats.meanX.toFixed(6)}, ${analysis.markedDriftStats.meanY >= 0 ? '+' : ''}${analysis.markedDriftStats.meanY.toFixed(6)})`);
+        console.log(`      Avg deviation: ${analysis.markedDriftStats.avgDeviation.toFixed(6)}`);
+        console.log(`      Max deviation: ${analysis.markedDriftStats.maxDeviation.toFixed(6)}`);
+        console.log(`      Std deviation: (±${analysis.markedDriftStats.stdX.toFixed(6)}, ±${analysis.markedDriftStats.stdY.toFixed(6)})`);
+
+        if (analysis.markedDriftStats.avgDeviation > analysis.currentDeadzone) {
+            console.log(`      ⚠️  User-marked drift EXCEEDS current deadzone!`);
+        } else {
+            console.log(`      ✅ User-marked drift within current deadzone`);
+        }
     }
 
     // Drift types detected
