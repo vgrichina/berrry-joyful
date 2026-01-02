@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joy-Con Drift Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+        }
+        .file-input-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        input[type="file"] {
+            padding: 10px;
+            font-size: 16px;
+        }
+        .info-panel {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .info-item {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .info-label {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .info-value {
+            color: #4CAF50;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .chart-container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            position: relative;
+            height: 400px;
+        }
+        .controller-section {
+            margin: 30px 0;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .controller-title {
+            color: #4CAF50;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+        .instructions {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 Joy-Con Drift Visualizer</h1>
+
+    <div class="instructions">
+        <strong>How to use:</strong> Load your drift log CSV file to see interactive graphs of stick positions and marked drift episodes.
+        <br><strong>Red shaded areas</strong> show when you were holding the Plus button to mark drift.
+        <br><strong>Zoom:</strong> Scroll to zoom, drag to pan, double-click to reset.
+    </div>
+
+    <div class="file-input-container">
+        <input type="file" id="fileInput" accept=".csv">
+    </div>
+
+    <div id="output"></div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const output = document.getElementById('output');
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const csvContent = e.target.result;
+                    processCSV(csvContent);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function processCSV(csvContent) {
+            const lines = csvContent.trim().split('\n');
+            const headers = lines[0].split(',');
+
+            // Parse all data
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index];
+                });
+                data.push(row);
+            }
+
+            // Group by controller
+            const controllers = {};
+            data.forEach(row => {
+                const controllerId = row.controller_id;
+                if (!controllers[controllerId]) {
+                    controllers[controllerId] = [];
+                }
+                controllers[controllerId].push(row);
+            });
+
+            // Clear output
+            output.innerHTML = '';
+
+            // Create visualizations for each controller
+            Object.keys(controllers).forEach(controllerId => {
+                const controllerData = controllers[controllerId];
+                createControllerSection(controllerId, controllerData);
+            });
+        }
+
+        function createControllerSection(controllerId, data) {
+            const section = document.createElement('div');
+            section.className = 'controller-section';
+
+            const title = document.createElement('h2');
+            title.className = 'controller-title';
+            title.textContent = controllerId;
+            section.appendChild(title);
+
+            // Calculate stats
+            const totalSamples = data.length;
+            const idleSamples = data.filter(d => d.is_idle === '1').length;
+            const markedSamples = data.filter(d => d.user_marked_drift === '1').length;
+            const duration = data.length > 0 ? parseFloat(data[data.length - 1].session_time).toFixed(1) : 0;
+
+            // Info panel
+            const infoPanel = document.createElement('div');
+            infoPanel.className = 'info-panel';
+            infoPanel.innerHTML = `
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Total Samples</div>
+                        <div class="info-value">${totalSamples}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Idle Samples</div>
+                        <div class="info-value">${idleSamples} (${(idleSamples/totalSamples*100).toFixed(1)}%)</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">User Marked Drift</div>
+                        <div class="info-value">${markedSamples} (${(markedSamples/totalSamples*100).toFixed(1)}%)</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Duration</div>
+                        <div class="info-value">${duration}s</div>
+                    </div>
+                </div>
+            `;
+            section.appendChild(infoPanel);
+
+            // Create chart container
+            const chartContainer = document.createElement('div');
+            chartContainer.className = 'chart-container';
+            const canvas = document.createElement('canvas');
+            chartContainer.appendChild(canvas);
+            section.appendChild(chartContainer);
+
+            // Prepare chart data
+            const times = data.map(d => parseFloat(d.session_time));
+            const stickX = data.map(d => parseFloat(d.stick_x));
+            const stickY = data.map(d => parseFloat(d.stick_y));
+            const markedDrift = data.map(d => d.user_marked_drift === '1' ? 1 : 0);
+            const deadzoneThreshold = 0.1; // 10% deadzone for reference
+
+            // Create chart
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: times,
+                    datasets: [
+                        {
+                            label: 'Stick X',
+                            data: stickX,
+                            borderColor: '#2196F3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Stick Y',
+                            data: stickY,
+                            borderColor: '#FF9800',
+                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'User Marked Drift',
+                            data: markedDrift,
+                            borderColor: '#F44336',
+                            backgroundColor: 'rgba(244, 67, 54, 0.3)',
+                            borderWidth: 0,
+                            fill: true,
+                            stepped: true,
+                            pointRadius: 0,
+                            yAxisID: 'y2'
+                        },
+                        {
+                            label: '+Deadzone Threshold',
+                            data: Array(times.length).fill(deadzoneThreshold),
+                            borderColor: '#4CAF50',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: '-Deadzone Threshold',
+                            data: Array(times.length).fill(-deadzoneThreshold),
+                            borderColor: '#4CAF50',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Stick Position & Marked Drift Over Time',
+                            color: '#e0e0e0',
+                            font: { size: 16 }
+                        },
+                        legend: {
+                            display: true,
+                            labels: { color: '#e0e0e0' }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: { enabled: true },
+                                pinch: { enabled: true },
+                                mode: 'x'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Session Time (seconds)',
+                                color: '#e0e0e0'
+                            },
+                            ticks: { color: '#e0e0e0' },
+                            grid: { color: '#444' }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Stick Position',
+                                color: '#e0e0e0'
+                            },
+                            min: -1.2,
+                            max: 1.2,
+                            ticks: { color: '#e0e0e0' },
+                            grid: { color: '#444' }
+                        },
+                        y2: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Marked Drift',
+                                color: '#e0e0e0'
+                            },
+                            min: 0,
+                            max: 1.5,
+                            ticks: {
+                                color: '#e0e0e0',
+                                callback: function(value) {
+                                    return value === 1 ? 'MARKED' : '';
+                                }
+                            },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            output.appendChild(section);
+        }
+    </script>
+</body>
+</html>
