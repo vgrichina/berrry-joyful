@@ -18,10 +18,6 @@ class DriftLogger {
     private var idleSamples: [(x: Float, y: Float)] = []
     private let idleSampleLimit = 100 // Keep last 100 idle samples for calibration
 
-    // User drift marking
-    private var isDriftMarked: Bool = false
-    private var driftMarkExpiry: Date?
-
     private init() {}
 
     // MARK: - Logging Control
@@ -132,12 +128,6 @@ class DriftLogger {
         let sessionTime = now.timeIntervalSince(startTime)
         sampleCount += 1
 
-        // Check if drift marking has expired (5 seconds after marking)
-        if let expiry = driftMarkExpiry, now > expiry {
-            isDriftMarked = false
-            driftMarkExpiry = nil
-        }
-
         // Format: timestamp,session_time,sample_count,controller_id,stick_x,stick_y,neutral_x,neutral_y,deviation_x,deviation_y,deviation_magnitude,is_idle,buttons_pressed,velocity_x,velocity_y,mode,user_marked_drift
         let logLine = String(format: "%.3f,%.3f,%llu,%@,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%d,%.6f,%.6f,%@,%d\n",
                             now.timeIntervalSince1970,
@@ -156,21 +146,11 @@ class DriftLogger {
                             velocityX,
                             velocityY,
                             sample.currentMode,
-                            (sample.userMarkedDrift || isDriftMarked) ? 1 : 0)
+                            sample.userMarkedDrift ? 1 : 0)
 
         if let data = logLine.data(using: .utf8) {
             logFileHandle?.write(data)
         }
-    }
-
-    // MARK: - Drift Marking
-
-    /// User manually marks that drift is occurring right now
-    /// Marks the next 5 seconds of samples as user-flagged drift
-    func markDriftNow() {
-        isDriftMarked = true
-        driftMarkExpiry = Date().addingTimeInterval(5.0)  // Mark for 5 seconds
-        print("🚩 Drift marked by user - flagging next 5 seconds")
     }
 
     // MARK: - Analysis Helpers

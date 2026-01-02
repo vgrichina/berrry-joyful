@@ -89,6 +89,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private var previousLeftStick: (x: Float, y: Float)?
     private var previousRightStick: (x: Float, y: Float)?
     private var anyButtonPressed: Bool = false  // Track if any button is currently pressed
+    private var isPlusHeldForDriftMarking: Bool = false  // Track if Plus is held to mark drift
 
     // MARK: - Lifecycle
 
@@ -1199,10 +1200,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 self.isMinusHeld = true
                 self.executeButtonAction(self.profileManager.activeProfile.buttonMinus, buttonName: "Minus")
             case .Plus:
-                // Check if drift logging is active - if so, mark drift instead of normal action
+                // Check if drift logging is active - if so, start marking drift while held
                 if DriftLogger.shared.loggingEnabled {
-                    DriftLogger.shared.markDriftNow()
-                    self.log("🚩 Drift marked! (Plus button)")
+                    self.isPlusHeldForDriftMarking = true
+                    self.log("🚩 Marking drift (hold Plus)...")
                 } else {
                     self.executeButtonAction(self.profileManager.activeProfile.buttonPlus, buttonName: "Plus")
                 }
@@ -1241,6 +1242,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 self.updateSpecialMode()
             case .Minus:
                 self.isMinusHeld = false
+            case .Plus:
+                // Stop marking drift when Plus is released
+                if self.isPlusHeldForDriftMarking {
+                    self.isPlusHeldForDriftMarking = false
+                    self.log("🚩 Drift marking stopped")
+                }
             default:
                 break
             }
@@ -1454,7 +1461,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             buttonsPressed: anyButtonPressed ? 1 : 0,
             currentMode: currentMode,
             previousSample: previous,
-            userMarkedDrift: false  // Drift marking is handled by DriftLogger's timer
+            userMarkedDrift: isPlusHeldForDriftMarking  // Mark drift while Plus button is held
         )
 
         DriftLogger.shared.logSample(sample)
