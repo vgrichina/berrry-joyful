@@ -143,7 +143,7 @@ function detectDirectionalBias(idleSamples) {
 /**
  * Analyze drift samples and return comprehensive analysis
  */
-function analyzeDrift(samples) {
+function analyzeDrift(samples, currentDeadzone = 0.1) {
     if (samples.length === 0) {
         throw new Error('No samples to analyze');
     }
@@ -155,8 +155,9 @@ function analyzeDrift(samples) {
     const totalSamples = samples.length;
     const sessionDuration = samples[samples.length - 1].sessionTime;
 
-    // Calculate idle statistics
+    // Calculate idle statistics (RAW values)
     let idleMeanX = 0, idleMeanY = 0, idleStdX = 0, idleStdY = 0, idleMaxDeviation = 0;
+    let effectiveIdleSamples = 0;  // Samples that exceed deadzone
 
     if (idleSamples.length > 0) {
         const idleXValues = idleSamples.map(s => s.stickX);
@@ -169,33 +170,54 @@ function analyzeDrift(samples) {
 
         const idleDeviations = idleSamples.map(s => s.deviationMagnitude);
         idleMaxDeviation = Math.max(...idleDeviations);
+
+        // Count how many idle samples EXCEED the deadzone (these cause actual drift)
+        effectiveIdleSamples = idleSamples.filter(s => s.deviationMagnitude > currentDeadzone).length;
     }
 
-    // Detect drift types
-    const hasConstantOffset = Math.abs(idleMeanX) > 0.05 || Math.abs(idleMeanY) > 0.05;
-    const hasRandomNoise = idleStdX > 0.02 || idleStdY > 0.02;
+    // Calculate EFFECTIVE drift (what actually moves the cursor)
+    const effectiveDriftPercent = idleSamples.length > 0
+        ? (effectiveIdleSamples / idleSamples.length) * 100
+        : 0;
+
+    // Detect drift types (considering deadzone)
+    const rawOffsetMagnitude = Math.sqrt(idleMeanX ** 2 + idleMeanY ** 2);
+    const hasConstantOffset = rawOffsetMagnitude > currentDeadzone;
+    const hasRandomNoise = idleStdX > currentDeadzone * 0.5 || idleStdY > currentDeadzone * 0.5;
     const hasGradualDrift = detectGradualDrift(idleSamples);
     const hasDirectionalBias = detectDirectionalBias(idleSamples);
 
-    // Calculate drift severity (0-10 scale)
+    // Calculate drift severity (0-10 scale) - based on EFFECTIVE drift
     let severity = 0;
+
+    // Only penalize if drift exceeds current deadzone
     if (hasConstantOffset) {
-        const offsetMagnitude = Math.sqrt(idleMeanX ** 2 + idleMeanY ** 2);
-        severity += Math.min(offsetMagnitude * 20, 4);
+        const excessOffset = rawOffsetMagnitude - currentDeadzone;
+        severity += Math.min(excessOffset * 30, 4);  // Up to 4 points
     }
     if (hasRandomNoise) {
-        const noiseMagnitude = (idleStdX + idleStdY) / 2;
-        severity += Math.min(noiseMagnitude * 50, 3);
+        const excessNoise = Math.max(idleStdX, idleStdY) - currentDeadzone;
+        if (excessNoise > 0) {
+            severity += Math.min(excessNoise * 50, 3);  // Up to 3 points
+        }
     }
-    if (hasGradualDrift) severity += 2;
-    if (idleMaxDeviation > 0.15) severity += 1;
+    if (hasGradualDrift && effectiveDriftPercent > 10) severity += 2;
+    if (idleMaxDeviation > currentDeadzone * 1.5) severity += 1;
+
+    // Bonus severity based on how often drift actually affects cursor
+    if (effectiveDriftPercent > 25) severity += 1;
+    if (effectiveDriftPercent > 50) severity += 1;
 
     const driftSeverity = Math.min(severity, 10);
 
-    // Recommendations
-    const recommendedDeadzone = Math.max(0.1, Math.min(idleMaxDeviation * 1.5, 0.3));
-    const needsCalibration = hasConstantOffset && driftSeverity < 5;
-    const replacementRecommended = driftSeverity > 7;
+    // Recommendations - only increase deadzone if needed
+    let recommendedDeadzone = currentDeadzone;
+    if (idleMaxDeviation > currentDeadzone) {
+        recommendedDeadzone = Math.max(currentDeadzone, Math.min(idleMaxDeviation * 1.2, 0.3));
+    }
+
+    const needsCalibration = hasConstantOffset && !hasRandomNoise && driftSeverity < 5;
+    const replacementRecommended = driftSeverity > 7 || effectiveDriftPercent > 75;
 
     return new DriftAnalysis({
         totalSamples,
@@ -207,6 +229,10 @@ function analyzeDrift(samples) {
         idleStdX,
         idleStdY,
         idleMaxDeviation,
+        currentDeadzone,
+        effectiveIdleSamples,
+        effectiveDriftPercent,
+        rawOffsetMagnitude,
         hasConstantOffset,
         hasRandomNoise,
         hasGradualDrift,
@@ -233,18 +259,34 @@ function printAnalysis(analysis, controllerId = 'Unknown') {
     console.log(`   Active samples: ${analysis.activeSamples.toLocaleString()} (${(analysis.activeSamples/analysis.totalSamples*100).toFixed(1)}%)`);
     console.log(`   Session duration: ${analysis.sessionDuration.toFixed(1)} seconds`);
 
-    // Idle position statistics
-    console.log(`\n🎯 Idle Position Statistics:`);
+    // Idle position statistics (RAW values)
+    console.log(`\n🎯 Idle Position Statistics (Raw):`);
     console.log(`   Mean position: (${analysis.idleMeanX >= 0 ? '+' : ''}${analysis.idleMeanX.toFixed(6)}, ${analysis.idleMeanY >= 0 ? '+' : ''}${analysis.idleMeanY.toFixed(6)})`);
+    console.log(`   Offset magnitude: ${analysis.rawOffsetMagnitude.toFixed(6)}`);
     console.log(`   Std deviation: (±${analysis.idleStdX.toFixed(6)}, ±${analysis.idleStdY.toFixed(6)})`);
     console.log(`   Max deviation: ${analysis.idleMaxDeviation.toFixed(6)}`);
+
+    // EFFECTIVE drift (after deadzone)
+    console.log(`\n⚙️  Effective Drift (After ${(analysis.currentDeadzone*100).toFixed(0)}% Deadzone):`);
+    console.log(`   Current deadzone: ${analysis.currentDeadzone.toFixed(3)} (${(analysis.currentDeadzone*100).toFixed(0)}%)`);
+    console.log(`   Idle samples causing drift: ${analysis.effectiveIdleSamples} / ${analysis.idleSamples} (${analysis.effectiveDriftPercent.toFixed(1)}%)`);
+
+    if (analysis.effectiveDriftPercent === 0) {
+        console.log(`   ✅ GOOD: Current deadzone fully suppresses drift!`);
+    } else if (analysis.effectiveDriftPercent < 10) {
+        console.log(`   🟡 ACCEPTABLE: Minor breakthrough drift`);
+    } else if (analysis.effectiveDriftPercent < 50) {
+        console.log(`   🟠 PROBLEMATIC: Frequent breakthrough drift`);
+    } else {
+        console.log(`   🔴 SEVERE: Deadzone insufficient for this drift`);
+    }
 
     // Drift types detected
     console.log(`\n🔍 Drift Pattern Detection:`);
     console.log(`   Constant offset: ${analysis.hasConstantOffset ? '✅ YES' : '❌ NO'}`);
     if (analysis.hasConstantOffset) {
-        const offset = Math.sqrt(analysis.idleMeanX ** 2 + analysis.idleMeanY ** 2);
-        console.log(`      → Magnitude: ${offset.toFixed(4)}`);
+        console.log(`      → Offset: ${analysis.rawOffsetMagnitude.toFixed(4)} (deadzone: ${analysis.currentDeadzone.toFixed(3)})`);
+        console.log(`      → Exceeds deadzone by: ${Math.max(0, analysis.rawOffsetMagnitude - analysis.currentDeadzone).toFixed(4)}`);
     }
     console.log(`   Random noise: ${analysis.hasRandomNoise ? '✅ YES' : '❌ NO'}`);
     if (analysis.hasRandomNoise) {
@@ -257,13 +299,13 @@ function printAnalysis(analysis, controllerId = 'Unknown') {
     console.log(`\n⚠️  Drift Severity: ${analysis.driftSeverity.toFixed(1)}/10`);
     let severityLabel, severityColor;
     if (analysis.driftSeverity < 3) {
-        severityLabel = 'MINOR - Normal operation';
+        severityLabel = 'MINOR - Current deadzone handling it';
         severityColor = '🟢';
     } else if (analysis.driftSeverity < 5) {
-        severityLabel = 'MODERATE - Calibration recommended';
+        severityLabel = 'MODERATE - Adjustment recommended';
         severityColor = '🟡';
     } else if (analysis.driftSeverity < 7) {
-        severityLabel = 'SIGNIFICANT - Compensation required';
+        severityLabel = 'SIGNIFICANT - Deadzone insufficient';
         severityColor = '🟠';
     } else {
         severityLabel = 'SEVERE - Hardware replacement advised';
@@ -273,23 +315,29 @@ function printAnalysis(analysis, controllerId = 'Unknown') {
 
     // Recommendations
     console.log(`\n💡 Recommendations:`);
-    console.log(`   Recommended deadzone: ${analysis.recommendedDeadzone.toFixed(3)} (${(analysis.recommendedDeadzone*100).toFixed(1)}%)`);
+
+    const deadzoneChange = analysis.recommendedDeadzone - analysis.currentDeadzone;
+    if (deadzoneChange > 0.001) {
+        console.log(`   ⚙️  Increase deadzone: ${analysis.currentDeadzone.toFixed(3)} → ${analysis.recommendedDeadzone.toFixed(3)} (+${(deadzoneChange*100).toFixed(1)}%)`);
+    } else {
+        console.log(`   ✅ Current deadzone (${(analysis.currentDeadzone*100).toFixed(0)}%) is adequate`);
+    }
 
     if (analysis.needsCalibration) {
-        console.log(`   ✅ Calibration recommended - update neutral position`);
+        console.log(`   🎯 Calibration recommended - consistent offset detected`);
     }
     if (analysis.replacementRecommended) {
-        console.log(`   ⚠️  Hardware replacement recommended - drift is severe`);
+        console.log(`   ⚠️  Hardware replacement recommended - drift too severe`);
     }
 
     if (analysis.hasConstantOffset && !analysis.hasRandomNoise) {
-        console.log(`   💡 Strategy: Software calibration should work well`);
+        console.log(`   💡 Best strategy: Software calibration (offset is consistent)`);
     } else if (analysis.hasRandomNoise && !analysis.hasConstantOffset) {
-        console.log(`   💡 Strategy: Increase deadzone and apply smoothing filter`);
+        console.log(`   💡 Best strategy: Increase deadzone + smoothing filter`);
     } else if (analysis.hasConstantOffset && analysis.hasRandomNoise) {
-        console.log(`   💡 Strategy: Combine calibration + deadzone + filtering`);
+        console.log(`   💡 Best strategy: Calibration + increased deadzone + filtering`);
     } else if (analysis.hasGradualDrift) {
-        console.log(`   💡 Strategy: Implement adaptive calibration over time`);
+        console.log(`   💡 Best strategy: Adaptive calibration (drift changes over time)`);
     }
 
     console.log('\n' + '='.repeat(70) + '\n');
@@ -302,19 +350,33 @@ function main() {
     const args = process.argv.slice(2);
 
     if (args.length === 0) {
-        console.error('Usage: node analyze_drift.js <log_file.csv>');
+        console.error('Usage: node analyze_drift.js <log_file.csv> [--deadzone 0.15]');
         console.error('Example: node analyze_drift.js ~/Documents/DriftLogs/drift_log_2025-01-01_12-00-00.csv');
+        console.error('         node analyze_drift.js drift.csv --deadzone 0.15');
         process.exit(1);
     }
 
-    const logFilePath = path.resolve(args[0]);
+    // Parse arguments
+    let logFilePath = null;
+    let deadzone = 0.10;  // Default 10%
 
-    if (!fs.existsSync(logFilePath)) {
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === '--deadzone' && i + 1 < args.length) {
+            deadzone = parseFloat(args[i + 1]);
+            i++; // Skip next arg
+        } else if (!logFilePath) {
+            logFilePath = path.resolve(args[i]);
+        }
+    }
+
+    if (!logFilePath || !fs.existsSync(logFilePath)) {
         console.error(`Error: Log file not found: ${logFilePath}`);
         process.exit(1);
     }
 
     console.log(`Reading log file: ${logFilePath}`);
+    console.log(`Analyzing with deadzone: ${deadzone.toFixed(3)} (${(deadzone*100).toFixed(0)}%)`);
+
     const samples = parseCSV(logFilePath);
 
     if (samples.length === 0) {
@@ -335,7 +397,7 @@ function main() {
 
     // Analyze each controller separately
     for (const [controllerId, controllerSamples] of Object.entries(controllers)) {
-        const analysis = analyzeDrift(controllerSamples);
+        const analysis = analyzeDrift(controllerSamples, deadzone);
         printAnalysis(analysis, controllerId);
     }
 }
