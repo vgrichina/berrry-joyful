@@ -20,6 +20,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private var connectionLabel: NSTextField!
     private var batteryLabel: NSTextField!
     private var ledIndicator: NSTextField!
+    private var helpButton: NSButton!
 
     // Layout containers
     private var mainStackView: NSStackView!
@@ -83,6 +84,11 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private var editingProfile: ButtonProfile?  // Temporary copy during editing
     private var isProfileDirty: Bool = false    // Track unsaved changes
     private var keyCaptureWindow: NSWindow?     // Retain the key capture window
+
+    // Drift logging state
+    private var previousLeftStick: (x: Float, y: Float)?
+    private var previousRightStick: (x: Float, y: Float)?
+    private var anyButtonPressed: Bool = false  // Track if any button is currently pressed
 
     // MARK: - Lifecycle
 
@@ -154,69 +160,72 @@ class ViewController: NSViewController, NSTabViewDelegate {
         contentSplitView.setHoldingPriority(.defaultLow - 1, forSubviewAt: 0)  // Tab view
         contentSplitView.setHoldingPriority(.defaultHigh, forSubviewAt: 1)  // Debug log
 
-        // Create bottom bar (fixed height)
-        let bottomBar = createBottomBar()
-
-        // Add all to main stack
+        // Add all to main stack (no bottom bar - merged into header)
         mainStackView.addArrangedSubview(headerView)
         mainStackView.addArrangedSubview(contentSplitView)
-        mainStackView.addArrangedSubview(bottomBar)
 
-        // Set hugging priorities so header and bottom bar stay fixed size
+        // Set hugging priorities so header stays fixed size
         headerView.setContentHuggingPriority(.defaultHigh, for: .vertical)
-        bottomBar.setContentHuggingPriority(.defaultHigh, for: .vertical)
         contentSplitView.setContentHuggingPriority(.defaultLow, for: .vertical)
 
         view.addSubview(mainStackView)
     }
 
     private func createHeaderView() -> NSView {
-        let headerHeight: CGFloat = 60
+        let headerHeight: CGFloat = 50
         let headerView = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: headerHeight))
         headerView.wantsLayer = true
         headerView.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         headerView.heightAnchor.constraint(equalToConstant: headerHeight).isActive = true
 
-        // Connection status
+        // Connection status (left side)
         #if DEBUG
         let debugSuffix = inputController.debugMode ? " [DEBUG MODE]" : ""
         #else
         let debugSuffix = ""
         #endif
         connectionLabel = NSTextField(labelWithString: "🔍 No Joy-Con detected\(debugSuffix)")
-        connectionLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        connectionLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
         connectionLabel.textColor = NSColor.secondaryLabelColor
-        connectionLabel.frame = NSRect(x: 20, y: 20, width: 500, height: 25)
+        connectionLabel.frame = NSRect(x: 20, y: 15, width: 350, height: 20)
         headerView.addSubview(connectionLabel)
 
-        // Battery indicator
+        // Help button (only shown when no controller connected)
+        helpButton = NSButton(frame: NSRect(x: 380, y: 13, width: 80, height: 24))
+        helpButton.title = "Need Help?"
+        helpButton.bezelStyle = .rounded
+        helpButton.target = self
+        helpButton.action = #selector(showConnectionHelp)
+        helpButton.autoresizingMask = [.minXMargin]
+        helpButton.isHidden = true  // Hidden by default, shown when no controller
+        headerView.addSubview(helpButton)
+
+        // Battery indicator (right side)
         batteryLabel = NSTextField(labelWithString: "")
-        batteryLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        batteryLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
         batteryLabel.textColor = NSColor.tertiaryLabelColor
         batteryLabel.alignment = .right
-        batteryLabel.frame = NSRect(x: 600, y: 25, width: 100, height: 20)
+        batteryLabel.frame = NSRect(x: 490, y: 17, width: 70, height: 16)
         batteryLabel.autoresizingMask = [.minXMargin]
         headerView.addSubview(batteryLabel)
 
         // LED indicator
         ledIndicator = NSTextField(labelWithString: "")
-        ledIndicator.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        ledIndicator.font = NSFont.systemFont(ofSize: 11, weight: .regular)
         ledIndicator.textColor = NSColor.tertiaryLabelColor
         ledIndicator.alignment = .right
-        ledIndicator.frame = NSRect(x: 710, y: 25, width: 60, height: 20)
+        ledIndicator.frame = NSRect(x: 570, y: 17, width: 50, height: 16)
         ledIndicator.autoresizingMask = [.minXMargin]
         headerView.addSubview(ledIndicator)
 
-        // Help button (only shown when no controller connected)
-        let helpButton = NSButton(frame: NSRect(x: 440, y: 18, width: 80, height: 24))
-        helpButton.title = "Need Help?"
-        helpButton.bezelStyle = .roundedDisclosure
-        helpButton.target = self
-        helpButton.action = #selector(showConnectionHelp)
-        helpButton.autoresizingMask = [.minXMargin]
-        helpButton.isHidden = true  // Hidden by default, shown when no controller
-        helpButton.tag = 999  // Tag to find it later
-        headerView.addSubview(helpButton)
+        // Debug Log button (right side)
+        debugLogButton = NSButton(frame: NSRect(x: 640, y: 10, width: 140, height: 30))
+        debugLogButton.title = "▶ Debug Log"  // Start collapsed
+        debugLogButton.bezelStyle = .rounded
+        debugLogButton.target = self
+        debugLogButton.action = #selector(toggleDebugLog(_:))
+        debugLogButton.autoresizingMask = [.minXMargin]
+        headerView.addSubview(debugLogButton)
 
         return headerView
     }
@@ -640,23 +649,6 @@ class ViewController: NSViewController, NSTabViewDelegate {
         return panel
     }
 
-    private func createBottomBar() -> NSView {
-        let bottomBarHeight: CGFloat = 40
-        let bottomBar = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: bottomBarHeight))
-        bottomBar.wantsLayer = true
-        bottomBar.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        bottomBar.heightAnchor.constraint(equalToConstant: bottomBarHeight).isActive = true
-
-        debugLogButton = NSButton(frame: NSRect(x: 650, y: 5, width: 130, height: 30))
-        debugLogButton.title = "▶ Debug Log"  // Start collapsed
-        debugLogButton.bezelStyle = .rounded
-        debugLogButton.target = self
-        debugLogButton.action = #selector(toggleDebugLog(_:))
-        debugLogButton.autoresizingMask = [.minXMargin]
-        bottomBar.addSubview(debugLogButton)
-
-        return bottomBar
-    }
 
     private func createDebugLogView() {
         // Debug log container
@@ -1118,32 +1110,32 @@ class ViewController: NSViewController, NSTabViewDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            // Find help button by tag
-            if let headerView = self.view.subviews.first?.subviews.first as? NSStackView,
-               let header = headerView.arrangedSubviews.first,
-               let helpButton = header.viewWithTag(999) as? NSButton {
+            #if DEBUG
+            let debugSuffix = self.inputController.debugMode ? " [DEBUG MODE]" : ""
+            #else
+            let debugSuffix = ""
+            #endif
 
-                if self.controllers.isEmpty {
-                    self.connectionLabel.stringValue = "🔍 No Joy-Con detected"
-                    self.connectionLabel.textColor = NSColor.secondaryLabelColor
-                    self.batteryLabel.stringValue = ""
-                    self.ledIndicator.stringValue = ""
-                    helpButton.isHidden = false  // Show help button when no controller
-                } else {
-                    let names = self.controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
-                    self.connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))"
-                    self.connectionLabel.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
+            if self.controllers.isEmpty {
+                self.connectionLabel.stringValue = "🔍 No Joy-Con detected\(debugSuffix)"
+                self.connectionLabel.textColor = NSColor.secondaryLabelColor
+                self.batteryLabel.stringValue = ""
+                self.ledIndicator.stringValue = ""
+                self.helpButton?.isHidden = false  // Show help button when no controller
+            } else {
+                let names = self.controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
+                self.connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))\(debugSuffix)"
+                self.connectionLabel.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
 
-                    // Battery (placeholder - JoyConSwift doesn't expose battery easily)
-                    if !self.controllers.isEmpty {
-                        self.batteryLabel.stringValue = "🔋 ---%"
-                    }
-
-                    // LED indicator
-                    let count = self.controllers.count
-                    self.ledIndicator.stringValue = "🔵 LED \(count)"
-                    helpButton.isHidden = true  // Hide help button when connected
+                // Battery (placeholder - JoyConSwift doesn't expose battery easily)
+                if !self.controllers.isEmpty {
+                    self.batteryLabel.stringValue = "🔋 ---%"
                 }
+
+                // LED indicator
+                let count = self.controllers.count
+                self.ledIndicator.stringValue = "🔵 LED \(count)"
+                self.helpButton?.isHidden = true  // Hide help button when connected
             }
         }
     }
@@ -1158,6 +1150,9 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         controller.buttonPressHandler = { [weak self] button in
             guard let self = self else { return }
+
+            // Track button state for drift logging
+            self.anyButtonPressed = true
 
             switch button {
             case .A:
@@ -1404,10 +1399,57 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     private func handleLeftStick(x: Float, y: Float) {
         inputController.setMouseDelta(x: x, y: y)
+
+        // Log drift data for left stick
+        logStickDrift(x: x, y: y, stickName: "LeftStick", previous: previousLeftStick)
+        previousLeftStick = (x, y)
     }
 
     private func handleRightStick(x: Float, y: Float) {
         inputController.setScrollDelta(x: x, y: y)
+
+        // Log drift data for right stick
+        logStickDrift(x: x, y: y, stickName: "RightStick", previous: previousRightStick)
+        previousRightStick = (x, y)
+    }
+
+    private func logStickDrift(x: Float, y: Float, stickName: String, previous: (x: Float, y: Float)?) {
+        guard DriftLogger.shared.loggingEnabled else { return }
+
+        // Determine if stick is idle (close to neutral position)
+        let magnitude = sqrt(x * x + y * y)
+        let isIdle = magnitude < 0.1  // Small threshold for idle detection
+
+        // Get controller ID (use first controller or "unknown")
+        let controllerId: String
+        if let firstController = controllers.first {
+            controllerId = "\(firstController.type)-\(firstController.hashValue)"
+        } else {
+            controllerId = "unknown"
+        }
+
+        // Get current mode
+        let currentMode: String
+        if specialMode == .voice {
+            currentMode = "voice"
+        } else if specialMode == .precision {
+            currentMode = "precision"
+        } else {
+            currentMode = "unified"
+        }
+
+        // Create sample
+        let sample = DriftLogger.StickSample(
+            x: x,
+            y: y,
+            controllerId: "\(controllerId)-\(stickName)",
+            isIdle: isIdle,
+            buttonsPressed: anyButtonPressed ? 1 : 0,
+            currentMode: currentMode,
+            previousSample: previous
+        )
+
+        DriftLogger.shared.logSample(sample)
     }
 
     // MARK: - Special Mode Management

@@ -97,6 +97,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                     keyEquivalent: "/"))
         viewMenuItem.submenu = viewMenu
 
+        // Debug menu
+        let debugMenuItem = NSMenuItem()
+        mainMenu.addItem(debugMenuItem)
+        let debugMenu = NSMenu(title: "Debug")
+        debugMenu.addItem(NSMenuItem(title: "Start Drift Logging",
+                                     action: #selector(startDriftLogging),
+                                     keyEquivalent: ""))
+        debugMenu.addItem(NSMenuItem(title: "Stop Drift Logging",
+                                     action: #selector(stopDriftLogging),
+                                     keyEquivalent: ""))
+        debugMenu.addItem(NSMenuItem.separator())
+        debugMenu.addItem(NSMenuItem(title: "Show Drift Statistics",
+                                     action: #selector(showDriftStatistics),
+                                     keyEquivalent: ""))
+        debugMenu.addItem(NSMenuItem(title: "Open Logs Folder",
+                                     action: #selector(openLogsFolder),
+                                     keyEquivalent: ""))
+        debugMenuItem.submenu = debugMenu
+
         // Help menu
         let helpMenuItem = NSMenuItem()
         mainMenu.addItem(helpMenuItem)
@@ -202,6 +221,91 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let url = URL(string: "https://github.com/vgrichina/berrry-joyful") {
             NSWorkspace.shared.open(url)
         }
+    }
+
+    // MARK: - Drift Logging Actions
+
+    @objc private func startDriftLogging() {
+        DriftLogger.shared.startLogging()
+        viewController?.log("📊 Drift logging started")
+
+        let alert = NSAlert()
+        alert.messageText = "Drift Logging Started"
+        alert.informativeText = "Stick input data is now being logged to CSV files. Use your Joy-Con normally, and let it sit idle periodically to capture drift patterns.\n\nLogs are saved to: ~/Documents/DriftLogs/"
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    @objc private func stopDriftLogging() {
+        DriftLogger.shared.stopLogging()
+        viewController?.log("📊 Drift logging stopped")
+
+        let alert = NSAlert()
+        alert.messageText = "Drift Logging Stopped"
+        alert.informativeText = "Drift logging has been stopped. Log files are saved in:\n~/Documents/DriftLogs/\n\nYou can analyze these files using the included Python script or any CSV analysis tool."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Open Logs Folder")
+
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            openLogsFolder()
+        }
+    }
+
+    @objc private func showDriftStatistics() {
+        DriftLogger.shared.printStatistics()
+
+        if let stats = DriftLogger.shared.getIdleStatistics() {
+            let alert = NSAlert()
+            alert.messageText = "Drift Statistics"
+            alert.informativeText = String(format: """
+                Based on idle stick samples:
+
+                Mean Position:
+                  X: %.6f
+                  Y: %.6f
+
+                Standard Deviation:
+                  X: %.6f
+                  Y: %.6f
+
+                Current Neutral Calibration:
+                  X: %.6f
+                  Y: %.6f
+
+                Interpretation:
+                • High std deviation (>0.01) suggests drift or noise
+                • Mean far from 0.0 suggests constant offset drift
+                • Check console log for detailed statistics
+                """,
+                stats.mean.x, stats.mean.y,
+                stats.stdDev.x, stats.stdDev.y,
+                DriftLogger.shared.getCurrentNeutral().x,
+                DriftLogger.shared.getCurrentNeutral().y
+            )
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        } else {
+            let alert = NSAlert()
+            alert.messageText = "No Drift Data"
+            alert.informativeText = "Not enough idle samples collected yet. Start drift logging and let your controller sit idle for a few seconds."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+
+    @objc private func openLogsFolder() {
+        let logsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("DriftLogs")
+
+        // Create directory if it doesn't exist
+        try? FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
+
+        NSWorkspace.shared.open(logsDir)
     }
 
     func setupControllerMonitoring() {
