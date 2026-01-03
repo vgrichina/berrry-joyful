@@ -115,12 +115,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
             if isDebugLogExpanded {
                 // Start with debug log visible at 200px
-                let dividerPosition = splitHeight - 200
+                let dividerPosition = max(splitHeight - 200, 100)
                 contentSplitView.setPosition(dividerPosition, ofDividerAt: 0)
                 debugLogContainer.isHidden = false
             } else {
-                // Start collapsed
-                contentSplitView.setPosition(splitHeight - 1, ofDividerAt: 0)
+                // Start collapsed - position divider at the very bottom
+                contentSplitView.setPosition(splitHeight, ofDividerAt: 0)
                 debugLogContainer.isHidden = true
             }
         }
@@ -161,13 +161,13 @@ class ViewController: NSViewController, NSTabViewDelegate {
         contentSplitView.setHoldingPriority(.defaultLow - 1, forSubviewAt: 0)  // Tab view
         contentSplitView.setHoldingPriority(.defaultHigh, forSubviewAt: 1)  // Debug log
 
-        // Add all to main stack (no bottom bar - merged into header)
-        mainStackView.addArrangedSubview(headerView)
+        // Add all to main stack - header at BOTTOM
         mainStackView.addArrangedSubview(contentSplitView)
+        mainStackView.addArrangedSubview(headerView)
 
         // Set hugging priorities so header stays fixed size
-        headerView.setContentHuggingPriority(.defaultHigh, for: .vertical)
         contentSplitView.setContentHuggingPriority(.defaultLow, for: .vertical)
+        headerView.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
         view.addSubview(mainStackView)
     }
@@ -957,31 +957,33 @@ class ViewController: NSViewController, NSTabViewDelegate {
     @objc private func toggleDebugLog(_ sender: NSButton) {
         isDebugLogExpanded = !isDebugLogExpanded
 
-        log("🐛 Debug Log toggle - expanding: \(isDebugLogExpanded)")
-        log("🐛 Split view height: \(contentSplitView.bounds.height)")
+        if isDebugLogExpanded {
+            // Expand: show debug log at 200px height
+            debugLogContainer.isHidden = false
+            debugLogButton.title = "▼ Debug Log"
 
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.25
-            context.allowsImplicitAnimation = true
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                context.allowsImplicitAnimation = true
 
-            if self.isDebugLogExpanded {
-                // Expand: show debug log at 200px height
                 let splitHeight = self.contentSplitView.bounds.height
-                let dividerPosition = splitHeight - 200
-                self.log("🐛 Expanding to position: \(dividerPosition)")
+                let dividerPosition = max(splitHeight - 200, 100)  // Ensure minimum tab view size
                 self.contentSplitView.setPosition(dividerPosition, ofDividerAt: 0)
-                self.debugLogButton.title = "▼ Debug Log"
-                self.debugLogContainer.isHidden = false
-            } else {
-                // Collapse: hide debug log (position at max)
+            })
+        } else {
+            // Collapse: hide debug log
+            debugLogButton.title = "▶ Debug Log"
+
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                context.allowsImplicitAnimation = true
+
                 let splitHeight = self.contentSplitView.bounds.height
-                let collapsePosition = splitHeight - 1
-                self.log("🐛 Collapsing to position: \(collapsePosition)")
-                self.contentSplitView.setPosition(collapsePosition, ofDividerAt: 0)  // -1 to avoid divider
-                self.debugLogButton.title = "▶ Debug Log"
+                self.contentSplitView.setPosition(splitHeight, ofDividerAt: 0)
+            }, completionHandler: {
                 self.debugLogContainer.isHidden = true
-            }
-        }, completionHandler: nil)
+            })
+        }
     }
 
     @objc private func showConnectionHelp() {
