@@ -294,7 +294,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         sensitivitySlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
         sensitivitySlider.minValue = 0.5
-        sensitivitySlider.maxValue = 3.0
+        sensitivitySlider.maxValue = 20.0
         sensitivitySlider.doubleValue = Double(settings.mouseSensitivity)
         sensitivitySlider.target = self
         sensitivitySlider.action = #selector(sensitivityChanged(_:))
