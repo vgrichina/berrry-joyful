@@ -72,7 +72,17 @@ class InputSettings: ObservableObject {
     var scrollSensitivity: CGFloat = 3.0
 
     // Dead zone for analog sticks (0.0-1.0)
-    var stickDeadzone: Float = 0.15
+    var leftStickDeadzone: Float = 0.15
+    var rightStickDeadzone: Float = 0.15
+
+    // Legacy property for backward compatibility
+    var stickDeadzone: Float {
+        get { leftStickDeadzone }
+        set {
+            leftStickDeadzone = newValue
+            rightStickDeadzone = newValue
+        }
+    }
 
     // Acceleration curve exponent (1.0 = linear, 2.0 = quadratic)
     var accelerationCurve: CGFloat = 1.5
@@ -99,8 +109,27 @@ class InputSettings: ObservableObject {
         if defaults.object(forKey: "scrollSensitivity") != nil {
             scrollSensitivity = CGFloat(defaults.float(forKey: "scrollSensitivity"))
         }
-        if defaults.object(forKey: "stickDeadzone") != nil {
-            stickDeadzone = defaults.float(forKey: "stickDeadzone")
+
+        // Load per-stick deadzones with backward compatibility
+        if defaults.object(forKey: "leftStickDeadzone") != nil {
+            leftStickDeadzone = defaults.float(forKey: "leftStickDeadzone")
+        } else if defaults.object(forKey: "stickDeadzone") != nil {
+            // Migrate old single deadzone to both sticks
+            leftStickDeadzone = defaults.float(forKey: "stickDeadzone")
+        }
+
+        if defaults.object(forKey: "rightStickDeadzone") != nil {
+            rightStickDeadzone = defaults.float(forKey: "rightStickDeadzone")
+        } else if defaults.object(forKey: "stickDeadzone") != nil {
+            // Migrate old single deadzone to both sticks
+            rightStickDeadzone = defaults.float(forKey: "stickDeadzone")
+        }
+
+        if defaults.object(forKey: "invertY") != nil {
+            invertY = defaults.bool(forKey: "invertY")
+        }
+        if defaults.object(forKey: "mouseAcceleration") != nil {
+            mouseAcceleration = defaults.bool(forKey: "mouseAcceleration")
         }
         if let savedLanguage = defaults.string(forKey: "voiceLanguage") {
             voiceLanguage = savedLanguage
@@ -111,7 +140,12 @@ class InputSettings: ObservableObject {
         let defaults = UserDefaults.standard
         defaults.set(Float(mouseSensitivity), forKey: "mouseSensitivity")
         defaults.set(Float(scrollSensitivity), forKey: "scrollSensitivity")
-        defaults.set(stickDeadzone, forKey: "stickDeadzone")
+        defaults.set(leftStickDeadzone, forKey: "leftStickDeadzone")
+        defaults.set(rightStickDeadzone, forKey: "rightStickDeadzone")
+        // Keep legacy key for backward compatibility
+        defaults.set(leftStickDeadzone, forKey: "stickDeadzone")
+        defaults.set(invertY, forKey: "invertY")
+        defaults.set(mouseAcceleration, forKey: "mouseAcceleration")
         defaults.set(voiceLanguage, forKey: "voiceLanguage")
     }
 }

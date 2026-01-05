@@ -34,16 +34,22 @@ class StickyMouseManager {
             if isEnabled {
                 scanner.invalidateCache()  // Fresh start when enabling
             }
+            saveToUserDefaults()
         }
     }
 
-    var magneticStrength: MagneticStrength = .medium
+    var magneticStrength: MagneticStrength = .medium {
+        didSet {
+            saveToUserDefaults()
+        }
+    }
 
     var showVisualOverlay: Bool = false {
         didSet {
             if !showVisualOverlay {
                 hideOverlays()
             }
+            saveToUserDefaults()
         }
     }
 
@@ -61,7 +67,9 @@ class StickyMouseManager {
     private var timeSinceLastScan: TimeInterval = 0
     private var lastScanTime: Date?
 
-    private init() {}
+    private init() {
+        loadFromUserDefaults()
+    }
 
     // MARK: - Public API
 
@@ -129,6 +137,52 @@ class StickyMouseManager {
     /// Invalidate element cache (call when window focus changes)
     func invalidateCache() {
         scanner.invalidateCache()
+    }
+
+    // MARK: - Persistence
+
+    private func loadFromUserDefaults() {
+        let defaults = UserDefaults.standard
+
+        // Load without triggering didSet/save by reading first, then batch-setting
+        let savedEnabled = defaults.object(forKey: "stickyMouseEnabled") != nil ? defaults.bool(forKey: "stickyMouseEnabled") : false
+        let savedStrength: MagneticStrength
+        if let strengthRaw = defaults.string(forKey: "stickyMouseStrength") {
+            switch strengthRaw {
+            case "weak":
+                savedStrength = .weak
+            case "medium":
+                savedStrength = .medium
+            case "strong":
+                savedStrength = .strong
+            default:
+                savedStrength = .medium
+            }
+        } else {
+            savedStrength = .medium
+        }
+        let savedOverlay = defaults.object(forKey: "stickyMouseShowOverlay") != nil ? defaults.bool(forKey: "stickyMouseShowOverlay") : false
+
+        // Apply values (will trigger saves, but that's okay - ensures consistency)
+        isEnabled = savedEnabled
+        magneticStrength = savedStrength
+        showVisualOverlay = savedOverlay
+    }
+
+    private func saveToUserDefaults() {
+        let defaults = UserDefaults.standard
+        defaults.set(isEnabled, forKey: "stickyMouseEnabled")
+        let strengthString: String
+        switch magneticStrength {
+        case .weak:
+            strengthString = "weak"
+        case .medium:
+            strengthString = "medium"
+        case .strong:
+            strengthString = "strong"
+        }
+        defaults.set(strengthString, forKey: "stickyMouseStrength")
+        defaults.set(showVisualOverlay, forKey: "stickyMouseShowOverlay")
     }
 
     // MARK: - Visual Overlay

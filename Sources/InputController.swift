@@ -52,9 +52,14 @@ class InputController {
         mouseTimer = nil
     }
 
-    func setMouseDelta(x: Float, y: Float) {
-        // Apply deadzone
-        let deadzone = settings.stickDeadzone
+    enum Stick {
+        case left
+        case right
+    }
+
+    func setMouseDelta(x: Float, y: Float, stick: Stick = .right) {
+        // Apply appropriate deadzone for the stick
+        let deadzone = (stick == .left) ? settings.leftStickDeadzone : settings.rightStickDeadzone
         let adjustedX = abs(x) > deadzone ? x : 0
         let adjustedY = abs(y) > deadzone ? y : 0
 
@@ -75,8 +80,9 @@ class InputController {
         )
     }
 
-    func setScrollDelta(x: Float, y: Float) {
-        let deadzone = settings.stickDeadzone
+    func setScrollDelta(x: Float, y: Float, stick: Stick = .left) {
+        // Apply appropriate deadzone for the stick
+        let deadzone = (stick == .left) ? settings.leftStickDeadzone : settings.rightStickDeadzone
         let adjustedX = abs(x) > deadzone ? x : 0
         let adjustedY = abs(y) > deadzone ? y : 0
 

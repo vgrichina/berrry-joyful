@@ -35,8 +35,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
     // Mouse Controls
     private var sensitivitySlider: NSSlider!
     private var sensitivityLabel: NSTextField!
-    private var deadzoneSlider: NSSlider!
-    private var deadzoneLabel: NSTextField!
+    private var scrollSensitivitySlider: NSSlider!
+    private var scrollSensitivityLabel: NSTextField!
+    private var leftDeadzoneSlider: NSSlider!
+    private var leftDeadzoneLabel: NSTextField!
+    private var rightDeadzoneSlider: NSSlider!
+    private var rightDeadzoneLabel: NSTextField!
     private var invertYCheckbox: NSButton!
     private var accelerationCheckbox: NSButton!
     private var leftStickFunctionPopup: NSPopUpButton!
@@ -315,28 +319,76 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.addSubview(sensitivityLabel)
         y += 30
 
-        // Deadzone Slider
-        let deadzoneTitleLabel = NSTextField(labelWithString: "Deadzone:")
-        deadzoneTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        deadzoneTitleLabel.isBezeled = false
-        deadzoneTitleLabel.isEditable = false
-        deadzoneTitleLabel.drawsBackground = false
-        panel.addSubview(deadzoneTitleLabel)
+        // Scroll Sensitivity Slider
+        let scrollSensitivityTitleLabel = NSTextField(labelWithString: "Scroll Speed:")
+        scrollSensitivityTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        scrollSensitivityTitleLabel.isBezeled = false
+        scrollSensitivityTitleLabel.isEditable = false
+        scrollSensitivityTitleLabel.drawsBackground = false
+        panel.addSubview(scrollSensitivityTitleLabel)
 
-        deadzoneSlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
-        deadzoneSlider.minValue = 0.0
-        deadzoneSlider.maxValue = 0.3
-        deadzoneSlider.doubleValue = Double(settings.stickDeadzone)
-        deadzoneSlider.target = self
-        deadzoneSlider.action = #selector(deadzoneChanged(_:))
-        panel.addSubview(deadzoneSlider)
+        scrollSensitivitySlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        scrollSensitivitySlider.minValue = 0.5
+        scrollSensitivitySlider.maxValue = 10.0
+        scrollSensitivitySlider.doubleValue = Double(settings.scrollSensitivity)
+        scrollSensitivitySlider.target = self
+        scrollSensitivitySlider.action = #selector(scrollSensitivityChanged(_:))
+        panel.addSubview(scrollSensitivitySlider)
 
-        deadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.stickDeadzone * 100))
-        deadzoneLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
-        deadzoneLabel.isBezeled = false
-        deadzoneLabel.isEditable = false
-        deadzoneLabel.drawsBackground = false
-        panel.addSubview(deadzoneLabel)
+        scrollSensitivityLabel = NSTextField(labelWithString: String(format: "%.1fx", settings.scrollSensitivity))
+        scrollSensitivityLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
+        scrollSensitivityLabel.isBezeled = false
+        scrollSensitivityLabel.isEditable = false
+        scrollSensitivityLabel.drawsBackground = false
+        panel.addSubview(scrollSensitivityLabel)
+        y += 30
+
+        // Left Stick Deadzone Slider
+        let leftDeadzoneTitleLabel = NSTextField(labelWithString: "Left Deadzone:")
+        leftDeadzoneTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        leftDeadzoneTitleLabel.isBezeled = false
+        leftDeadzoneTitleLabel.isEditable = false
+        leftDeadzoneTitleLabel.drawsBackground = false
+        panel.addSubview(leftDeadzoneTitleLabel)
+
+        leftDeadzoneSlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        leftDeadzoneSlider.minValue = 0.0
+        leftDeadzoneSlider.maxValue = 0.3
+        leftDeadzoneSlider.doubleValue = Double(settings.leftStickDeadzone)
+        leftDeadzoneSlider.target = self
+        leftDeadzoneSlider.action = #selector(leftDeadzoneChanged(_:))
+        panel.addSubview(leftDeadzoneSlider)
+
+        leftDeadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.leftStickDeadzone * 100))
+        leftDeadzoneLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
+        leftDeadzoneLabel.isBezeled = false
+        leftDeadzoneLabel.isEditable = false
+        leftDeadzoneLabel.drawsBackground = false
+        panel.addSubview(leftDeadzoneLabel)
+        y += 30
+
+        // Right Stick Deadzone Slider
+        let rightDeadzoneTitleLabel = NSTextField(labelWithString: "Right Deadzone:")
+        rightDeadzoneTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        rightDeadzoneTitleLabel.isBezeled = false
+        rightDeadzoneTitleLabel.isEditable = false
+        rightDeadzoneTitleLabel.drawsBackground = false
+        panel.addSubview(rightDeadzoneTitleLabel)
+
+        rightDeadzoneSlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        rightDeadzoneSlider.minValue = 0.0
+        rightDeadzoneSlider.maxValue = 0.3
+        rightDeadzoneSlider.doubleValue = Double(settings.rightStickDeadzone)
+        rightDeadzoneSlider.target = self
+        rightDeadzoneSlider.action = #selector(rightDeadzoneChanged(_:))
+        panel.addSubview(rightDeadzoneSlider)
+
+        rightDeadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.rightStickDeadzone * 100))
+        rightDeadzoneLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
+        rightDeadzoneLabel.isBezeled = false
+        rightDeadzoneLabel.isEditable = false
+        rightDeadzoneLabel.drawsBackground = false
+        panel.addSubview(rightDeadzoneLabel)
         y += 30
 
         // Checkboxes
@@ -800,21 +852,39 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let value = CGFloat(sender.doubleValue)
         settings.mouseSensitivity = value
         sensitivityLabel.stringValue = String(format: "%.1fx", value)
+        settings.saveToUserDefaults()
     }
 
-    @objc private func deadzoneChanged(_ sender: NSSlider) {
+    @objc private func scrollSensitivityChanged(_ sender: NSSlider) {
+        let value = CGFloat(sender.doubleValue)
+        settings.scrollSensitivity = value
+        scrollSensitivityLabel.stringValue = String(format: "%.1fx", value)
+        settings.saveToUserDefaults()
+    }
+
+    @objc private func leftDeadzoneChanged(_ sender: NSSlider) {
         let value = Float(sender.doubleValue)
-        settings.stickDeadzone = value
-        deadzoneLabel.stringValue = String(format: "%.0f%%", value * 100)
+        settings.leftStickDeadzone = value
+        leftDeadzoneLabel.stringValue = String(format: "%.0f%%", value * 100)
+        settings.saveToUserDefaults()
+    }
+
+    @objc private func rightDeadzoneChanged(_ sender: NSSlider) {
+        let value = Float(sender.doubleValue)
+        settings.rightStickDeadzone = value
+        rightDeadzoneLabel.stringValue = String(format: "%.0f%%", value * 100)
+        settings.saveToUserDefaults()
     }
 
     @objc private func invertYChanged(_ sender: NSButton) {
         settings.invertY = (sender.state == .on)
+        settings.saveToUserDefaults()
         log("Invert Y: \(settings.invertY)")
     }
 
     @objc private func accelerationChanged(_ sender: NSButton) {
         settings.mouseAcceleration = (sender.state == .on)
+        settings.saveToUserDefaults()
         log("Mouse acceleration: \(settings.mouseAcceleration)")
     }
 
@@ -1581,7 +1651,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     private func handleLeftStick(x: Float, y: Float) {
         let profile = profileManager.activeProfile
-        handleStickInput(x: x, y: y, function: profile.leftStickFunction)
+        handleStickInput(x: x, y: y, function: profile.leftStickFunction, stick: .left)
 
         // Log drift data for left stick
         logStickDrift(x: x, y: y, stickName: "LeftStick", previous: previousLeftStick)
@@ -1590,19 +1660,19 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     private func handleRightStick(x: Float, y: Float) {
         let profile = profileManager.activeProfile
-        handleStickInput(x: x, y: y, function: profile.rightStickFunction)
+        handleStickInput(x: x, y: y, function: profile.rightStickFunction, stick: .right)
 
         // Log drift data for right stick
         logStickDrift(x: x, y: y, stickName: "RightStick", previous: previousRightStick)
         previousRightStick = (x, y)
     }
 
-    private func handleStickInput(x: Float, y: Float, function: ButtonProfile.StickFunction) {
+    private func handleStickInput(x: Float, y: Float, function: ButtonProfile.StickFunction, stick: InputController.Stick) {
         switch function {
         case .mouse:
-            inputController.setMouseDelta(x: x, y: y)
+            inputController.setMouseDelta(x: x, y: y, stick: stick)
         case .scroll:
-            inputController.setScrollDelta(x: x, y: y)
+            inputController.setScrollDelta(x: x, y: y, stick: stick)
         case .arrowKeys:
             handleStickAsArrowKeys(x: x, y: y)
         case .wasd:
