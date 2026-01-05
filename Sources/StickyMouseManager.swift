@@ -47,7 +47,7 @@ class StickyMouseManager {
     var showVisualOverlay: Bool = false {
         didSet {
             if !showVisualOverlay {
-                hideOverlays()
+                hideAllOverlays()
             }
             saveToUserDefaults()
         }
@@ -62,7 +62,8 @@ class StickyMouseManager {
     // MARK: - Private Properties
 
     private let scanner = AccessibilityScanner()
-    private var overlayWindows: [NSWindow] = []
+    private var overlayWindow: NSWindow?
+    private var overlayView: MultiOverlayView?
     private var lastCursorPosition: CGPoint?
     private var timeSinceLastScan: TimeInterval = 0
     private var lastScanTime: Date?
@@ -188,36 +189,43 @@ class StickyMouseManager {
     // MARK: - Visual Overlay
 
     private func updateOverlays(for elements: [AccessibilityScanner.InteractiveElement], cursorPosition: CGPoint) {
-        // Clear old overlays
-        hideOverlays()
+        // Ensure overlay window exists
+        if overlayWindow == nil {
+            createOverlayWindow()
+            NSLog("🧲 Created overlay window")
+        }
 
-        // Create new overlays for each element
-        for element in elements {
+        // Filter elements that are in range
+        let visibleElements = elements.filter { element in
             let distance = cursorPosition.distance(to: element.center)
-            let distances = element.type.magneticDistances
+            let outer = element.type.magneticDistances.outer * magneticStrength.multiplier
+            return distance < outer
+        }
 
-            // Only show overlay for elements in range
-            let outer = distances.outer * magneticStrength.multiplier
-            guard distance < outer else { continue }
+        NSLog("🧲 Elements found: \(elements.count), visible: \(visibleElements.count)")
 
-            // Create overlay window
-            let window = createOverlayWindow(for: element, distances: distances)
-            overlayWindows.append(window)
+        // Update the overlay view with new elements
+        overlayView?.updateElements(visibleElements)
+
+        // Make sure window is visible
+        if let window = overlayWindow, !visibleElements.isEmpty {
+            if !window.isVisible {
+                window.orderFront(nil)
+                NSLog("🧲 Ordered overlay window front")
+            }
         }
     }
 
-    private func createOverlayWindow(
-        for element: AccessibilityScanner.InteractiveElement,
-        distances: (outer: CGFloat, middle: CGFloat, inner: CGFloat)
-    ) -> NSWindow {
-        // Apply strength multiplier
-        let outer = distances.outer * magneticStrength.multiplier
-        let middle = distances.middle * magneticStrength.multiplier
-        let inner = distances.inner * magneticStrength.multiplier
+    private func createOverlayWindow() {
+        // Calculate frame covering all screens
+        var totalFrame = NSRect.zero
+        for screen in NSScreen.screens {
+            totalFrame = totalFrame.union(screen.frame)
+        }
 
-        // Create window at element bounds
+        // Create single transparent window covering all screens
         let window = NSWindow(
-            contentRect: element.bounds,
+            contentRect: totalFrame,
             styleMask: .borderless,
             backing: .buffered,
             defer: false
@@ -228,34 +236,29 @@ class StickyMouseManager {
         window.level = .floating
         window.ignoresMouseEvents = true
         window.hasShadow = false
+        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
 
-        // Create view to draw glow
-        let view = OverlayView(
-            frame: NSRect(origin: .zero, size: element.bounds.size),
-            color: element.type.glowColor.withAlphaComponent(0.3)
-        )
-
+        // Create custom view to draw all overlays
+        let view = MultiOverlayView(frame: totalFrame)
         window.contentView = view
         window.orderFront(nil)
 
-        return window
+        overlayWindow = window
+        overlayView = view
     }
 
-    private func hideOverlays() {
-        for window in overlayWindows {
-            window.close()
-        }
-        overlayWindows.removeAll()
+    private func hideAllOverlays() {
+        overlayView?.updateElements([])
+        overlayWindow?.orderOut(nil)
     }
 }
 
-// MARK: - Overlay View
+// MARK: - Multi-Overlay View
 
-private class OverlayView: NSView {
-    let glowColor: NSColor
+private class MultiOverlayView: NSView {
+    private var elements: [AccessibilityScanner.InteractiveElement] = []
 
-    init(frame: NSRect, color: NSColor) {
-        self.glowColor = color
+    override init(frame: NSRect) {
         super.init(frame: frame)
         self.wantsLayer = true
         self.layer?.backgroundColor = NSColor.clear.cgColor
@@ -265,21 +268,47 @@ private class OverlayView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // NSView uses bottom-left origin by default (not flipped)
+    override var isFlipped: Bool {
+        return false
+    }
+
+    func updateElements(_ newElements: [AccessibilityScanner.InteractiveElement]) {
+        elements = newElements
+        needsDisplay = true
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
 
         guard let context = NSGraphicsContext.current?.cgContext else { return }
 
-        // Draw glowing border
-        context.setStrokeColor(glowColor.cgColor)
-        context.setLineWidth(3.0)
+        // Get window frame to convert from screen coordinates to view coordinates
+        guard let windowFrame = window?.frame else { return }
 
-        let insetRect = bounds.insetBy(dx: 2, dy: 2)
-        context.stroke(insetRect)
+        // Draw each element's overlay
+        for element in elements {
+            let glowColor = element.type.glowColor.withAlphaComponent(0.3)
 
-        // Draw subtle fill
-        context.setFillColor(glowColor.withAlphaComponent(0.1).cgColor)
-        context.fill(insetRect)
+            // Convert element bounds from screen coordinates to view coordinates
+            // The Accessibility API returns screen coordinates with Y=0 at top
+            // But NSView uses Y=0 at bottom, so we need to flip Y
+            var viewRect = element.bounds
+            viewRect.origin.x -= windowFrame.origin.x
+            // Flip Y coordinate: convert from top-origin to bottom-origin
+            viewRect.origin.y = windowFrame.size.height - (element.bounds.origin.y - windowFrame.origin.y) - element.bounds.size.height
+
+            // Draw glowing border
+            context.setStrokeColor(glowColor.cgColor)
+            context.setLineWidth(3.0)
+
+            let insetRect = viewRect.insetBy(dx: 2, dy: 2)
+            context.stroke(insetRect)
+
+            // Draw subtle fill
+            context.setFillColor(glowColor.withAlphaComponent(0.1).cgColor)
+            context.fill(insetRect)
+        }
     }
 }
 
