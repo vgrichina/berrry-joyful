@@ -39,6 +39,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private var deadzoneLabel: NSTextField!
     private var invertYCheckbox: NSButton!
     private var accelerationCheckbox: NSButton!
+    private var leftStickFunctionPopup: NSPopUpButton!
+    private var rightStickFunctionPopup: NSPopUpButton!
 
     // Keyboard Controls
     private var keyboardPresetPopup: NSPopUpButton!
@@ -342,7 +344,51 @@ class ViewController: NSViewController, NSTabViewDelegate {
         accelerationCheckbox.frame = NSRect(x: 200, y: y, width: 150, height: 20)
         accelerationCheckbox.state = settings.mouseAcceleration ? .on : .off
         panel.addSubview(accelerationCheckbox)
+        y += 40
+
+        // Stick Function Controls
+        let stickFunctionTitle = NSTextField(labelWithString: "Analog Stick Functions")
+        stickFunctionTitle.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        stickFunctionTitle.frame = NSRect(x: 20, y: y, width: 300, height: 20)
+        stickFunctionTitle.isBezeled = false
+        stickFunctionTitle.isEditable = false
+        stickFunctionTitle.drawsBackground = false
+        panel.addSubview(stickFunctionTitle)
         y += 30
+
+        // Left Stick Function
+        let leftStickLabel = NSTextField(labelWithString: "Left Stick:")
+        leftStickLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        leftStickLabel.isBezeled = false
+        leftStickLabel.isEditable = false
+        leftStickLabel.drawsBackground = false
+        panel.addSubview(leftStickLabel)
+
+        leftStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 2, width: 150, height: 25))
+        leftStickFunctionPopup.removeAllItems()
+        leftStickFunctionPopup.addItems(withTitles: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"])
+        leftStickFunctionPopup.selectItem(withTitle: profileManager.activeProfile.leftStickFunction.rawValue)
+        leftStickFunctionPopup.target = self
+        leftStickFunctionPopup.action = #selector(leftStickFunctionChanged(_:))
+        panel.addSubview(leftStickFunctionPopup)
+        y += 30
+
+        // Right Stick Function
+        let rightStickLabel = NSTextField(labelWithString: "Right Stick:")
+        rightStickLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
+        rightStickLabel.isBezeled = false
+        rightStickLabel.isEditable = false
+        rightStickLabel.drawsBackground = false
+        panel.addSubview(rightStickLabel)
+
+        rightStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 2, width: 150, height: 25))
+        rightStickFunctionPopup.removeAllItems()
+        rightStickFunctionPopup.addItems(withTitles: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"])
+        rightStickFunctionPopup.selectItem(withTitle: profileManager.activeProfile.rightStickFunction.rawValue)
+        rightStickFunctionPopup.target = self
+        rightStickFunctionPopup.action = #selector(rightStickFunctionChanged(_:))
+        panel.addSubview(rightStickFunctionPopup)
+        y += 40
 
         // Debug mode toggle (only in debug builds)
         #if DEBUG
@@ -715,6 +761,26 @@ class ViewController: NSViewController, NSTabViewDelegate {
     @objc private func accelerationChanged(_ sender: NSButton) {
         settings.mouseAcceleration = (sender.state == .on)
         log("Mouse acceleration: \(settings.mouseAcceleration)")
+    }
+
+    @objc private func leftStickFunctionChanged(_ sender: NSPopUpButton) {
+        guard let selectedTitle = sender.titleOfSelectedItem,
+              let function = ButtonProfile.StickFunction(rawValue: selectedTitle) else { return }
+
+        var profile = profileManager.activeProfile
+        profile.leftStickFunction = function
+        profileManager.updateProfile(profile)
+        log("Left stick function changed to: \(function.rawValue)")
+    }
+
+    @objc private func rightStickFunctionChanged(_ sender: NSPopUpButton) {
+        guard let selectedTitle = sender.titleOfSelectedItem,
+              let function = ButtonProfile.StickFunction(rawValue: selectedTitle) else { return }
+
+        var profile = profileManager.activeProfile
+        profile.rightStickFunction = function
+        profileManager.updateProfile(profile)
+        log("Right stick function changed to: \(function.rawValue)")
     }
 
     #if DEBUG
@@ -1434,7 +1500,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
     }
 
     private func handleLeftStick(x: Float, y: Float) {
-        inputController.setMouseDelta(x: x, y: y)
+        let profile = profileManager.activeProfile
+        handleStickInput(x: x, y: y, function: profile.leftStickFunction)
 
         // Log drift data for left stick
         logStickDrift(x: x, y: y, stickName: "LeftStick", previous: previousLeftStick)
@@ -1442,11 +1509,65 @@ class ViewController: NSViewController, NSTabViewDelegate {
     }
 
     private func handleRightStick(x: Float, y: Float) {
-        inputController.setScrollDelta(x: x, y: y)
+        let profile = profileManager.activeProfile
+        handleStickInput(x: x, y: y, function: profile.rightStickFunction)
 
         // Log drift data for right stick
         logStickDrift(x: x, y: y, stickName: "RightStick", previous: previousRightStick)
         previousRightStick = (x, y)
+    }
+
+    private func handleStickInput(x: Float, y: Float, function: ButtonProfile.StickFunction) {
+        switch function {
+        case .mouse:
+            inputController.setMouseDelta(x: x, y: y)
+        case .scroll:
+            inputController.setScrollDelta(x: x, y: y)
+        case .arrowKeys:
+            handleStickAsArrowKeys(x: x, y: y)
+        case .wasd:
+            handleStickAsWASD(x: x, y: y)
+        case .disabled:
+            break
+        }
+    }
+
+    private func handleStickAsArrowKeys(x: Float, y: Float) {
+        let threshold: Float = 0.5
+        if abs(x) > threshold || abs(y) > threshold {
+            if abs(x) > abs(y) {
+                if x > threshold {
+                    inputController.pressArrowRight()
+                } else if x < -threshold {
+                    inputController.pressArrowLeft()
+                }
+            } else {
+                if y > threshold {
+                    inputController.pressArrowUp()
+                } else if y < -threshold {
+                    inputController.pressArrowDown()
+                }
+            }
+        }
+    }
+
+    private func handleStickAsWASD(x: Float, y: Float) {
+        let threshold: Float = 0.5
+        if abs(x) > threshold || abs(y) > threshold {
+            if abs(x) > abs(y) {
+                if x > threshold {
+                    inputController.pressKey(CGKeyCode(kVK_ANSI_D))  // Right
+                } else if x < -threshold {
+                    inputController.pressKey(CGKeyCode(kVK_ANSI_A))  // Left
+                }
+            } else {
+                if y > threshold {
+                    inputController.pressKey(CGKeyCode(kVK_ANSI_W))  // Up
+                } else if y < -threshold {
+                    inputController.pressKey(CGKeyCode(kVK_ANSI_S))  // Down
+                }
+            }
+        }
     }
 
     private func logStickDrift(x: Float, y: Float, stickName: String, previous: (x: Float, y: Float)?) {
