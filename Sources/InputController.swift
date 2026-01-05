@@ -108,8 +108,13 @@ class InputController {
 
         guard let currentPos = CGEvent(source: nil)?.location else { return }
 
-        let newX = currentPos.x + deltaX
-        let newY = currentPos.y + deltaY
+        // Apply sticky mouse slowdown if enabled
+        let stickyMultiplier = StickyMouseManager.shared.calculateSpeedMultiplier(at: currentPos)
+        let adjustedDeltaX = deltaX * stickyMultiplier
+        let adjustedDeltaY = deltaY * stickyMultiplier
+
+        let newX = currentPos.x + adjustedDeltaX
+        let newY = currentPos.y + adjustedDeltaY
 
         // Clamp to screen bounds
         let screens = NSScreen.screens

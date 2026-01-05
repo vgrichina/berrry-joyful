@@ -42,6 +42,11 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private var leftStickFunctionPopup: NSPopUpButton!
     private var rightStickFunctionPopup: NSPopUpButton!
 
+    // Sticky Mouse Controls
+    private var stickyMouseCheckbox: NSButton!
+    private var stickyStrengthPopup: NSPopUpButton!
+    private var stickyOverlayCheckbox: NSButton!
+
     // Keyboard Controls
     private var keyboardPresetPopup: NSPopUpButton!
 
@@ -388,6 +393,56 @@ class ViewController: NSViewController, NSTabViewDelegate {
         rightStickFunctionPopup.target = self
         rightStickFunctionPopup.action = #selector(rightStickFunctionChanged(_:))
         panel.addSubview(rightStickFunctionPopup)
+        y += 40
+
+        // Sticky Mouse Section
+        let stickyMouseTitle = NSTextField(labelWithString: "Sticky Mouse (Magnetic Cursor)")
+        stickyMouseTitle.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        stickyMouseTitle.frame = NSRect(x: 20, y: y, width: 300, height: 20)
+        stickyMouseTitle.isBezeled = false
+        stickyMouseTitle.isEditable = false
+        stickyMouseTitle.drawsBackground = false
+        panel.addSubview(stickyMouseTitle)
+        y += 25
+
+        // Sticky Mouse Enable Checkbox
+        stickyMouseCheckbox = NSButton(checkboxWithTitle: "Enable Sticky Mouse (slows near buttons/fields)", target: self, action: #selector(stickyMouseToggled(_:)))
+        stickyMouseCheckbox.frame = NSRect(x: 20, y: y, width: 350, height: 20)
+        stickyMouseCheckbox.state = StickyMouseManager.shared.isEnabled ? .on : .off
+        panel.addSubview(stickyMouseCheckbox)
+        y += 25
+
+        // Magnetic Strength Popup
+        let strengthLabel = NSTextField(labelWithString: "Strength:")
+        strengthLabel.frame = NSRect(x: 40, y: y, width: 80, height: 20)
+        strengthLabel.isBezeled = false
+        strengthLabel.isEditable = false
+        strengthLabel.drawsBackground = false
+        panel.addSubview(strengthLabel)
+
+        stickyStrengthPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 2, width: 120, height: 25))
+        stickyStrengthPopup.removeAllItems()
+        stickyStrengthPopup.addItems(withTitles: ["Weak", "Medium", "Strong"])
+        stickyStrengthPopup.selectItem(withTitle: StickyMouseManager.shared.magneticStrength.description)
+        stickyStrengthPopup.target = self
+        stickyStrengthPopup.action = #selector(stickyStrengthChanged(_:))
+        panel.addSubview(stickyStrengthPopup)
+        y += 30
+
+        // Visual Overlay Checkbox
+        stickyOverlayCheckbox = NSButton(checkboxWithTitle: "Show visual overlay (for debugging)", target: self, action: #selector(stickyOverlayToggled(_:)))
+        stickyOverlayCheckbox.frame = NSRect(x: 40, y: y, width: 300, height: 20)
+        stickyOverlayCheckbox.state = StickyMouseManager.shared.showVisualOverlay ? .on : .off
+        panel.addSubview(stickyOverlayCheckbox)
+        y += 30
+
+        // Sticky Mouse Info
+        let stickyInfoLabel = NSTextField(wrappingLabelWithString: "Sticky Mouse slows cursor near buttons and text fields, making them easier to click. Toggle with L button, adjust strength with ZL+X.")
+        stickyInfoLabel.font = NSFont.systemFont(ofSize: 10)
+        stickyInfoLabel.textColor = NSColor.tertiaryLabelColor
+        stickyInfoLabel.alignment = .left
+        stickyInfoLabel.frame = NSRect(x: 40, y: y, width: frame.width - 80, height: 30)
+        panel.addSubview(stickyInfoLabel)
         y += 40
 
         // Debug mode toggle (only in debug builds)
@@ -781,6 +836,31 @@ class ViewController: NSViewController, NSTabViewDelegate {
         profile.rightStickFunction = function
         profileManager.updateProfile(profile)
         log("Right stick function changed to: \(function.rawValue)")
+    }
+
+    @objc private func stickyMouseToggled(_ sender: NSButton) {
+        StickyMouseManager.shared.isEnabled = (sender.state == .on)
+        log("🧲 Sticky Mouse: \(StickyMouseManager.shared.isEnabled ? "ON" : "OFF")")
+    }
+
+    @objc private func stickyStrengthChanged(_ sender: NSPopUpButton) {
+        guard let selectedTitle = sender.titleOfSelectedItem else { return }
+
+        switch selectedTitle {
+        case "Weak":
+            StickyMouseManager.shared.magneticStrength = .weak
+        case "Strong":
+            StickyMouseManager.shared.magneticStrength = .strong
+        default:
+            StickyMouseManager.shared.magneticStrength = .medium
+        }
+
+        log("🧲 Magnetic strength: \(StickyMouseManager.shared.magneticStrength.description)")
+    }
+
+    @objc private func stickyOverlayToggled(_ sender: NSButton) {
+        StickyMouseManager.shared.showVisualOverlay = (sender.state == .on)
+        log("🧲 Visual overlay: \(StickyMouseManager.shared.showVisualOverlay ? "ON" : "OFF")")
     }
 
     #if DEBUG
