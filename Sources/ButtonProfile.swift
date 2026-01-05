@@ -21,7 +21,8 @@ enum ButtonAction: Codable, Equatable {
         case .mouseClick: return "Click"
         case .rightClick: return "Right Click"
         case .pressKey(let code, let shift):
-            return shift ? "Shift+Key(\(code))" : "Key(\(code))"
+            let keyName = CapturedKey.keyCodeToString(UInt16(code))
+            return shift ? "Shift+\(keyName)" : keyName
         case .pressEnter: return "Enter"
         case .pressEscape: return "Escape"
         case .pressTab: return "Tab"
