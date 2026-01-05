@@ -123,6 +123,9 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 contentSplitView.setPosition(splitHeight, ofDividerAt: 0)
                 debugLogContainer.isHidden = true
             }
+
+            // Ensure button state is synchronized with actual visibility
+            syncDebugLogButtonState()
         }
     }
 
@@ -146,6 +149,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         contentSplitView = NSSplitView()
         contentSplitView.isVertical = false  // Horizontal split
         contentSplitView.dividerStyle = .thin
+        contentSplitView.wantsLayer = true  // Enable layer-backing for smooth animation
 
         // Create tab view
         createTabView()
@@ -221,7 +225,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Debug Log button (right side)
         debugLogButton = NSButton(frame: NSRect(x: 640, y: 10, width: 140, height: 30))
-        debugLogButton.title = "▶ Debug Log"  // Start collapsed
+        debugLogButton.title = "▶ Debug Log"  // Initial title (will be synced in viewDidLayout)
         debugLogButton.bezelStyle = .rounded
         debugLogButton.target = self
         debugLogButton.action = #selector(toggleDebugLog(_:))
@@ -654,6 +658,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private func createDebugLogView() {
         // Debug log container
         debugLogContainer = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 200))
+        debugLogContainer.isHidden = true  // Start hidden (matches isDebugLogExpanded = false)
+        debugLogContainer.wantsLayer = true  // Enable layer-backing for smooth animation
 
         scrollView = NSScrollView(frame: debugLogContainer.bounds)
         scrollView.autoresizingMask = [.width, .height]
@@ -954,31 +960,46 @@ class ViewController: NSViewController, NSTabViewDelegate {
         }
     }
 
+    // MARK: - Debug Log Toggle
+
+    /// Synchronizes the debug log button state with the actual visibility
+    private func syncDebugLogButtonState() {
+        debugLogButton.title = isDebugLogExpanded ? "▼ Debug Log" : "▶ Debug Log"
+    }
+
     @objc private func toggleDebugLog(_ sender: NSButton) {
         isDebugLogExpanded = !isDebugLogExpanded
 
         if isDebugLogExpanded {
             // Expand: show debug log at 200px height
             debugLogContainer.isHidden = false
-            debugLogButton.title = "▼ Debug Log"
+            syncDebugLogButtonState()
 
+            let splitHeight = contentSplitView.bounds.height
+            let targetPosition = max(splitHeight - 200, 100)  // Ensure minimum tab view size
+
+            // Use implicit animation - AppKit will animate the layer geometry changes
             NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.2
+                context.duration = 0.25
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 context.allowsImplicitAnimation = true
 
-                let splitHeight = self.contentSplitView.bounds.height
-                let dividerPosition = max(splitHeight - 200, 100)  // Ensure minimum tab view size
-                self.contentSplitView.setPosition(dividerPosition, ofDividerAt: 0)
+                // Call setPosition directly - implicit animation will handle it
+                self.contentSplitView.setPosition(targetPosition, ofDividerAt: 0)
             })
         } else {
             // Collapse: hide debug log
-            debugLogButton.title = "▶ Debug Log"
+            syncDebugLogButtonState()
 
+            let splitHeight = contentSplitView.bounds.height
+
+            // Use implicit animation - AppKit will animate the layer geometry changes
             NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.2
+                context.duration = 0.25
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
                 context.allowsImplicitAnimation = true
 
-                let splitHeight = self.contentSplitView.bounds.height
+                // Call setPosition directly - implicit animation will handle it
                 self.contentSplitView.setPosition(splitHeight, ofDividerAt: 0)
             }, completionHandler: {
                 self.debugLogContainer.isHidden = true

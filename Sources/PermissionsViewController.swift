@@ -29,6 +29,11 @@ class PermissionsViewController: NSViewController {
     private let continueButton = NSButton(title: "Continue", target: nil, action: #selector(continueClicked))
     private let tipLabel = NSTextField(wrappingLabelWithString: "💡 Tip: Click \"Grant\" to open System Settings. Enable berrry-joyful in the Accessibility section, then return here.")
 
+    #if DEBUG
+    // Debug: Skip button to bypass permissions
+    private let debugSkipButton = NSButton(title: "Skip for Now (Debug)", target: nil, action: #selector(debugSkipClicked))
+    #endif
+
     // Completion handler
     var onPermissionsGranted: (() -> Void)?
 
@@ -87,6 +92,14 @@ class PermissionsViewController: NSViewController {
         tipLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tipLabel)
 
+        #if DEBUG
+        // Debug skip button
+        debugSkipButton.bezelStyle = .rounded
+        debugSkipButton.target = self
+        debugSkipButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(debugSkipButton)
+        #endif
+
         // Layout constraints
         NSLayoutConstraint.activate([
             // Title
@@ -125,6 +138,16 @@ class PermissionsViewController: NSViewController {
             tipLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 60),
             tipLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -60),
         ])
+
+        #if DEBUG
+        // Debug skip button constraints
+        NSLayoutConstraint.activate([
+            debugSkipButton.topAnchor.constraint(equalTo: tipLabel.bottomAnchor, constant: 20),
+            debugSkipButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            debugSkipButton.widthAnchor.constraint(equalToConstant: 180),
+            debugSkipButton.heightAnchor.constraint(equalToConstant: 32),
+        ])
+        #endif
     }
 
     private func setupAccessibilityCard() {
@@ -315,4 +338,11 @@ class PermissionsViewController: NSViewController {
         // Accessibility is granted, proceed to main app
         onPermissionsGranted?()
     }
+
+    #if DEBUG
+    @objc private func debugSkipClicked() {
+        // Debug only: Skip permissions and proceed to main app
+        onPermissionsGranted?()
+    }
+    #endif
 }
