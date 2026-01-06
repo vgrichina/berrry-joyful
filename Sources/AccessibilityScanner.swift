@@ -81,17 +81,17 @@ class AccessibilityScanner {
 
     // MARK: - Scanning
 
-    /// Get interactive elements near a point (with caching)
-    func getElementsNear(_ point: CGPoint, radius: CGFloat) -> [InteractiveElement] {
+    /// Get interactive elements near a point with predictive directional scanning
+    func getElementsNear(_ point: CGPoint, radius: CGFloat, velocity: CGVector = .zero) -> [InteractiveElement] {
         // Check cache validity
         if let cached = cache,
            Date().timeIntervalSince(cached.timestamp) < cacheValidityDuration,
-           cached.centerPoint.distance(to: point) < 100 {  // Cache valid if cursor hasn't moved far
+           cached.centerPoint.distance(to: point) < 50 {  // Tighter cache - only valid if very close
             return cached.elements
         }
 
-        // Perform fresh scan
-        let elements = scanElementsNear(point, radius: radius)
+        // Perform fresh directional scan
+        let elements = scanElementsDirectional(at: point, velocity: velocity, radius: radius)
 
         // Update cache
         cache = CachedScan(elements: elements, timestamp: Date(), centerPoint: point)
@@ -106,19 +106,59 @@ class AccessibilityScanner {
 
     // MARK: - Private Scanning Logic
 
-    private func scanElementsNear(_ point: CGPoint, radius: CGFloat) -> [InteractiveElement] {
+    /// Directional predictive scanning - samples points along movement direction
+    private func scanElementsDirectional(at point: CGPoint, velocity: CGVector, radius: CGFloat) -> [InteractiveElement] {
         var results: [InteractiveElement] = []
+        var seenElements = Set<String>()  // Track unique elements by bounds
 
         // Check accessibility permission first
         let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: false] as CFDictionary
         let hasPermission = AXIsProcessTrustedWithOptions(options)
 
         if !hasPermission {
-            NSLog("🔒 No accessibility permission - cannot scan UI elements from other apps")
             return results
         }
 
-        // Get the UI element at the cursor position
+        // Calculate speed and direction
+        let speed = sqrt(velocity.dx * velocity.dx + velocity.dy * velocity.dy)
+
+        // Generate sample points
+        var samplePoints: [CGPoint] = [point]  // Always check current position
+
+        if speed > 2 {
+            // Moving - sample along direction of movement
+            let lookAheadDistance = min(speed * 2.5, 100)  // Look ahead based on speed
+            let steps = 4
+
+            for i in 1...steps {
+                let factor = CGFloat(i) / CGFloat(steps)
+                let samplePoint = CGPoint(
+                    x: point.x + velocity.dx * factor * lookAheadDistance / speed,
+                    y: point.y + velocity.dy * factor * lookAheadDistance / speed
+                )
+                samplePoints.append(samplePoint)
+            }
+        } else {
+            // Stationary or slow - sample in a small cross pattern
+            let offset: CGFloat = 40
+            samplePoints.append(CGPoint(x: point.x + offset, y: point.y))
+            samplePoints.append(CGPoint(x: point.x - offset, y: point.y))
+            samplePoints.append(CGPoint(x: point.x, y: point.y + offset))
+            samplePoints.append(CGPoint(x: point.x, y: point.y - offset))
+        }
+
+        // Query elements at each sample point
+        for samplePoint in samplePoints {
+            if let element = queryElementAtPoint(samplePoint, originalPoint: point, radius: radius, seenElements: &seenElements) {
+                results.append(element)
+            }
+        }
+
+        return results
+    }
+
+    /// Query a single point for an interactive element
+    private func queryElementAtPoint(_ point: CGPoint, originalPoint: CGPoint, radius: CGFloat, seenElements: inout Set<String>) -> InteractiveElement? {
         let systemWideElement = AXUIElementCreateSystemWide()
         var element: AXUIElement?
         let copyResult = ApplicationServices.AXUIElementCopyElementAtPosition(
@@ -129,32 +169,16 @@ class AccessibilityScanner {
         )
 
         guard copyResult == .success, let foundElement = element else {
-            NSLog("🔍 Failed to get element at position (%.0f, %.0f): error code %d", point.x, point.y, copyResult.rawValue)
-            return results
+            return nil
         }
 
-        // Check if this element belongs to our overlay window - if so, skip it
-        // (Allow scanning our main app window to support sticky mouse in our own settings)
+        // Skip our overlay window
         if isOverlayWindow(foundElement) {
-            NSLog("🔍 Skipping - cursor is over our overlay window")
-            return results
+            return nil
         }
 
-        // Get the window containing this element
-        if let window = getWindowElement(from: foundElement) {
-            // Log the app name for debugging
-            if let appName = getAppName(foundElement) {
-                NSLog("🔍 Scanning window from: %@", appName)
-            }
-
-            // Recursively search for interactive elements in this window
-            searchForInteractiveElements(in: window, nearPoint: point, radius: radius, results: &results)
-            NSLog("🔍 Scan complete: found %d interactive elements near (%.0f, %.0f)", results.count, point.x, point.y)
-        } else {
-            NSLog("🔍 Could not find window element at (%.0f, %.0f)", point.x, point.y)
-        }
-
-        return results
+        // Check if this element is interactive
+        return checkIfInteractive(foundElement, nearPoint: originalPoint, radius: radius, seenElements: &seenElements)
     }
 
     /// Check if an accessibility element belongs to our overlay window
@@ -307,53 +331,30 @@ class AccessibilityScanner {
         return nil
     }
 
-    private func searchForInteractiveElements(
-        in element: AXUIElement,
-        nearPoint: CGPoint,
-        radius: CGFloat,
-        results: inout [InteractiveElement],
-        depth: Int = 0
-    ) {
-        // Limit recursion depth to avoid performance issues
-        guard depth < 15 else { return }
-
-        // Check if this element is interactive
-        if let interactiveElem = checkIfInteractive(element, nearPoint: nearPoint, radius: radius) {
-            results.append(interactiveElem)
-        }
-
-        // Recursively check children
-        if let children = getChildren(element) {
-            for child in children {
-                searchForInteractiveElements(
-                    in: child,
-                    nearPoint: nearPoint,
-                    radius: radius,
-                    results: &results,
-                    depth: depth + 1
-                )
-            }
-        }
-    }
 
     private func checkIfInteractive(
         _ element: AXUIElement,
         nearPoint: CGPoint,
-        radius: CGFloat
+        radius: CGFloat,
+        seenElements: inout Set<String>
     ) -> InteractiveElement? {
+        // Get element bounds first (cheapest check)
+        guard let bounds = getBounds(element) else { return nil }
+
+        // Check for duplicate (same bounds already seen)
+        let boundsKey = "\(Int(bounds.origin.x))_\(Int(bounds.origin.y))_\(Int(bounds.width))_\(Int(bounds.height))"
+        guard !seenElements.contains(boundsKey) else { return nil }
+
+        // Check if element is near the point
+        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        guard center.distance(to: nearPoint) <= radius else { return nil }
+
         // Get element role
         guard let role = getRole(element) else { return nil }
 
         // Check if it's an interactive type
         let elementType = mapRoleToElementType(role)
         guard elementType != .unknown else { return nil }
-
-        // Get element bounds
-        guard let bounds = getBounds(element) else { return nil }
-
-        // Check if element is near the point
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
-        guard center.distance(to: nearPoint) <= radius else { return nil }
 
         // Check if element is enabled (skip disabled elements)
         if let enabled = getEnabled(element), !enabled {
@@ -368,6 +369,9 @@ class AccessibilityScanner {
         if !isElementVisibleAtPoint(bounds: bounds, ownerPID: pid, nearPoint: nearPoint) {
             return nil  // Occluded, filter out
         }
+
+        // Mark as seen
+        seenElements.insert(boundsKey)
 
         // Get title/label (optional)
         let title = getTitle(element)

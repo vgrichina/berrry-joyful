@@ -65,6 +65,8 @@ class StickyMouseManager {
     private var overlayWindow: NSWindow?
     private var overlayView: MultiOverlayView?
     private var lastCursorPosition: CGPoint?
+    private var lastCursorTime: Date?
+    private var velocity: CGVector = .zero
     private var timeSinceLastScan: TimeInterval = 0
     private var lastScanTime: Date?
 
@@ -79,8 +81,25 @@ class StickyMouseManager {
     func calculateSpeedMultiplier(at cursorPosition: CGPoint) -> CGFloat {
         guard isEnabled else { return 1.0 }
 
-        // Scan for nearby elements (reduced radius for performance)
-        let elements = scanner.getElementsNear(cursorPosition, radius: 120)
+        // Calculate velocity
+        let now = Date()
+        if let lastPos = lastCursorPosition, let lastTime = lastCursorTime {
+            let dt = now.timeIntervalSince(lastTime)
+            if dt > 0 && dt < 0.1 {  // Only update if reasonable time delta
+                let dx = cursorPosition.x - lastPos.x
+                let dy = cursorPosition.y - lastPos.y
+                // Smooth velocity with exponential moving average
+                velocity = CGVector(
+                    dx: velocity.dx * 0.7 + (dx / dt) * 0.3,
+                    dy: velocity.dy * 0.7 + (dy / dt) * 0.3
+                )
+            }
+        }
+        lastCursorPosition = cursorPosition
+        lastCursorTime = now
+
+        // Scan for nearby elements with directional prediction
+        let elements = scanner.getElementsNear(cursorPosition, radius: 120, velocity: velocity)
 
         // Filter by enabled types
         let filteredElements = elements.filter { enabledElementTypes.contains($0.type) }
