@@ -102,22 +102,69 @@ class AccessibilityScanner {
     private func scanElementsNear(_ point: CGPoint, radius: CGFloat) -> [InteractiveElement] {
         var results: [InteractiveElement] = []
 
-        // Get the UI element at the cursor position (this gives us the window)
-        guard let element = copyElementAtPosition(
-            AXUIElementCreateSystemWide(),
+        // Check accessibility permission first
+        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: false] as CFDictionary
+        let hasPermission = AXIsProcessTrustedWithOptions(options)
+
+        if !hasPermission {
+            NSLog("🔒 No accessibility permission - cannot scan UI elements from other apps")
+            return results
+        }
+
+        // Get the UI element at the cursor position
+        let systemWideElement = AXUIElementCreateSystemWide()
+        var element: AXUIElement?
+        let copyResult = ApplicationServices.AXUIElementCopyElementAtPosition(
+            systemWideElement,
             Float(point.x),
-            Float(point.y)
-        ) else {
+            Float(point.y),
+            &element
+        )
+
+        guard copyResult == .success, let foundElement = element else {
+            NSLog("🔍 Failed to get element at position (%.0f, %.0f): error code %d", point.x, point.y, copyResult.rawValue)
+            return results
+        }
+
+        // Check if this element belongs to our own app - if so, skip it
+        if isOurOwnApp(foundElement) {
+            NSLog("🔍 Skipping - cursor is over our own app window")
             return results
         }
 
         // Get the window containing this element
-        if let window = getWindowElement(from: element) {
+        if let window = getWindowElement(from: foundElement) {
+            // Log the app name for debugging
+            if let appName = getAppName(foundElement) {
+                NSLog("🔍 Scanning window from: %@", appName)
+            }
+
             // Recursively search for interactive elements in this window
             searchForInteractiveElements(in: window, nearPoint: point, radius: radius, results: &results)
+            NSLog("🔍 Scan complete: found %d interactive elements near (%.0f, %.0f)", results.count, point.x, point.y)
+        } else {
+            NSLog("🔍 Could not find window element at (%.0f, %.0f)", point.x, point.y)
         }
 
         return results
+    }
+
+    /// Check if an accessibility element belongs to our own app
+    private func isOurOwnApp(_ element: AXUIElement) -> Bool {
+        var pid: pid_t = 0
+        let result = AXUIElementGetPid(element, &pid)
+        guard result == .success else { return false }
+
+        return pid == ProcessInfo.processInfo.processIdentifier
+    }
+
+    /// Get the app name for an accessibility element (for logging)
+    private func getAppName(_ element: AXUIElement) -> String? {
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(element, &pid) == .success else { return nil }
+
+        let app = NSRunningApplication(processIdentifier: pid)
+        return app?.localizedName
     }
 
     private func getWindowElement(from element: AXUIElement) -> AXUIElement? {

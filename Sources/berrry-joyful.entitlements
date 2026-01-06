@@ -2,10 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- App Sandbox (required for App Store) -->
+	<!-- App Sandbox DISABLED - Required for Accessibility API to access other apps -->
+	<!-- This app cannot be distributed via Mac App Store due to system-wide control requirements -->
 	<key>com.apple.security.app-sandbox</key>
-	<true/>
-	<!-- Device access entitlements (allowed in sandbox) -->
+	<false/>
+	<!-- Device access entitlements -->
 	<key>com.apple.security.device.usb</key>
 	<true/>
 	<key>com.apple.security.device.bluetooth</key>
