@@ -18,9 +18,12 @@ targets:
     deploymentTarget: "14.0"
     sources:
       - Sources
+    resources:
+      - Sources/berrry-joyful.icns
     info:
       path: Sources/Info.plist
       properties:
+        CFBundleDisplayName: "Berrry Joyful"
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         LSMinimumSystemVersion: "14.0"
@@ -29,10 +32,11 @@ targets:
         NSHumanReadableCopyright: "Copyright © 2025 Berrry Computer"
         NSSpeechRecognitionUsageDescription: "This app uses speech recognition to enable voice commands and voice-based text input for controlling your Mac with Joy-Con controllers."
         NSMicrophoneUsageDescription: "This app needs microphone access to listen for voice commands when using Joy-Con controllers."
+        CFBundleIconFile: berrry-joyful.icns
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.berrry.joyful
-        PRODUCT_NAME: berrry-joyful
+        PRODUCT_NAME: "Berrry Joyful"
         INFOPLIST_KEY_NSMainStoryboardFile: ""
         INFOPLIST_KEY_NSPrincipalClass: NSApplication
         # Enable USB/HID access

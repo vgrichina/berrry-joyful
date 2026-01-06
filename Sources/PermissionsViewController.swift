@@ -6,9 +6,9 @@ class PermissionsViewController: NSViewController {
 
     // MARK: - UI Elements
 
-    private let titleLabel = NSTextField(labelWithString: "🎮 berrry-joyful")
+    private let titleLabel = NSTextField(labelWithString: "🎮 Berrry Joyful")
     private let subtitleLabel = NSTextField(labelWithString: "Welcome to Joy-Con Mac Control")
-    private let descriptionLabel = NSTextField(wrappingLabelWithString: "To use berrry-joyful, we need a few permissions:")
+    private let descriptionLabel = NSTextField(wrappingLabelWithString: "To use Berrry Joyful, we need a few permissions:")
 
     // Accessibility Permission Card
     private let accessibilityCard = NSView()
@@ -27,7 +27,7 @@ class PermissionsViewController: NSViewController {
 
     // Continue Button
     private let continueButton = NSButton(title: "Continue", target: nil, action: #selector(continueClicked))
-    private let tipLabel = NSTextField(wrappingLabelWithString: "💡 Tip: Click \"Grant\" to open System Settings. Enable berrry-joyful in the Accessibility section, then return here.")
+    private let tipLabel = NSTextField(wrappingLabelWithString: "💡 Tip: Click \"Grant\" to open System Settings. Enable Berrry Joyful in the Accessibility section, then return here.")
 
     #if DEBUG
     // Debug: Skip button to bypass permissions

@@ -12,9 +12,13 @@ xcuserdata/
 
 # Build outputs
 build/
+dist/
 *.app
 *.dSYM.zip
 *.dSYM
+
+# Generated assets
+Sources/*.icns
 
 # Logs
 *.log

@@ -63,12 +63,9 @@ sips -z 512 512   icon_1024.png --out AppIcon.iconset/icon_256x256@2x.png
 sips -z 512 512   icon_1024.png --out AppIcon.iconset/icon_512x512.png
 sips -z 1024 1024 icon_1024.png --out AppIcon.iconset/icon_512x512@2x.png
 
-# Create .icns file
-iconutil -c icns AppIcon.iconset -o berrry-joyful.icns
+# Create .icns file directly in Sources directory
+iconutil -c icns AppIcon.iconset -o ../Sources/berrry-joyful.icns
 
-echo "✓ Icon created: berrry-joyful.icns"
+echo "✓ Icon created: ../Sources/berrry-joyful.icns"
 echo ""
-echo "Next steps:"
-echo "1. Replace icon_1024.png with your custom berry + Joy-Con design"
-echo "2. Re-run this script to regenerate the .icns"
-echo "3. Copy berrry-joyful.icns to your project"
+echo "Icon is ready for build. Run xcodegen and rebuild the app."

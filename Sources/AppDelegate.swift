@@ -26,7 +26,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "berrry-joyful"
+        window.title = "Berrry Joyful"
         window.backgroundColor = NSColor.windowBackgroundColor
 
         // Skip permissions screen in debug mode
@@ -79,11 +79,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenuItem = NSMenuItem()
         mainMenu.addItem(appMenuItem)
         let appMenu = NSMenu()
-        appMenu.addItem(NSMenuItem(title: "About berrry-joyful",
+        appMenu.addItem(NSMenuItem(title: "About Berrry Joyful",
                                    action: #selector(showAbout),
                                    keyEquivalent: ""))
         appMenu.addItem(NSMenuItem.separator())
-        appMenu.addItem(NSMenuItem(title: "Quit berrry-joyful",
+        appMenu.addItem(NSMenuItem(title: "Quit Berrry Joyful",
                                    action: #selector(NSApplication.terminate(_:)),
                                    keyEquivalent: "q"))
         appMenuItem.submenu = appMenu
@@ -122,7 +122,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let helpMenuItem = NSMenuItem()
         mainMenu.addItem(helpMenuItem)
         let helpMenu = NSMenu(title: "Help")
-        helpMenu.addItem(NSMenuItem(title: "berrry-joyful Help",
+        helpMenu.addItem(NSMenuItem(title: "Berrry Joyful Help",
                                     action: #selector(showHelp),
                                     keyEquivalent: "?"))
         helpMenu.addItem(NSMenuItem(title: "Controller Setup Guide",
@@ -132,7 +132,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         helpMenu.addItem(NSMenuItem(title: "Report Issue...",
                                     action: #selector(reportIssue),
                                     keyEquivalent: ""))
-        helpMenu.addItem(NSMenuItem(title: "berrry-joyful on GitHub",
+        helpMenu.addItem(NSMenuItem(title: "Berrry Joyful on GitHub",
                                     action: #selector(openGitHub),
                                     keyEquivalent: ""))
         helpMenuItem.submenu = helpMenu
@@ -142,7 +142,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showAbout() {
         let alert = NSAlert()
-        alert.messageText = "🎮 berrry-joyful"
+        alert.messageText = "🎮 Berrry Joyful"
 
         // Get version from bundle
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -164,6 +164,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "View on GitHub")
+
+        // Use an invisible accessory view to force the alert to be 30% wider
+        let spacer = NSView(frame: NSRect(x: 0, y: 0, width: 420, height: 1))
+        alert.accessoryView = spacer
 
         let response = alert.runModal()
         if response == .alertSecondButtonReturn {
