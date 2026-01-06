@@ -7,7 +7,7 @@ set -e
 # Configuration
 XCODE_SCHEME="berrry-joyful"
 APP_NAME="Berrry Joyful"
-VERSION="1.0"
+VERSION="0.5"
 BUNDLE_ID="app.berrry.joyful"
 DEVELOPER_ID="Developer ID Application: Vladimir Grichina (9532C74ZP2)"
 NOTARY_PROFILE="notarytool"  # Set up with: xcrun notarytool store-credentials
@@ -130,7 +130,7 @@ function create_dmg() {
     # Create DMG
     DMG_PATH="${DIST_DIR}/${DMG_NAME}"
     hdiutil create \
-        -volname "${DISPLAY_NAME}" \
+        -volname "${APP_NAME}" \
         -srcfolder "${DMG_STAGING}" \
         -ov \
         -format UDZO \
@@ -207,7 +207,7 @@ function main() {
 
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "  ${DISPLAY_NAME} Release Builder"
+    echo "  ${APP_NAME} Release Builder"
     echo "  Version ${VERSION}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""

@@ -24,7 +24,7 @@ targets:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: "Berrry Joyful"
-        CFBundleShortVersionString: "1.0"
+        CFBundleShortVersionString: "0.5"
         CFBundleVersion: "1"
         LSMinimumSystemVersion: "14.0"
         NSPrincipalClass: NSApplication
