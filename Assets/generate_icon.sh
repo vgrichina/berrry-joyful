@@ -34,19 +34,18 @@ if [ ! -f "icon_placeholder.svg" ]; then
 EOF
 fi
 
-# Convert SVG to PNG
+# Convert SVG to PNG with transparency
 echo "Converting SVG to PNG..."
-if command -v qlmanage &> /dev/null; then
-    # Use Quick Look to convert (macOS built-in)
-    qlmanage -t -s 1024 -o . icon_placeholder.svg 2>/dev/null
-    mv icon_placeholder.svg.png icon_1024.png 2>/dev/null || {
-        echo "Quick Look conversion failed"
-        exit 1
-    }
-else
-    echo "Error: qlmanage not found. Cannot convert SVG."
+if ! command -v rsvg-convert &> /dev/null; then
+    echo "Error: rsvg-convert not found."
+    echo "Install librsvg with: brew install librsvg"
     exit 1
 fi
+
+rsvg-convert -w 1024 -h 1024 --background-color=transparent icon_placeholder.svg -o icon_1024.png || {
+    echo "Error: rsvg-convert failed"
+    exit 1
+}
 
 # Create iconset directory
 mkdir -p AppIcon.iconset
