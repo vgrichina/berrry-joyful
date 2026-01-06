@@ -1,8 +1,18 @@
-# berrry-joyful
+# Berrry Joyful
 
 Control your Mac with Nintendo Joy-Con controllers. Optimized for Claude Code and terminal workflows.
 
 **By Berrry Computer**
+
+## Download & Installation
+
+**For End Users**: Download the latest release from [Releases](https://github.com/berrry-computer/berrry-joyful/releases)
+
+1. Download `Berrry-Joyful-v1.0.dmg`
+2. Open the DMG and drag the app to Applications
+3. Right-click the app and select "Open" (first time only)
+4. Grant Accessibility permission when prompted
+5. Pair your Joy-Con via Bluetooth and start controlling your Mac!
 
 ## Features
 
@@ -111,7 +121,9 @@ Needed to control mouse and keyboard. Click **GRANT** to open System Settings, e
 ### Optional: Speech Recognition
 Needed for voice input (ZL+ZR). You can skip this and enable it later if desired.
 
-## Building
+## Building from Source
+
+**For Developers**:
 
 ```bash
 # Install dependencies
@@ -132,6 +144,10 @@ open berrry-joyful.xcworkspace
 - Always use `berrry-joyful.xcworkspace`, not `.xcodeproj`
 - `pod install` automatically patches JoyConSwift pointer alignment bug
 - Run `xcodegen` only when adding/removing source files
+
+### Building for Distribution
+
+See [DISTRIBUTION.md](DISTRIBUTION.md) for complete release build instructions including code signing, notarization, and DMG creation.
 
 ## Project Structure
 

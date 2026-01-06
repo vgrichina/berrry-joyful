@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background gradient for rounded square -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFE5E5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFB3B3;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Strawberry gradient -->
+    <radialGradient id="strawberryGrad" cx="50%" cy="45%" r="45%">
+      <stop offset="0%" style="stop-color:#FF4757;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C0392B;stop-opacity:1" />
+    </radialGradient>
+
+    <!-- Leaf gradient -->
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background (macOS style) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="180" fill="url(#bgGrad)"/>
+
+  <!-- Strawberry body (larger, rounded at bottom, tapered at top) -->
+  <ellipse cx="512" cy="550" rx="380" ry="420" fill="url(#strawberryGrad)"/>
+
+  <!-- Highlight for depth on strawberry (below leaves in z-order) -->
+  <ellipse cx="400" cy="350" rx="180" ry="120" fill="white" opacity="0.2"/>
+
+  <!-- Strawberry seeds (yellow dots) -->
+  <ellipse cx="340" cy="400" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="440" cy="430" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="584" cy="420" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="684" cy="400" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+
+  <ellipse cx="360" cy="500" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="460" cy="530" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="564" cy="540" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="664" cy="510" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+
+  <ellipse cx="380" cy="610" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="480" cy="650" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="544" cy="660" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="644" cy="620" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+
+  <ellipse cx="420" cy="730" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="520" cy="780" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="604" cy="740" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+
+  <ellipse cx="470" cy="850" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="554" cy="860" rx="12" ry="14" fill="#FFF9C4" opacity="0.9"/>
+
+  <!-- Strawberry leaves (top) - arranged in a cluster -->
+  <path d="M 430 180 Q 390 160 370 200 Q 350 240 390 260 Q 430 280 470 260 Q 510 240 502 200 Z" fill="url(#leafGrad)"/>
+  <path d="M 502 200 Q 514 240 554 260 Q 594 280 634 260 Q 674 240 654 200 Q 634 160 594 180 Z" fill="url(#leafGrad)"/>
+  <path d="M 470 260 Q 490 300 512 320 Q 534 300 554 260 Q 534 240 512 230 Q 490 240 470 260 Z" fill="url(#leafGrad)"/>
+
+  <!-- Joy-Con L (blue, left side) - bigger -->
+  <rect x="120" y="380" width="130" height="380" rx="35" fill="#00D9FF" opacity="0.85"/>
+  <rect x="130" y="390" width="110" height="360" rx="30" fill="#0A9EDC" opacity="0.9"/>
+  <!-- D-pad representation -->
+  <circle cx="185" cy="500" r="22" fill="#2C3E50" opacity="0.6"/>
+  <rect x="174" y="480" width="22" height="40" fill="#34495E" opacity="0.6"/>
+  <rect x="163" y="489" width="44" height="22" fill="#34495E" opacity="0.6"/>
+
+  <!-- Joy-Con R (red, right side) - bigger -->
+  <rect x="774" y="380" width="130" height="380" rx="35" fill="#FF6B6B" opacity="0.85"/>
+  <rect x="784" y="390" width="110" height="360" rx="30" fill="#FF3E3E" opacity="0.9"/>
+  <!-- Buttons representation (ABXY) -->
+  <circle cx="839" cy="500" r="20" fill="#2C3E50" opacity="0.6"/>
+  <circle cx="809" cy="530" r="20" fill="#2C3E50" opacity="0.6"/>
+  <circle cx="869" cy="530" r="20" fill="#2C3E50" opacity="0.6"/>
+  <circle cx="839" cy="560" r="20" fill="#2C3E50" opacity="0.6"/>
+</svg>
