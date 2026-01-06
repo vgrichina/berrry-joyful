@@ -1439,6 +1439,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 self.isMinusHeld = true
                 self.executeButtonAction(self.profileManager.activeProfile.buttonMinus, buttonName: "Minus")
             case .Plus:
+                #if DEBUG
                 // Check if drift logging is active - if so, start marking drift while held
                 if DriftLogger.shared.loggingEnabled {
                     self.isPlusHeldForDriftMarking = true
@@ -1446,6 +1447,9 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 } else {
                     self.executeButtonAction(self.profileManager.activeProfile.buttonPlus, buttonName: "Plus")
                 }
+                #else
+                self.executeButtonAction(self.profileManager.activeProfile.buttonPlus, buttonName: "Plus")
+                #endif
             default:
                 break
             }
@@ -1653,8 +1657,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let profile = profileManager.activeProfile
         handleStickInput(x: x, y: y, function: profile.leftStickFunction, stick: .left)
 
+        #if DEBUG
         // Log drift data for left stick
         logStickDrift(x: x, y: y, stickName: "LeftStick", previous: previousLeftStick)
+        #endif
         previousLeftStick = (x, y)
     }
 
@@ -1662,8 +1668,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let profile = profileManager.activeProfile
         handleStickInput(x: x, y: y, function: profile.rightStickFunction, stick: .right)
 
+        #if DEBUG
         // Log drift data for right stick
         logStickDrift(x: x, y: y, stickName: "RightStick", previous: previousRightStick)
+        #endif
         previousRightStick = (x, y)
     }
 
@@ -1720,6 +1728,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         }
     }
 
+    #if DEBUG
     private func logStickDrift(x: Float, y: Float, stickName: String, previous: (x: Float, y: Float)?) {
         guard DriftLogger.shared.loggingEnabled else { return }
 
@@ -1760,6 +1769,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         DriftLogger.shared.logSample(sample)
     }
+    #endif
 
     // MARK: - Special Mode Management
 

@@ -97,6 +97,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                     keyEquivalent: "/"))
         viewMenuItem.submenu = viewMenu
 
+        #if DEBUG
         // Debug menu
         let debugMenuItem = NSMenuItem()
         mainMenu.addItem(debugMenuItem)
@@ -115,6 +116,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                      action: #selector(openLogsFolder),
                                      keyEquivalent: ""))
         debugMenuItem.submenu = debugMenu
+        #endif
 
         // Help menu
         let helpMenuItem = NSMenuItem()
@@ -225,6 +227,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Drift Logging Actions
 
+    #if DEBUG
     @objc private func startDriftLogging() {
         DriftLogger.shared.startLogging()
         viewController?.log("📊 Drift logging started")
@@ -307,6 +310,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSWorkspace.shared.open(logsDir)
     }
+    #endif
 
     func setupControllerMonitoring() {
         // Initialize JoyConSwift manager
