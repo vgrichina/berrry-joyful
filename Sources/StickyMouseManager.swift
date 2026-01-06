@@ -79,8 +79,8 @@ class StickyMouseManager {
     func calculateSpeedMultiplier(at cursorPosition: CGPoint) -> CGFloat {
         guard isEnabled else { return 1.0 }
 
-        // Scan for nearby elements
-        let elements = scanner.getElementsNear(cursorPosition, radius: 300)
+        // Scan for nearby elements (reduced radius for performance)
+        let elements = scanner.getElementsNear(cursorPosition, radius: 120)
 
         // Filter by enabled types
         let filteredElements = elements.filter { enabledElementTypes.contains($0.type) }

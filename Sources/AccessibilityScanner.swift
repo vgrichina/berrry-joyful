@@ -33,15 +33,15 @@ class AccessibilityScanner {
         var magneticDistances: (outer: CGFloat, middle: CGFloat, inner: CGFloat) {
             switch self {
             case .textField, .textArea, .searchField, .secureTextField:
-                return (250, 150, 75)  // Text fields get strongest magnetism
+                return (100, 60, 30)  // Text fields get strongest magnetism
             case .button, .popupButton:
-                return (200, 100, 50)  // Standard magnetism
+                return (80, 50, 25)   // Standard magnetism
             case .slider:
-                return (220, 110, 55)  // Slightly stronger for sliders
+                return (90, 55, 30)   // Slightly stronger for sliders
             case .link, .menuItem:
-                return (150, 75, 40)   // Lighter for inline elements
+                return (60, 35, 20)   // Lighter for inline elements
             default:
-                return (180, 90, 45)   // Default medium
+                return (80, 50, 25)   // Default medium
             }
         }
 
@@ -76,8 +76,8 @@ class AccessibilityScanner {
     private var cache: CachedScan?
     private var windowListCache: CachedWindowList?
     private let cacheValidityDuration: TimeInterval = 0.15  // 150ms cache
-    private let windowListCacheDuration: TimeInterval = 0.1  // 100ms cache for window list
-    private let maxScanRadius: CGFloat = 300  // Only scan 300px around cursor
+    private let windowListCacheDuration: TimeInterval = 0.25  // 250ms cache for window list (performance)
+    private let maxScanRadius: CGFloat = 120  // Scan 120px around cursor (max magnetic range + margin)
 
     // MARK: - Scanning
 
@@ -224,6 +224,14 @@ class AccessibilityScanner {
         ownerPID: pid_t,
         nearPoint: CGPoint
     ) -> Bool {
+        // Performance: Skip expensive occlusion check for distant elements
+        // Elements beyond max magnetic range (100px) don't affect cursor anyway
+        let elementCenter = CGPoint(x: bounds.midX, y: bounds.midY)
+        let distance = elementCenter.distance(to: nearPoint)
+        if distance > 100 {
+            return true  // Too far to have magnetic effect, assume visible
+        }
+
         // Get all windows in Z-order (front to back)
         guard let windows = getCachedWindowList() else {
             // Can't check - assume visible (fail open)
@@ -265,9 +273,7 @@ class AccessibilityScanner {
 
                         // Check if window overlaps our element
                         if windowBounds.intersects(bounds) {
-                            // This window occludes our element
-                            NSLog("🔍 Element at (%.0f, %.0f) occluded by window from PID %d",
-                                  bounds.midX, bounds.midY, windowPID)
+                            // This window occludes our element (removed verbose logging for performance)
                             return false
                         }
                     }
