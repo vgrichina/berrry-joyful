@@ -68,8 +68,15 @@ class AccessibilityScanner {
         let centerPoint: CGPoint
     }
 
+    private struct CachedWindowList {
+        let windows: [[String: Any]]
+        let timestamp: Date
+    }
+
     private var cache: CachedScan?
+    private var windowListCache: CachedWindowList?
     private let cacheValidityDuration: TimeInterval = 0.15  // 150ms cache
+    private let windowListCacheDuration: TimeInterval = 0.1  // 100ms cache for window list
     private let maxScanRadius: CGFloat = 300  // Only scan 300px around cursor
 
     // MARK: - Scanning
@@ -126,9 +133,10 @@ class AccessibilityScanner {
             return results
         }
 
-        // Check if this element belongs to our own app - if so, skip it
-        if isOurOwnApp(foundElement) {
-            NSLog("🔍 Skipping - cursor is over our own app window")
+        // Check if this element belongs to our overlay window - if so, skip it
+        // (Allow scanning our main app window to support sticky mouse in our own settings)
+        if isOverlayWindow(foundElement) {
+            NSLog("🔍 Skipping - cursor is over our overlay window")
             return results
         }
 
@@ -149,13 +157,35 @@ class AccessibilityScanner {
         return results
     }
 
-    /// Check if an accessibility element belongs to our own app
-    private func isOurOwnApp(_ element: AXUIElement) -> Bool {
+    /// Check if an accessibility element belongs to our overlay window
+    /// (We allow sticky mouse to work in our main app window, just not the overlay)
+    private func isOverlayWindow(_ element: AXUIElement) -> Bool {
         var pid: pid_t = 0
         let result = AXUIElementGetPid(element, &pid)
         guard result == .success else { return false }
 
-        return pid == ProcessInfo.processInfo.processIdentifier
+        // Not our app at all? Allow it
+        if pid != ProcessInfo.processInfo.processIdentifier {
+            return false
+        }
+
+        // It's our app - check if it's specifically the overlay window
+        // Try to get window title or role description
+        if let window = getWindowElement(from: element) {
+            // StatusOverlay windows have specific title pattern or could be identified by level
+            // For now, we'll use a heuristic: if it's a floating window from our app, it's likely the overlay
+            // A more robust solution would involve checking window title
+
+            // Simple approach: check if window has title "Status" or "Help" (our overlays)
+            if let title = getTitle(window) {
+                if title.contains("Status") || title.contains("Help") || title.isEmpty {
+                    return true  // This is our overlay
+                }
+            }
+        }
+
+        // If we can't determine, assume it's NOT the overlay (main window)
+        return false
     }
 
     /// Get the app name for an accessibility element (for logging)
@@ -165,6 +195,88 @@ class AccessibilityScanner {
 
         let app = NSRunningApplication(processIdentifier: pid)
         return app?.localizedName
+    }
+
+    /// Get cached window list (for performance)
+    private func getCachedWindowList() -> [[String: Any]]? {
+        // Check if cache is still valid
+        if let cached = windowListCache,
+           Date().timeIntervalSince(cached.timestamp) < windowListCacheDuration {
+            return cached.windows
+        }
+
+        // Refresh cache
+        guard let windows = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements],
+            kCGNullWindowID
+        ) as? [[String: Any]] else {
+            return nil
+        }
+
+        // Update cache
+        windowListCache = CachedWindowList(windows: windows, timestamp: Date())
+        return windows
+    }
+
+    /// Check if an element is visible (not occluded by other windows)
+    private func isElementVisibleAtPoint(
+        bounds: CGRect,
+        ownerPID: pid_t,
+        nearPoint: CGPoint
+    ) -> Bool {
+        // Get all windows in Z-order (front to back)
+        guard let windows = getCachedWindowList() else {
+            // Can't check - assume visible (fail open)
+            return true
+        }
+
+        var foundOurWindow = false
+        let ourAppPID = ProcessInfo.processInfo.processIdentifier
+
+        for windowInfo in windows {
+            guard let windowPID = windowInfo[kCGWindowOwnerPID as String] as? pid_t else {
+                continue
+            }
+
+            // Skip our own overlay windows
+            if windowPID == ourAppPID {
+                // Check if this is our overlay window by checking window level
+                if let windowLevel = windowInfo[kCGWindowLayer as String] as? Int,
+                   windowLevel > 0 {  // Overlay windows are at floating level (> 0)
+                    continue  // Skip overlay, keep checking for occlusion
+                }
+            }
+
+            // Found the window containing our element
+            if windowPID == ownerPID {
+                foundOurWindow = true
+                continue  // Don't check our own window for occlusion
+            }
+
+            // If we haven't found our window yet, this window is in front of ours
+            if !foundOurWindow {
+                // Check if this front window overlaps our element bounds
+                if let boundsDict = windowInfo[kCGWindowBounds as String] as? [String: Any] {
+                    if let x = boundsDict["X"] as? CGFloat,
+                       let y = boundsDict["Y"] as? CGFloat,
+                       let w = boundsDict["Width"] as? CGFloat,
+                       let h = boundsDict["Height"] as? CGFloat {
+                        let windowBounds = CGRect(x: x, y: y, width: w, height: h)
+
+                        // Check if window overlaps our element
+                        if windowBounds.intersects(bounds) {
+                            // This window occludes our element
+                            NSLog("🔍 Element at (%.0f, %.0f) occluded by window from PID %d",
+                                  bounds.midX, bounds.midY, windowPID)
+                            return false
+                        }
+                    }
+                }
+            }
+        }
+
+        // Not occluded
+        return true
     }
 
     private func getWindowElement(from element: AXUIElement) -> AXUIElement? {
@@ -240,6 +352,15 @@ class AccessibilityScanner {
         // Check if element is enabled (skip disabled elements)
         if let enabled = getEnabled(element), !enabled {
             return nil
+        }
+
+        // Get element owner PID
+        var pid: pid_t = 0
+        guard AXUIElementGetPid(element, &pid) == .success else { return nil }
+
+        // Check if element is visible (not occluded by other windows)
+        if !isElementVisibleAtPoint(bounds: bounds, ownerPID: pid, nearPoint: nearPoint) {
+            return nil  // Occluded, filter out
         }
 
         // Get title/label (optional)
