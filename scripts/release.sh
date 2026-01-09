@@ -101,9 +101,18 @@ function sign_app() {
         done
     fi
 
-    # Sign the main app
+    # Sign the main app with entitlements
     log_info "Signing main app bundle..."
-    codesign --force --deep --sign "${DEVELOPER_ID}" --timestamp --options runtime "${APP_PATH}"
+    ENTITLEMENTS_FILE="${PROJECT_ROOT}/Sources/berrry-joyful.entitlements"
+
+    if [ ! -f "${ENTITLEMENTS_FILE}" ]; then
+        log_error "Entitlements file not found: ${ENTITLEMENTS_FILE}"
+        exit 1
+    fi
+
+    codesign --force --deep --sign "${DEVELOPER_ID}" \
+        --entitlements "${ENTITLEMENTS_FILE}" \
+        --timestamp --options runtime "${APP_PATH}"
 
     # Verify signature
     log_info "Verifying signature..."
