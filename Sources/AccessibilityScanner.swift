@@ -342,7 +342,12 @@ class AccessibilityScanner {
         guard let bounds = getBounds(element) else { return nil }
 
         // Check for duplicate (same bounds already seen)
-        let boundsKey = "\(Int(bounds.origin.x))_\(Int(bounds.origin.y))_\(Int(bounds.width))_\(Int(bounds.height))"
+        // Use rounded values to avoid overflow when converting to Int
+        let boundsKey = String(format: "%.0f_%.0f_%.0f_%.0f",
+                              bounds.origin.x.rounded(),
+                              bounds.origin.y.rounded(),
+                              bounds.width.rounded(),
+                              bounds.height.rounded())
         guard !seenElements.contains(boundsKey) else { return nil }
 
         // Check if element is near the point
