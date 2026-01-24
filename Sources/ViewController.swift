@@ -392,8 +392,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         y += 30
 
         // Checkboxes
-        invertYCheckbox = NSButton(checkboxWithTitle: "Invert Y-Axis", target: self, action: #selector(invertYChanged(_:)))
-        invertYCheckbox.frame = NSRect(x: 20, y: y, width: 150, height: 20)
+        invertYCheckbox = NSButton(checkboxWithTitle: "Invert Y-Axis (Scroll)", target: self, action: #selector(invertYChanged(_:)))
+        invertYCheckbox.frame = NSRect(x: 20, y: y, width: 200, height: 20)
         invertYCheckbox.state = settings.invertY ? .on : .off
         panel.addSubview(invertYCheckbox)
 

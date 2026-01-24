@@ -346,6 +346,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.viewController.log("❌ Joy-Con Disconnected: \(controllerType)")
 
             self.viewController.joyConDisconnected(controller)
+
+            // Schedule reconnection attempt after a short delay
+            // This helps detect when Joy-Cons wake from sleep
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                self?.attemptReconnection()
+            }
         }
 
         // Start async monitoring
@@ -404,6 +410,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             viewController.log("   1. Try pressing buttons on the missing Joy-Con")
             viewController.log("   2. Restart the app (Cmd+Q then relaunch)")
             viewController.log("   3. Disconnect/reconnect the missing Joy-Con in Bluetooth settings")
+        }
+    }
+
+    private func attemptReconnection() {
+        viewController.log("🔄 Attempting to detect reconnected controllers...")
+
+        // Don't restart the manager - JoyConSwift should automatically detect reconnections
+        // Restarting creates multiple concurrent run loops which causes IOHIDManager crashes
+
+        // Just log the status check
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.checkJoyConStatus()
         }
     }
 

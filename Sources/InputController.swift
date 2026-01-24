@@ -86,9 +86,12 @@ class InputController {
         let adjustedX = abs(x) > deadzone ? x : 0
         let adjustedY = abs(y) > deadzone ? y : 0
 
+        // Apply invert Y setting to scroll
+        let yMultiplier: CGFloat = settings.invertY ? -1.0 : 1.0
+
         currentScrollDelta = CGPoint(
             x: CGFloat(adjustedX) * settings.scrollSensitivity,
-            y: CGFloat(adjustedY) * settings.scrollSensitivity
+            y: CGFloat(adjustedY) * settings.scrollSensitivity * yMultiplier
         )
     }
 
