@@ -151,9 +151,17 @@ class InputController {
         // Check if cursor is near Dock edge and manually trigger reveal
         DockManager.shared.checkCursorForDockReveal(at: newPosition)
 
-        // Also post the event for proper event handling during drags
+        // Post event for proper event handling in applications
         if isDragging {
             if let moveEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseDragged,
+                                       mouseCursorPosition: newPosition,
+                                       mouseButton: .left) {
+                moveEvent.post(tap: .cghidEventTap)
+            }
+        } else {
+            // Post .mouseMoved event for browsers/apps that rely on the event loop
+            // CGWarpMouseCursorPosition alone doesn't generate events that apps listen for
+            if let moveEvent = CGEvent(mouseEventSource: eventSource, mouseType: .mouseMoved,
                                        mouseCursorPosition: newPosition,
                                        mouseButton: .left) {
                 moveEvent.post(tap: .cghidEventTap)
