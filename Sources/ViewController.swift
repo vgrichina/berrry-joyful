@@ -551,7 +551,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         profileLabel.drawsBackground = false
         panel.addSubview(profileLabel)
 
-        keyboardPresetPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 5, width: 200, height: 25))
+        keyboardPresetPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 5, width: 180, height: 25))
         keyboardPresetPopup.addItems(withTitles: profileManager.getProfileNames())
         if let activeIndex = profileManager.getProfileNames().firstIndex(of: profileManager.activeProfile.name) {
             keyboardPresetPopup.selectItem(at: activeIndex)
@@ -560,8 +560,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         keyboardPresetPopup.action = #selector(profileSelectionChanged(_:))
         panel.addSubview(keyboardPresetPopup)
 
-        // Reset button
-        let resetButton = NSButton(frame: NSRect(x: 340, y: y - 5, width: 70, height: 25))
+        // Reset button (with better spacing)
+        let resetButton = NSButton(frame: NSRect(x: 330, y: y - 5, width: 70, height: 25))
         resetButton.title = "Reset"
         resetButton.bezelStyle = .rounded
         resetButton.target = self
@@ -569,8 +569,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         resetButton.autoresizingMask = [.minXMargin]
         panel.addSubview(resetButton)
 
-        // Clone button
-        let cloneButton = NSButton(frame: NSRect(x: 420, y: y - 5, width: 70, height: 25))
+        // Clone button (adjusted for new spacing)
+        let cloneButton = NSButton(frame: NSRect(x: 410, y: y - 5, width: 70, height: 25))
         cloneButton.title = "Clone"
         cloneButton.bezelStyle = .rounded
         cloneButton.target = self
@@ -599,7 +599,9 @@ class ViewController: NSViewController, NSTabViewDelegate {
         scrollView.autoresizingMask = [.width, .height]  // Resize with window
 
         // Use FlippedView for top-down coordinates (will set final height after adding content)
-        let documentView = FlippedView(frame: NSRect(x: 0, y: 0, width: scrollViewWidth - 20, height: 500))
+        // Subtract scroller width to prevent dark bar on right side
+        let contentWidth = scrollView.contentSize.width
+        let documentView = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 500))
         documentView.wantsLayer = true
         documentView.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         documentView.autoresizingMask = [.width]  // Resize width with scroll view
