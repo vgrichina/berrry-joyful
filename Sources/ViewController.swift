@@ -251,9 +251,11 @@ class ViewController: NSViewController, NSTabViewDelegate {
     /// Creates a visual section box with title and content
     private func createSectionBox(title: String, content: NSView, yPosition: inout CGFloat, panelWidth: CGFloat) -> NSView {
         let container = NSView(frame: NSRect(x: DesignSystem.Spacing.lg, y: yPosition, width: panelWidth - (DesignSystem.Spacing.lg * 2), height: content.bounds.height + 60))
+        container.autoresizingMask = [.width]  // Allow horizontal resizing
 
         // Section box with rounded corners and border
         let box = NSBox(frame: container.bounds)
+        box.autoresizingMask = [.width, .height]  // Resize with container
         box.boxType = .custom
         box.isTransparent = false
         box.borderWidth = 1
@@ -275,9 +277,11 @@ class ViewController: NSViewController, NSTabViewDelegate {
         titleLabel.font = DesignSystem.Typography.headlineMedium
         titleLabel.textColor = DesignSystem.Colors.text
         titleLabel.frame = NSRect(x: DesignSystem.Spacing.md, y: content.bounds.height + 30, width: container.bounds.width - (DesignSystem.Spacing.md * 2), height: 20)
+        titleLabel.autoresizingMask = [.width]  // Resize with container
 
         // Position content below title
         content.frame.origin = NSPoint(x: DesignSystem.Spacing.md, y: DesignSystem.Spacing.md)
+        content.autoresizingMask = [.width]  // Resize with container
 
         box.addSubview(titleLabel)
         box.addSubview(content)
@@ -339,6 +343,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         movementContent.addSubview(sensitivityTitleLabel)
 
         sensitivitySlider = NSSlider(frame: NSRect(x: 110, y: movementY, width: 250, height: 20))
+        sensitivitySlider.autoresizingMask = [.width]  // Grow with window
         sensitivitySlider.minValue = 0.5
         sensitivitySlider.maxValue = 20.0
         sensitivitySlider.doubleValue = Double(settings.mouseSensitivity)
@@ -351,6 +356,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         sensitivityLabel = NSTextField(labelWithString: String(format: "%.1fx", settings.mouseSensitivity))
         sensitivityLabel.font = DesignSystem.Typography.bodyMedium
         sensitivityLabel.frame = NSRect(x: 370, y: movementY, width: 60, height: 20)
+        sensitivityLabel.autoresizingMask = [.minXMargin]  // Stay anchored to right
         movementContent.addSubview(sensitivityLabel)
         movementY += 30
 
@@ -361,6 +367,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         movementContent.addSubview(scrollSensitivityTitleLabel)
 
         scrollSensitivitySlider = NSSlider(frame: NSRect(x: 110, y: movementY, width: 250, height: 20))
+        scrollSensitivitySlider.autoresizingMask = [.width]  // Grow with window
         scrollSensitivitySlider.minValue = 0.5
         scrollSensitivitySlider.maxValue = 10.0
         scrollSensitivitySlider.doubleValue = Double(settings.scrollSensitivity)
@@ -373,6 +380,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         scrollSensitivityLabel = NSTextField(labelWithString: String(format: "%.1fx", settings.scrollSensitivity))
         scrollSensitivityLabel.font = DesignSystem.Typography.bodyMedium
         scrollSensitivityLabel.frame = NSRect(x: 370, y: movementY, width: 60, height: 20)
+        scrollSensitivityLabel.autoresizingMask = [.minXMargin]  // Stay anchored to right
         movementContent.addSubview(scrollSensitivityLabel)
         movementY += 35
 
@@ -404,6 +412,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         deadzoneContent.addSubview(leftDeadzoneTitleLabel)
 
         leftDeadzoneSlider = NSSlider(frame: NSRect(x: 110, y: deadzoneY, width: 250, height: 20))
+        leftDeadzoneSlider.autoresizingMask = [.width]  // Grow with window
         leftDeadzoneSlider.minValue = 0.0
         leftDeadzoneSlider.maxValue = 0.3
         leftDeadzoneSlider.doubleValue = Double(settings.leftStickDeadzone)
@@ -414,6 +423,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         leftDeadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.leftStickDeadzone * 100))
         leftDeadzoneLabel.font = DesignSystem.Typography.bodyMedium
         leftDeadzoneLabel.frame = NSRect(x: 370, y: deadzoneY, width: 60, height: 20)
+        leftDeadzoneLabel.autoresizingMask = [.minXMargin]  // Stay anchored to right
         deadzoneContent.addSubview(leftDeadzoneLabel)
         deadzoneY += 30
 
@@ -424,6 +434,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         deadzoneContent.addSubview(rightDeadzoneTitleLabel)
 
         rightDeadzoneSlider = NSSlider(frame: NSRect(x: 110, y: deadzoneY, width: 250, height: 20))
+        rightDeadzoneSlider.autoresizingMask = [.width]  // Grow with window
         rightDeadzoneSlider.minValue = 0.0
         rightDeadzoneSlider.maxValue = 0.3
         rightDeadzoneSlider.doubleValue = Double(settings.rightStickDeadzone)
@@ -434,6 +445,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         rightDeadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.rightStickDeadzone * 100))
         rightDeadzoneLabel.font = DesignSystem.Typography.bodyMedium
         rightDeadzoneLabel.frame = NSRect(x: 370, y: deadzoneY, width: 60, height: 20)
+        rightDeadzoneLabel.autoresizingMask = [.minXMargin]  // Stay anchored to right
         deadzoneContent.addSubview(rightDeadzoneLabel)
 
         panel.addSubview(createSectionBox(title: "Deadzone", content: deadzoneContent, yPosition: &y, panelWidth: frame.width))
@@ -449,6 +461,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         stickFunctionContent.addSubview(leftStickLabel)
 
         leftStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickFunctionY - 2, width: 150, height: 25))
+        leftStickFunctionPopup.autoresizingMask = [.maxXMargin]  // Stay anchored to left
         leftStickFunctionPopup.removeAllItems()
         leftStickFunctionPopup.addItems(withTitles: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"])
         leftStickFunctionPopup.selectItem(withTitle: profileManager.activeProfile.leftStickFunction.rawValue)
@@ -464,6 +477,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         stickFunctionContent.addSubview(rightStickLabel)
 
         rightStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickFunctionY - 2, width: 150, height: 25))
+        rightStickFunctionPopup.autoresizingMask = [.maxXMargin]  // Stay anchored to left
         rightStickFunctionPopup.removeAllItems()
         rightStickFunctionPopup.addItems(withTitles: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"])
         rightStickFunctionPopup.selectItem(withTitle: profileManager.activeProfile.rightStickFunction.rawValue)
@@ -481,6 +495,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         stickyMouseCheckbox = NSButton(checkboxWithTitle: "Enable sticky mouse", target: self, action: #selector(stickyMouseToggled(_:)))
         stickyMouseCheckbox.font = DesignSystem.Typography.bodyMedium
         stickyMouseCheckbox.frame = NSRect(x: 0, y: stickyMouseY, width: 300, height: 20)
+        stickyMouseCheckbox.autoresizingMask = [.maxXMargin]  // Stay anchored to left
         stickyMouseCheckbox.state = StickyMouseManager.shared.isEnabled ? .on : .off
         stickyMouseContent.addSubview(stickyMouseCheckbox)
         stickyMouseY += 25
@@ -492,6 +507,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         stickyMouseContent.addSubview(strengthLabel)
 
         stickyStrengthPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickyMouseY - 2, width: 120, height: 25))
+        stickyStrengthPopup.autoresizingMask = [.maxXMargin]  // Stay anchored to left
         stickyStrengthPopup.removeAllItems()
         stickyStrengthPopup.addItems(withTitles: ["Weak", "Medium", "Strong"])
         stickyStrengthPopup.selectItem(withTitle: StickyMouseManager.shared.magneticStrength.description)
@@ -504,6 +520,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         stickyOverlayCheckbox = NSButton(checkboxWithTitle: "Show visual overlay", target: self, action: #selector(stickyOverlayToggled(_:)))
         stickyOverlayCheckbox.font = DesignSystem.Typography.bodyMedium
         stickyOverlayCheckbox.frame = NSRect(x: 0, y: stickyMouseY, width: 300, height: 20)
+        stickyOverlayCheckbox.autoresizingMask = [.maxXMargin]  // Stay anchored to left
         stickyOverlayCheckbox.state = StickyMouseManager.shared.showVisualOverlay ? .on : .off
         stickyMouseContent.addSubview(stickyOverlayCheckbox)
         stickyMouseY += 30
@@ -514,6 +531,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         stickyInfoLabel.textColor = DesignSystem.Colors.tertiaryText
         stickyInfoLabel.alignment = .left
         stickyInfoLabel.frame = NSRect(x: 0, y: stickyMouseY, width: frame.width - 120, height: 30)
+        stickyInfoLabel.autoresizingMask = [.width]  // Grow with window
         stickyMouseContent.addSubview(stickyInfoLabel)
 
         panel.addSubview(createSectionBox(title: "Sticky Mouse", content: stickyMouseContent, yPosition: &y, panelWidth: frame.width))
@@ -524,6 +542,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         debugModeCheckbox = NSButton(checkboxWithTitle: "Debug Mode (skip system input events)", target: self, action: #selector(debugModeChanged(_:)))
         debugModeCheckbox.font = DesignSystem.Typography.bodyMedium
         debugModeCheckbox.frame = NSRect(x: 0, y: 0, width: 350, height: 20)
+        debugModeCheckbox.autoresizingMask = [.maxXMargin]  // Stay anchored to left
         debugModeCheckbox.state = inputController.debugMode ? .on : .off
         debugContent.addSubview(debugModeCheckbox)
 
@@ -531,6 +550,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         debugInfo.font = DesignSystem.Typography.caption
         debugInfo.textColor = DesignSystem.Colors.warning
         debugInfo.frame = NSRect(x: 0, y: 25, width: frame.width - 120, height: 20)
+        debugInfo.autoresizingMask = [.width]  // Grow with window
         debugContent.addSubview(debugInfo)
 
         panel.addSubview(createSectionBox(title: "Debug", content: debugContent, yPosition: &y, panelWidth: frame.width))
@@ -637,6 +657,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             mappingLabel.frame = NSRect(x: 130, y: rowY, width: 250, height: 20)
             mappingLabel.font = DesignSystem.Typography.codeSmall
             mappingLabel.textColor = DesignSystem.Colors.secondaryText
+            mappingLabel.autoresizingMask = [.width]  // Grow with window
             documentView.addSubview(mappingLabel)
 
             // Edit button (positioned on right side)
@@ -742,6 +763,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             let grantButton = NSButton(frame: NSRect(x: 0, y: permissionsY + 25, width: 150, height: 24))
             grantButton.title = "Grant Permissions"
             grantButton.bezelStyle = .rounded
+            grantButton.autoresizingMask = [.maxXMargin]  // Stay anchored to left
             grantButton.target = self
             grantButton.action = #selector(grantVoicePermissionsClicked)
             permissionsContent.addSubview(grantButton)
@@ -760,6 +782,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         settingsContent.addSubview(languageLabel)
 
         voiceLanguagePopup = NSPopUpButton(frame: NSRect(x: 110, y: settingsY - 2, width: 250, height: 24))
+        voiceLanguagePopup.autoresizingMask = [.maxXMargin]  // Stay anchored to left
         voiceLanguagePopup.addItems(withTitles: [
             "English (US)",
             "English (UK)",
@@ -796,6 +819,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         voiceStatusLabel.font = DesignSystem.Typography.bodyMedium
         voiceStatusLabel.textColor = DesignSystem.Colors.secondaryText
         voiceStatusLabel.frame = NSRect(x: 0, y: settingsY, width: 400, height: 20)
+        voiceStatusLabel.autoresizingMask = [.width]  // Grow with window
         settingsContent.addSubview(voiceStatusLabel)
 
         panel.addSubview(createSectionBox(title: "Settings", content: settingsContent, yPosition: &y, panelWidth: frame.width))
@@ -809,6 +833,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         instructionsLabel.font = DesignSystem.Typography.bodySmall
         instructionsLabel.textColor = DesignSystem.Colors.text
         instructionsLabel.frame = NSRect(x: 0, y: howToY, width: frame.width - 120, height: 75)
+        instructionsLabel.autoresizingMask = [.width]  // Grow with window
         howToContent.addSubview(instructionsLabel)
         howToY += 80
 
@@ -817,6 +842,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         infoLabel.font = DesignSystem.Typography.caption
         infoLabel.textColor = DesignSystem.Colors.tertiaryText
         infoLabel.frame = NSRect(x: 0, y: howToY, width: frame.width - 120, height: 30)
+        infoLabel.autoresizingMask = [.width]  // Grow with window
         howToContent.addSubview(infoLabel)
 
         panel.addSubview(createSectionBox(title: "How to Use", content: howToContent, yPosition: &y, panelWidth: frame.width))
