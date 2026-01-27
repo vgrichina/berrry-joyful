@@ -14,6 +14,12 @@ class InputController {
 
     private let settings = InputSettings.shared
 
+    // Create an HID event source to make events appear as hardware input
+    // This is necessary for system UI elements (Dock, hot corners) to respond
+    private let eventSource: CGEventSource? = {
+        return CGEventSource(stateID: .hidSystemState)
+    }()
+
     // Callback for logging
     var onLog: ((String) -> Void)?
 
@@ -137,11 +143,21 @@ class InputController {
         let clampedX = max(0, min(newX, maxX))
         let clampedY = max(0, min(newY, maxY))
 
-        let eventType: CGEventType = isDragging ? .leftMouseDragged : .mouseMoved
-        if let moveEvent = CGEvent(mouseEventSource: nil, mouseType: eventType,
-                                   mouseCursorPosition: CGPoint(x: clampedX, y: clampedY),
-                                   mouseButton: .left) {
-            moveEvent.post(tap: .cghidEventTap)
+        // Use CGWarpMouseCursorPosition to actually move the cursor
+        // This triggers Dock/hot corners, unlike CGEvent posting
+        let newPosition = CGPoint(x: clampedX, y: clampedY)
+        CGWarpMouseCursorPosition(newPosition)
+
+        // Check if cursor is near Dock edge and manually trigger reveal
+        DockManager.shared.checkCursorForDockReveal(at: newPosition)
+
+        // Also post the event for proper event handling during drags
+        if isDragging {
+            if let moveEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseDragged,
+                                       mouseCursorPosition: newPosition,
+                                       mouseButton: .left) {
+                moveEvent.post(tap: .cghidEventTap)
+            }
         }
     }
 
@@ -166,7 +182,7 @@ class InputController {
 
         if debugMode { return }  // Skip in debug mode
 
-        guard let pos = CGEvent(source: nil)?.location else { return }
+        guard let pos = CGEvent(source: eventSource)?.location else { return }
 
         var flags: CGEventFlags = []
         if modifiers.command { flags.insert(.maskCommand) }
@@ -174,13 +190,13 @@ class InputController {
         if modifiers.shift { flags.insert(.maskShift) }
         if modifiers.control { flags.insert(.maskControl) }
 
-        if let downEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
+        if let downEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseDown,
                                    mouseCursorPosition: pos, mouseButton: .left) {
             downEvent.flags = flags
             downEvent.post(tap: .cghidEventTap)
         }
 
-        if let upEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp,
+        if let upEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseUp,
                                  mouseCursorPosition: pos, mouseButton: .left) {
             upEvent.flags = flags
             upEvent.post(tap: .cghidEventTap)
@@ -192,28 +208,28 @@ class InputController {
 
         if debugMode { return }  // Skip in debug mode
 
-        guard let pos = CGEvent(source: nil)?.location else { return }
+        guard let pos = CGEvent(source: eventSource)?.location else { return }
 
-        if let downEvent = CGEvent(mouseEventSource: nil, mouseType: .rightMouseDown,
+        if let downEvent = CGEvent(mouseEventSource: eventSource, mouseType: .rightMouseDown,
                                    mouseCursorPosition: pos, mouseButton: .right) {
             downEvent.post(tap: .cghidEventTap)
         }
 
-        if let upEvent = CGEvent(mouseEventSource: nil, mouseType: .rightMouseUp,
+        if let upEvent = CGEvent(mouseEventSource: eventSource, mouseType: .rightMouseUp,
                                  mouseCursorPosition: pos, mouseButton: .right) {
             upEvent.post(tap: .cghidEventTap)
         }
     }
 
     func middleClick() {
-        guard let pos = CGEvent(source: nil)?.location else { return }
+        guard let pos = CGEvent(source: eventSource)?.location else { return }
 
-        if let downEvent = CGEvent(mouseEventSource: nil, mouseType: .otherMouseDown,
+        if let downEvent = CGEvent(mouseEventSource: eventSource, mouseType: .otherMouseDown,
                                    mouseCursorPosition: pos, mouseButton: .center) {
             downEvent.post(tap: .cghidEventTap)
         }
 
-        if let upEvent = CGEvent(mouseEventSource: nil, mouseType: .otherMouseUp,
+        if let upEvent = CGEvent(mouseEventSource: eventSource, mouseType: .otherMouseUp,
                                  mouseCursorPosition: pos, mouseButton: .center) {
             upEvent.post(tap: .cghidEventTap)
         }
@@ -222,9 +238,9 @@ class InputController {
     }
 
     func startDrag() {
-        guard let pos = CGEvent(source: nil)?.location else { return }
+        guard let pos = CGEvent(source: eventSource)?.location else { return }
 
-        if let downEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown,
+        if let downEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseDown,
                                    mouseCursorPosition: pos, mouseButton: .left) {
             downEvent.post(tap: .cghidEventTap)
         }
@@ -233,14 +249,59 @@ class InputController {
     }
 
     func endDrag() {
-        guard let pos = CGEvent(source: nil)?.location else { return }
+        guard let pos = CGEvent(source: eventSource)?.location else { return }
 
-        if let upEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp,
+        if let upEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseUp,
                                  mouseCursorPosition: pos, mouseButton: .left) {
             upEvent.post(tap: .cghidEventTap)
         }
         isDragging = false
         onLog?("🖱️ Drag ended")
+    }
+
+    // MARK: - Modifier Key Simulation (for real keyboard behavior)
+
+    /// Currently held modifier flags (updated by pressModifier/releaseModifier)
+    private var heldModifierFlags: CGEventFlags = []
+
+    /// Press a modifier key down (like holding Cmd on a real keyboard)
+    func pressModifier(_ modifier: ModifierAction) {
+        if debugMode { return }
+
+        let (keyCode, flag) = modifierToKeyCodeAndFlag(modifier)
+        guard let keyCode = keyCode, let flag = flag else { return }
+
+        heldModifierFlags.insert(flag)
+
+        if let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) {
+            event.flags = heldModifierFlags
+            event.post(tap: .cghidEventTap)
+        }
+    }
+
+    /// Release a modifier key (like releasing Cmd on a real keyboard)
+    func releaseModifier(_ modifier: ModifierAction) {
+        if debugMode { return }
+
+        let (keyCode, flag) = modifierToKeyCodeAndFlag(modifier)
+        guard let keyCode = keyCode, let flag = flag else { return }
+
+        if let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false) {
+            event.flags = heldModifierFlags
+            event.post(tap: .cghidEventTap)
+        }
+
+        heldModifierFlags.remove(flag)
+    }
+
+    private func modifierToKeyCodeAndFlag(_ modifier: ModifierAction) -> (CGKeyCode?, CGEventFlags?) {
+        switch modifier {
+        case .command: return (CGKeyCode(kVK_Command), .maskCommand)
+        case .shift: return (CGKeyCode(kVK_Shift), .maskShift)
+        case .option: return (CGKeyCode(kVK_Option), .maskAlternate)
+        case .control: return (CGKeyCode(kVK_Control), .maskControl)
+        case .none: return (nil, nil)
+        }
     }
 
     // MARK: - Keyboard Input
@@ -250,7 +311,8 @@ class InputController {
 
         guard let event = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true) else { return }
 
-        var flags: CGEventFlags = []
+        // Combine passed modifiers with any physically held modifiers
+        var flags = heldModifierFlags
         if modifiers.command { flags.insert(.maskCommand) }
         if modifiers.option { flags.insert(.maskAlternate) }
         if modifiers.shift { flags.insert(.maskShift) }

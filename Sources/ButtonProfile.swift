@@ -22,7 +22,7 @@ enum ButtonAction: Codable, Equatable {
         case .rightClick: return "Right Click"
         case .pressKey(let code, let shift):
             let keyName = CapturedKey.keyCodeToString(UInt16(code))
-            return shift ? "Shift+\(keyName)" : keyName
+            return shift ? "⌘⇧\(keyName)" : keyName
         case .pressEnter: return "Enter"
         case .pressEscape: return "Escape"
         case .pressTab: return "Tab"
@@ -84,6 +84,16 @@ struct ButtonProfile: Codable, Equatable {
     // System buttons
     var buttonMinus: ButtonAction
     var buttonPlus: ButtonAction
+    var buttonHome: ButtonAction
+    var buttonCapture: ButtonAction
+
+    // Side buttons (Joy-Con sideways mode)
+    var buttonSL: ButtonAction
+    var buttonSR: ButtonAction
+
+    // Stick clicks
+    var leftStickClick: ButtonAction
+    var rightStickClick: ButtonAction
 
     // Combo actions (when modifiers are held)
     var enableSmartTabbing: Bool  // X button smart tab combinations
@@ -118,11 +128,17 @@ struct ButtonProfile: Codable, Equatable {
             dpadRight: .pressKey(keyCode: kVK_ANSI_4),
             bumperL: .command,
             bumperR: .shift,
-            triggerZL: .pressKey(keyCode: kVK_ANSI_LeftBracket, requiresShift: true),  // Cmd+Shift+[
-            triggerZR: .pressKey(keyCode: kVK_ANSI_RightBracket, requiresShift: true), // Cmd+Shift+]
+            triggerZL: .keyCombo(keyCode: UInt16(kVK_ANSI_LeftBracket), command: true, shift: true, option: false, control: false, description: "⌘⇧[ (Prev Tab)"),
+            triggerZR: .keyCombo(keyCode: UInt16(kVK_ANSI_RightBracket), command: true, shift: true, option: false, control: false, description: "⌘⇧] (Next Tab)"),
             triggerZLZR: .voiceInput,
             buttonMinus: .pressBackspace,
             buttonPlus: .none,
+            buttonHome: .none,
+            buttonCapture: .none,
+            buttonSL: .none,
+            buttonSR: .none,
+            leftStickClick: .mouseClick,
+            rightStickClick: .rightClick,
             enableSmartTabbing: true,
             enableCmdClick: true,
             leftStickFunction: .mouse,
@@ -150,6 +166,12 @@ struct ButtonProfile: Codable, Equatable {
             triggerZLZR: .pressKey(keyCode: kVK_Tab),
             buttonMinus: .pressKey(keyCode: kVK_ANSI_M),  // Map
             buttonPlus: .pressEscape,  // Menu
+            buttonHome: .none,
+            buttonCapture: .none,
+            buttonSL: .none,
+            buttonSR: .none,
+            leftStickClick: .pressKey(keyCode: kVK_ANSI_Q),  // Crouch toggle
+            rightStickClick: .pressKey(keyCode: kVK_ANSI_V),  // Melee
             enableSmartTabbing: false,
             enableCmdClick: false,
             leftStickFunction: .wasd,
@@ -177,6 +199,12 @@ struct ButtonProfile: Codable, Equatable {
             triggerZLZR: .pressKey(keyCode: kVK_Space),
             buttonMinus: .pressKey(keyCode: kVK_Mute),
             buttonPlus: .pressKey(keyCode: kVK_F5),  // Presentation mode
+            buttonHome: .none,
+            buttonCapture: .none,
+            buttonSL: .none,
+            buttonSR: .none,
+            leftStickClick: .none,
+            rightStickClick: .none,
             enableSmartTabbing: false,
             enableCmdClick: false,
             leftStickFunction: .mouse,
@@ -204,6 +232,12 @@ struct ButtonProfile: Codable, Equatable {
             triggerZLZR: .voiceInput,
             buttonMinus: .pressBackspace,
             buttonPlus: .pressEscape,
+            buttonHome: .none,
+            buttonCapture: .none,
+            buttonSL: .none,
+            buttonSR: .none,
+            leftStickClick: .none,
+            rightStickClick: .none,
             enableSmartTabbing: false,
             enableCmdClick: false,
             leftStickFunction: .mouse,

@@ -589,8 +589,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.addSubview(descLabel)
         y += 30
 
-        // Scrollable button mapping editor
-        let scrollViewHeight: CGFloat = 250
+        // Scrollable button mapping editor - fills remaining space
+        let scrollViewHeight: CGFloat = frame.height - y - 20  // 20 = bottom padding
         let scrollViewWidth: CGFloat = frame.width - 40
         let scrollView = NSScrollView(frame: NSRect(x: 20, y: y, width: scrollViewWidth, height: scrollViewHeight))
         scrollView.hasVerticalScroller = true
@@ -675,6 +675,41 @@ class ViewController: NSViewController, NSTabViewDelegate {
         createRow("ZL Trigger", profileManager.activeProfile.triggerZL, 11)
         createRow("ZR Trigger", profileManager.activeProfile.triggerZR, 12)
         createRow("ZL+ZR Combo", profileManager.activeProfile.triggerZLZR, 13)
+        rowY += 10
+
+        // System Buttons section
+        let systemHeader = NSTextField(labelWithString: "▸ System Buttons")
+        systemHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
+        systemHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        documentView.addSubview(systemHeader)
+        rowY += 25
+
+        createRow("Minus", profileManager.activeProfile.buttonMinus, 14)
+        createRow("Plus", profileManager.activeProfile.buttonPlus, 15)
+        createRow("Home", profileManager.activeProfile.buttonHome, 16)
+        createRow("Capture", profileManager.activeProfile.buttonCapture, 17)
+        rowY += 10
+
+        // Stick Clicks section
+        let stickHeader = NSTextField(labelWithString: "▸ Stick Clicks")
+        stickHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
+        stickHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        documentView.addSubview(stickHeader)
+        rowY += 25
+
+        createRow("L-Stick Click", profileManager.activeProfile.leftStickClick, 18)
+        createRow("R-Stick Click", profileManager.activeProfile.rightStickClick, 19)
+        rowY += 10
+
+        // Side Buttons section (Joy-Con sideways mode)
+        let sideHeader = NSTextField(labelWithString: "▸ Side Buttons (SL/SR)")
+        sideHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
+        sideHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        documentView.addSubview(sideHeader)
+        rowY += 25
+
+        createRow("SL", profileManager.activeProfile.buttonSL, 20)
+        createRow("SR", profileManager.activeProfile.buttonSR, 21)
 
         // Set final documentView height based on actual content
         let finalHeight = rowY + 20  // Add padding at bottom
@@ -1041,21 +1076,23 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         log("🎹 Editing \(buttonName)...")
 
-        // Create key capture view
-        let captureView = KeyCaptureView(
+        // Create mapping editor view
+        let editorView = ButtonMappingEditor(
             buttonName: buttonName,
             currentMapping: currentAction.description
         )
 
-        captureView.onKeyCaptured = { [weak self] capturedKey in
-            self?.handleKeyCaptured(capturedKey, forTag: tag, buttonName: buttonName)
+        editorView.onActionSelected = { [weak self] action in
+            self?.updateButtonAction(forTag: tag, newAction: action)
+            self?.log("✅ Updated \(buttonName) → \(action.description)")
+            self?.refreshKeyboardPanel()
             // Close the window
             self?.keyCaptureWindow?.close()
             self?.keyCaptureWindow = nil
         }
 
-        captureView.onCancelled = { [weak self] in
-            self?.log("⌨️ Cancelled key capture")
+        editorView.onCancelled = { [weak self] in
+            self?.log("⌨️ Cancelled editing")
             // Close the window
             self?.keyCaptureWindow?.close()
             self?.keyCaptureWindow = nil
@@ -1063,10 +1100,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Show as a modal window
         keyCaptureWindow = NSWindow(contentViewController: NSViewController())
-        keyCaptureWindow!.contentView = captureView
+        keyCaptureWindow!.contentView = editorView
         keyCaptureWindow!.styleMask = [.titled, .closable]
-        keyCaptureWindow!.setContentSize(NSSize(width: 400, height: 250))
-        keyCaptureWindow!.title = "Capture Key for \(buttonName)"
+        keyCaptureWindow!.setContentSize(NSSize(width: 450, height: 480))
+        keyCaptureWindow!.title = "Edit \(buttonName)"
         keyCaptureWindow!.center()
         keyCaptureWindow!.makeKeyAndOrderFront(nil)
         keyCaptureWindow!.level = .floating
@@ -1089,6 +1126,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
         case 11: return ("ZL Trigger", profile.triggerZL)
         case 12: return ("ZR Trigger", profile.triggerZR)
         case 13: return ("ZL+ZR Combo", profile.triggerZLZR)
+        case 14: return ("Minus", profile.buttonMinus)
+        case 15: return ("Plus", profile.buttonPlus)
+        case 16: return ("Home", profile.buttonHome)
+        case 17: return ("Capture", profile.buttonCapture)
+        case 18: return ("L-Stick Click", profile.leftStickClick)
+        case 19: return ("R-Stick Click", profile.rightStickClick)
+        case 20: return ("SL", profile.buttonSL)
+        case 21: return ("SR", profile.buttonSR)
         default: return ("Unknown", .none)
         }
     }
@@ -1133,6 +1178,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
         case 11: updatedProfile.triggerZL = newAction
         case 12: updatedProfile.triggerZR = newAction
         case 13: updatedProfile.triggerZLZR = newAction
+        case 14: updatedProfile.buttonMinus = newAction
+        case 15: updatedProfile.buttonPlus = newAction
+        case 16: updatedProfile.buttonHome = newAction
+        case 17: updatedProfile.buttonCapture = newAction
+        case 18: updatedProfile.leftStickClick = newAction
+        case 19: updatedProfile.rightStickClick = newAction
+        case 20: updatedProfile.buttonSL = newAction
+        case 21: updatedProfile.buttonSR = newAction
         default: break
         }
 
@@ -1450,6 +1503,18 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 #else
                 self.executeButtonAction(self.profileManager.activeProfile.buttonPlus, buttonName: "Plus")
                 #endif
+            case .Home:
+                self.executeButtonAction(self.profileManager.activeProfile.buttonHome, buttonName: "Home")
+            case .Capture:
+                self.executeButtonAction(self.profileManager.activeProfile.buttonCapture, buttonName: "Capture")
+            case .LeftSL, .RightSL:
+                self.executeButtonAction(self.profileManager.activeProfile.buttonSL, buttonName: "SL")
+            case .LeftSR, .RightSR:
+                self.executeButtonAction(self.profileManager.activeProfile.buttonSR, buttonName: "SR")
+            case .LStick:
+                self.executeButtonAction(self.profileManager.activeProfile.leftStickClick, buttonName: "L-Stick")
+            case .RStick:
+                self.executeButtonAction(self.profileManager.activeProfile.rightStickClick, buttonName: "R-Stick")
             default:
                 break
             }
@@ -1517,9 +1582,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
         case .control: modifiers.control = true
         case .none: break
         }
+        // Send real modifier key press (like holding Cmd on keyboard)
+        inputController.pressModifier(modifier)
     }
 
     private func removeModifier(_ modifier: ModifierAction) {
+        // Send real modifier key release first
+        inputController.releaseModifier(modifier)
+
         switch modifier {
         case .command: modifiers.command = false
         case .option: modifiers.option = false

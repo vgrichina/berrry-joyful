@@ -103,29 +103,8 @@ class ProfileManager {
         }
 
         // Create a copy with new name
-        let newProfile = ButtonProfile(
-            name: newName,
-            description: sourceProfile.description,
-            buttonA: sourceProfile.buttonA,
-            buttonB: sourceProfile.buttonB,
-            buttonX: sourceProfile.buttonX,
-            buttonY: sourceProfile.buttonY,
-            dpadUp: sourceProfile.dpadUp,
-            dpadDown: sourceProfile.dpadDown,
-            dpadLeft: sourceProfile.dpadLeft,
-            dpadRight: sourceProfile.dpadRight,
-            bumperL: sourceProfile.bumperL,
-            bumperR: sourceProfile.bumperR,
-            triggerZL: sourceProfile.triggerZL,
-            triggerZR: sourceProfile.triggerZR,
-            triggerZLZR: sourceProfile.triggerZLZR,
-            buttonMinus: sourceProfile.buttonMinus,
-            buttonPlus: sourceProfile.buttonPlus,
-            enableSmartTabbing: sourceProfile.enableSmartTabbing,
-            enableCmdClick: sourceProfile.enableCmdClick,
-            leftStickFunction: sourceProfile.leftStickFunction,
-            rightStickFunction: sourceProfile.rightStickFunction
-        )
+        var newProfile = sourceProfile
+        newProfile.name = newName
 
         addProfile(newProfile)
         return newProfile
