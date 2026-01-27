@@ -246,6 +246,49 @@ class ViewController: NSViewController, NSTabViewDelegate {
         return headerView
     }
 
+    // MARK: - Section Box Helper
+
+    /// Creates a visual section box with title and content
+    private func createSectionBox(title: String, content: NSView, yPosition: inout CGFloat, panelWidth: CGFloat) -> NSView {
+        let container = NSView(frame: NSRect(x: DesignSystem.Spacing.lg, y: yPosition, width: panelWidth - (DesignSystem.Spacing.lg * 2), height: content.bounds.height + 60))
+
+        // Section box with rounded corners and border
+        let box = NSBox(frame: container.bounds)
+        box.boxType = .custom
+        box.isTransparent = false
+        box.borderWidth = 1
+        box.borderColor = DesignSystem.Colors.separator
+        box.cornerRadius = DesignSystem.CornerRadius.large
+        box.fillColor = DesignSystem.Colors.secondaryBackground
+        box.contentViewMargins = NSSize(width: DesignSystem.Spacing.md, height: DesignSystem.Spacing.md)
+
+        // Apply subtle shadow
+        box.wantsLayer = true
+        let shadowConfig = DesignSystem.Shadow.card
+        box.shadow = NSShadow()
+        box.shadow?.shadowColor = shadowConfig.color.withAlphaComponent(CGFloat(shadowConfig.opacity))
+        box.shadow?.shadowBlurRadius = shadowConfig.radius
+        box.shadow?.shadowOffset = shadowConfig.offset
+
+        // Section title
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = DesignSystem.Typography.headlineMedium
+        titleLabel.textColor = DesignSystem.Colors.text
+        titleLabel.frame = NSRect(x: DesignSystem.Spacing.md, y: content.bounds.height + 30, width: container.bounds.width - (DesignSystem.Spacing.md * 2), height: 20)
+
+        // Position content below title
+        content.frame.origin = NSPoint(x: DesignSystem.Spacing.md, y: DesignSystem.Spacing.md)
+
+        box.addSubview(titleLabel)
+        box.addSubview(content)
+        container.addSubview(box)
+
+        // Update y position for next section
+        yPosition += container.bounds.height + DesignSystem.Spacing.md
+
+        return container
+    }
+
     private func createTabView() {
         // Create NSTabView
         tabView = NSTabView(frame: NSRect(x: 0, y: 0, width: 800, height: 400))
@@ -283,243 +326,215 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         panel.autoresizingMask = [.width, .height]
 
-        var y: CGFloat = 20  // Start from top
+        var y: CGFloat = DesignSystem.Spacing.lg  // Start from top
 
-        // Title
-        let titleLabel = NSTextField(labelWithString: "Mouse Control Settings")
-        titleLabel.font = DesignSystem.Typography.headlineLarge
-        titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
-        titleLabel.isBezeled = false
-        titleLabel.isEditable = false
-        titleLabel.drawsBackground = false
-        panel.addSubview(titleLabel)
-        y += 35
+        // SECTION 1: Movement
+        let movementContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 130))
+        var movementY: CGFloat = 0
 
         // Sensitivity Slider
-        let sensitivityTitleLabel = NSTextField(labelWithString: "Sensitivity:")
-        sensitivityTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        sensitivityTitleLabel.isBezeled = false
-        sensitivityTitleLabel.isEditable = false
-        sensitivityTitleLabel.drawsBackground = false
-        panel.addSubview(sensitivityTitleLabel)
+        let sensitivityTitleLabel = NSTextField(labelWithString: "Sensitivity")
+        sensitivityTitleLabel.font = DesignSystem.Typography.bodyMedium
+        sensitivityTitleLabel.frame = NSRect(x: 0, y: movementY, width: 100, height: 20)
+        movementContent.addSubview(sensitivityTitleLabel)
 
-        sensitivitySlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        sensitivitySlider = NSSlider(frame: NSRect(x: 110, y: movementY, width: 250, height: 20))
         sensitivitySlider.minValue = 0.5
         sensitivitySlider.maxValue = 20.0
         sensitivitySlider.doubleValue = Double(settings.mouseSensitivity)
         sensitivitySlider.target = self
         sensitivitySlider.action = #selector(sensitivityChanged(_:))
-        panel.addSubview(sensitivitySlider)
+        sensitivitySlider.setAccessibilityLabel("Mouse sensitivity slider")
+        sensitivitySlider.setAccessibilityValue(String(format: "%.1fx", settings.mouseSensitivity))
+        movementContent.addSubview(sensitivitySlider)
 
         sensitivityLabel = NSTextField(labelWithString: String(format: "%.1fx", settings.mouseSensitivity))
-        sensitivityLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
-        sensitivityLabel.isBezeled = false
-        sensitivityLabel.isEditable = false
-        sensitivityLabel.drawsBackground = false
-        panel.addSubview(sensitivityLabel)
-        y += 30
+        sensitivityLabel.font = DesignSystem.Typography.bodyMedium
+        sensitivityLabel.frame = NSRect(x: 370, y: movementY, width: 60, height: 20)
+        movementContent.addSubview(sensitivityLabel)
+        movementY += 30
 
         // Scroll Sensitivity Slider
-        let scrollSensitivityTitleLabel = NSTextField(labelWithString: "Scroll Speed:")
-        scrollSensitivityTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        scrollSensitivityTitleLabel.isBezeled = false
-        scrollSensitivityTitleLabel.isEditable = false
-        scrollSensitivityTitleLabel.drawsBackground = false
-        panel.addSubview(scrollSensitivityTitleLabel)
+        let scrollSensitivityTitleLabel = NSTextField(labelWithString: "Scroll Speed")
+        scrollSensitivityTitleLabel.font = DesignSystem.Typography.bodyMedium
+        scrollSensitivityTitleLabel.frame = NSRect(x: 0, y: movementY, width: 100, height: 20)
+        movementContent.addSubview(scrollSensitivityTitleLabel)
 
-        scrollSensitivitySlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        scrollSensitivitySlider = NSSlider(frame: NSRect(x: 110, y: movementY, width: 250, height: 20))
         scrollSensitivitySlider.minValue = 0.5
         scrollSensitivitySlider.maxValue = 10.0
         scrollSensitivitySlider.doubleValue = Double(settings.scrollSensitivity)
         scrollSensitivitySlider.target = self
         scrollSensitivitySlider.action = #selector(scrollSensitivityChanged(_:))
-        panel.addSubview(scrollSensitivitySlider)
+        scrollSensitivitySlider.setAccessibilityLabel("Scroll speed slider")
+        scrollSensitivitySlider.setAccessibilityValue(String(format: "%.1fx", settings.scrollSensitivity))
+        movementContent.addSubview(scrollSensitivitySlider)
 
         scrollSensitivityLabel = NSTextField(labelWithString: String(format: "%.1fx", settings.scrollSensitivity))
-        scrollSensitivityLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
-        scrollSensitivityLabel.isBezeled = false
-        scrollSensitivityLabel.isEditable = false
-        scrollSensitivityLabel.drawsBackground = false
-        panel.addSubview(scrollSensitivityLabel)
-        y += 30
+        scrollSensitivityLabel.font = DesignSystem.Typography.bodyMedium
+        scrollSensitivityLabel.frame = NSRect(x: 370, y: movementY, width: 60, height: 20)
+        movementContent.addSubview(scrollSensitivityLabel)
+        movementY += 35
+
+        // Checkboxes
+        invertYCheckbox = NSButton(checkboxWithTitle: "Invert Y-Axis", target: self, action: #selector(invertYChanged(_:)))
+        invertYCheckbox.font = DesignSystem.Typography.bodyMedium
+        invertYCheckbox.frame = NSRect(x: 0, y: movementY, width: 150, height: 20)
+        invertYCheckbox.state = settings.invertY ? .on : .off
+        invertYCheckbox.setAccessibilityLabel("Invert Y-Axis for scrolling")
+        movementContent.addSubview(invertYCheckbox)
+
+        accelerationCheckbox = NSButton(checkboxWithTitle: "Acceleration", target: self, action: #selector(accelerationChanged(_:)))
+        accelerationCheckbox.font = DesignSystem.Typography.bodyMedium
+        accelerationCheckbox.frame = NSRect(x: 160, y: movementY, width: 150, height: 20)
+        accelerationCheckbox.state = settings.mouseAcceleration ? .on : .off
+        accelerationCheckbox.setAccessibilityLabel("Enable mouse acceleration")
+        movementContent.addSubview(accelerationCheckbox)
+
+        panel.addSubview(createSectionBox(title: "Movement", content: movementContent, yPosition: &y, panelWidth: frame.width))
+
+        // SECTION 2: Deadzone
+        let deadzoneContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 70))
+        var deadzoneY: CGFloat = 0
 
         // Left Stick Deadzone Slider
-        let leftDeadzoneTitleLabel = NSTextField(labelWithString: "Left Deadzone:")
-        leftDeadzoneTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        leftDeadzoneTitleLabel.isBezeled = false
-        leftDeadzoneTitleLabel.isEditable = false
-        leftDeadzoneTitleLabel.drawsBackground = false
-        panel.addSubview(leftDeadzoneTitleLabel)
+        let leftDeadzoneTitleLabel = NSTextField(labelWithString: "Left Stick")
+        leftDeadzoneTitleLabel.font = DesignSystem.Typography.bodyMedium
+        leftDeadzoneTitleLabel.frame = NSRect(x: 0, y: deadzoneY, width: 100, height: 20)
+        deadzoneContent.addSubview(leftDeadzoneTitleLabel)
 
-        leftDeadzoneSlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        leftDeadzoneSlider = NSSlider(frame: NSRect(x: 110, y: deadzoneY, width: 250, height: 20))
         leftDeadzoneSlider.minValue = 0.0
         leftDeadzoneSlider.maxValue = 0.3
         leftDeadzoneSlider.doubleValue = Double(settings.leftStickDeadzone)
         leftDeadzoneSlider.target = self
         leftDeadzoneSlider.action = #selector(leftDeadzoneChanged(_:))
-        panel.addSubview(leftDeadzoneSlider)
+        deadzoneContent.addSubview(leftDeadzoneSlider)
 
         leftDeadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.leftStickDeadzone * 100))
-        leftDeadzoneLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
-        leftDeadzoneLabel.isBezeled = false
-        leftDeadzoneLabel.isEditable = false
-        leftDeadzoneLabel.drawsBackground = false
-        panel.addSubview(leftDeadzoneLabel)
-        y += 30
+        leftDeadzoneLabel.font = DesignSystem.Typography.bodyMedium
+        leftDeadzoneLabel.frame = NSRect(x: 370, y: deadzoneY, width: 60, height: 20)
+        deadzoneContent.addSubview(leftDeadzoneLabel)
+        deadzoneY += 30
 
         // Right Stick Deadzone Slider
-        let rightDeadzoneTitleLabel = NSTextField(labelWithString: "Right Deadzone:")
-        rightDeadzoneTitleLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        rightDeadzoneTitleLabel.isBezeled = false
-        rightDeadzoneTitleLabel.isEditable = false
-        rightDeadzoneTitleLabel.drawsBackground = false
-        panel.addSubview(rightDeadzoneTitleLabel)
+        let rightDeadzoneTitleLabel = NSTextField(labelWithString: "Right Stick")
+        rightDeadzoneTitleLabel.font = DesignSystem.Typography.bodyMedium
+        rightDeadzoneTitleLabel.frame = NSRect(x: 0, y: deadzoneY, width: 100, height: 20)
+        deadzoneContent.addSubview(rightDeadzoneTitleLabel)
 
-        rightDeadzoneSlider = NSSlider(frame: NSRect(x: 130, y: y, width: 300, height: 20))
+        rightDeadzoneSlider = NSSlider(frame: NSRect(x: 110, y: deadzoneY, width: 250, height: 20))
         rightDeadzoneSlider.minValue = 0.0
         rightDeadzoneSlider.maxValue = 0.3
         rightDeadzoneSlider.doubleValue = Double(settings.rightStickDeadzone)
         rightDeadzoneSlider.target = self
         rightDeadzoneSlider.action = #selector(rightDeadzoneChanged(_:))
-        panel.addSubview(rightDeadzoneSlider)
+        deadzoneContent.addSubview(rightDeadzoneSlider)
 
         rightDeadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.rightStickDeadzone * 100))
-        rightDeadzoneLabel.frame = NSRect(x: 440, y: y, width: 60, height: 20)
-        rightDeadzoneLabel.isBezeled = false
-        rightDeadzoneLabel.isEditable = false
-        rightDeadzoneLabel.drawsBackground = false
-        panel.addSubview(rightDeadzoneLabel)
-        y += 30
+        rightDeadzoneLabel.font = DesignSystem.Typography.bodyMedium
+        rightDeadzoneLabel.frame = NSRect(x: 370, y: deadzoneY, width: 60, height: 20)
+        deadzoneContent.addSubview(rightDeadzoneLabel)
 
-        // Checkboxes
-        invertYCheckbox = NSButton(checkboxWithTitle: "Invert Y-Axis (Scroll)", target: self, action: #selector(invertYChanged(_:)))
-        invertYCheckbox.frame = NSRect(x: 20, y: y, width: 200, height: 20)
-        invertYCheckbox.state = settings.invertY ? .on : .off
-        panel.addSubview(invertYCheckbox)
+        panel.addSubview(createSectionBox(title: "Deadzone", content: deadzoneContent, yPosition: &y, panelWidth: frame.width))
 
-        accelerationCheckbox = NSButton(checkboxWithTitle: "Acceleration", target: self, action: #selector(accelerationChanged(_:)))
-        accelerationCheckbox.frame = NSRect(x: 200, y: y, width: 150, height: 20)
-        accelerationCheckbox.state = settings.mouseAcceleration ? .on : .off
-        panel.addSubview(accelerationCheckbox)
-        y += 40
-
-        // Stick Function Controls
-        let stickFunctionTitle = NSTextField(labelWithString: "Analog Stick Functions")
-        stickFunctionTitle.font = DesignSystem.Typography.headlineMedium
-        stickFunctionTitle.frame = NSRect(x: 20, y: y, width: 300, height: 20)
-        stickFunctionTitle.isBezeled = false
-        stickFunctionTitle.isEditable = false
-        stickFunctionTitle.drawsBackground = false
-        panel.addSubview(stickFunctionTitle)
-        y += 30
+        // SECTION 3: Stick Functions
+        let stickFunctionContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 70))
+        var stickFunctionY: CGFloat = 0
 
         // Left Stick Function
-        let leftStickLabel = NSTextField(labelWithString: "Left Stick:")
-        leftStickLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        leftStickLabel.isBezeled = false
-        leftStickLabel.isEditable = false
-        leftStickLabel.drawsBackground = false
-        panel.addSubview(leftStickLabel)
+        let leftStickLabel = NSTextField(labelWithString: "Left Stick")
+        leftStickLabel.font = DesignSystem.Typography.bodyMedium
+        leftStickLabel.frame = NSRect(x: 0, y: stickFunctionY, width: 100, height: 20)
+        stickFunctionContent.addSubview(leftStickLabel)
 
-        leftStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 2, width: 150, height: 25))
+        leftStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickFunctionY - 2, width: 150, height: 25))
         leftStickFunctionPopup.removeAllItems()
         leftStickFunctionPopup.addItems(withTitles: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"])
         leftStickFunctionPopup.selectItem(withTitle: profileManager.activeProfile.leftStickFunction.rawValue)
         leftStickFunctionPopup.target = self
         leftStickFunctionPopup.action = #selector(leftStickFunctionChanged(_:))
-        panel.addSubview(leftStickFunctionPopup)
-        y += 30
+        stickFunctionContent.addSubview(leftStickFunctionPopup)
+        stickFunctionY += 30
 
         // Right Stick Function
-        let rightStickLabel = NSTextField(labelWithString: "Right Stick:")
-        rightStickLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        rightStickLabel.isBezeled = false
-        rightStickLabel.isEditable = false
-        rightStickLabel.drawsBackground = false
-        panel.addSubview(rightStickLabel)
+        let rightStickLabel = NSTextField(labelWithString: "Right Stick")
+        rightStickLabel.font = DesignSystem.Typography.bodyMedium
+        rightStickLabel.frame = NSRect(x: 0, y: stickFunctionY, width: 100, height: 20)
+        stickFunctionContent.addSubview(rightStickLabel)
 
-        rightStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 2, width: 150, height: 25))
+        rightStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickFunctionY - 2, width: 150, height: 25))
         rightStickFunctionPopup.removeAllItems()
         rightStickFunctionPopup.addItems(withTitles: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"])
         rightStickFunctionPopup.selectItem(withTitle: profileManager.activeProfile.rightStickFunction.rawValue)
         rightStickFunctionPopup.target = self
         rightStickFunctionPopup.action = #selector(rightStickFunctionChanged(_:))
-        panel.addSubview(rightStickFunctionPopup)
-        y += 40
+        stickFunctionContent.addSubview(rightStickFunctionPopup)
 
-        // Sticky Mouse Section
-        let stickyMouseTitle = NSTextField(labelWithString: "Sticky Mouse (Magnetic Cursor)")
-        stickyMouseTitle.font = DesignSystem.Typography.headlineMedium
-        stickyMouseTitle.frame = NSRect(x: 20, y: y, width: 300, height: 20)
-        stickyMouseTitle.isBezeled = false
-        stickyMouseTitle.isEditable = false
-        stickyMouseTitle.drawsBackground = false
-        panel.addSubview(stickyMouseTitle)
-        y += 25
+        panel.addSubview(createSectionBox(title: "Stick Functions", content: stickFunctionContent, yPosition: &y, panelWidth: frame.width))
+
+        // SECTION 4: Sticky Mouse
+        let stickyMouseContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 135))
+        var stickyMouseY: CGFloat = 0
 
         // Sticky Mouse Enable Checkbox
-        stickyMouseCheckbox = NSButton(checkboxWithTitle: "Enable Sticky Mouse (slows near buttons/fields)", target: self, action: #selector(stickyMouseToggled(_:)))
-        stickyMouseCheckbox.frame = NSRect(x: 20, y: y, width: 350, height: 20)
+        stickyMouseCheckbox = NSButton(checkboxWithTitle: "Enable sticky mouse", target: self, action: #selector(stickyMouseToggled(_:)))
+        stickyMouseCheckbox.font = DesignSystem.Typography.bodyMedium
+        stickyMouseCheckbox.frame = NSRect(x: 0, y: stickyMouseY, width: 300, height: 20)
         stickyMouseCheckbox.state = StickyMouseManager.shared.isEnabled ? .on : .off
-        panel.addSubview(stickyMouseCheckbox)
-        y += 25
+        stickyMouseContent.addSubview(stickyMouseCheckbox)
+        stickyMouseY += 25
 
         // Magnetic Strength Popup
-        let strengthLabel = NSTextField(labelWithString: "Strength:")
-        strengthLabel.frame = NSRect(x: 40, y: y, width: 80, height: 20)
-        strengthLabel.isBezeled = false
-        strengthLabel.isEditable = false
-        strengthLabel.drawsBackground = false
-        panel.addSubview(strengthLabel)
+        let strengthLabel = NSTextField(labelWithString: "Strength")
+        strengthLabel.font = DesignSystem.Typography.bodyMedium
+        strengthLabel.frame = NSRect(x: 0, y: stickyMouseY, width: 100, height: 20)
+        stickyMouseContent.addSubview(strengthLabel)
 
-        stickyStrengthPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 2, width: 120, height: 25))
+        stickyStrengthPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickyMouseY - 2, width: 120, height: 25))
         stickyStrengthPopup.removeAllItems()
         stickyStrengthPopup.addItems(withTitles: ["Weak", "Medium", "Strong"])
         stickyStrengthPopup.selectItem(withTitle: StickyMouseManager.shared.magneticStrength.description)
         stickyStrengthPopup.target = self
         stickyStrengthPopup.action = #selector(stickyStrengthChanged(_:))
-        panel.addSubview(stickyStrengthPopup)
-        y += 30
+        stickyMouseContent.addSubview(stickyStrengthPopup)
+        stickyMouseY += 30
 
         // Visual Overlay Checkbox
-        stickyOverlayCheckbox = NSButton(checkboxWithTitle: "Show visual overlay (for debugging)", target: self, action: #selector(stickyOverlayToggled(_:)))
-        stickyOverlayCheckbox.frame = NSRect(x: 40, y: y, width: 300, height: 20)
+        stickyOverlayCheckbox = NSButton(checkboxWithTitle: "Show visual overlay", target: self, action: #selector(stickyOverlayToggled(_:)))
+        stickyOverlayCheckbox.font = DesignSystem.Typography.bodyMedium
+        stickyOverlayCheckbox.frame = NSRect(x: 0, y: stickyMouseY, width: 300, height: 20)
         stickyOverlayCheckbox.state = StickyMouseManager.shared.showVisualOverlay ? .on : .off
-        panel.addSubview(stickyOverlayCheckbox)
-        y += 30
+        stickyMouseContent.addSubview(stickyOverlayCheckbox)
+        stickyMouseY += 30
 
         // Sticky Mouse Info
-        let stickyInfoLabel = NSTextField(wrappingLabelWithString: "Sticky Mouse slows cursor near buttons and text fields, making them easier to click. Toggle with L button, adjust strength with ZL+X.")
+        let stickyInfoLabel = NSTextField(wrappingLabelWithString: "ℹ️ Slows cursor near buttons and text fields, making them easier to click. Toggle with L button, adjust strength with ZL+X.")
         stickyInfoLabel.font = DesignSystem.Typography.caption
         stickyInfoLabel.textColor = DesignSystem.Colors.tertiaryText
         stickyInfoLabel.alignment = .left
-        stickyInfoLabel.frame = NSRect(x: 40, y: y, width: frame.width - 80, height: 30)
-        panel.addSubview(stickyInfoLabel)
-        y += 40
+        stickyInfoLabel.frame = NSRect(x: 0, y: stickyMouseY, width: frame.width - 120, height: 30)
+        stickyMouseContent.addSubview(stickyInfoLabel)
+
+        panel.addSubview(createSectionBox(title: "Sticky Mouse", content: stickyMouseContent, yPosition: &y, panelWidth: frame.width))
 
         // Debug mode toggle (only in debug builds)
         #if DEBUG
+        let debugContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 50))
         debugModeCheckbox = NSButton(checkboxWithTitle: "Debug Mode (skip system input events)", target: self, action: #selector(debugModeChanged(_:)))
-        debugModeCheckbox.frame = NSRect(x: 20, y: y, width: 300, height: 20)
+        debugModeCheckbox.font = DesignSystem.Typography.bodyMedium
+        debugModeCheckbox.frame = NSRect(x: 0, y: 0, width: 350, height: 20)
         debugModeCheckbox.state = inputController.debugMode ? .on : .off
-        panel.addSubview(debugModeCheckbox)
-        y += 30
-        #endif
+        debugContent.addSubview(debugModeCheckbox)
 
-        // Status info
-        #if DEBUG
-        let statusText = inputController.debugMode ?
-            "⚠️ DEBUG MODE: Input events are logged but not sent to the system.\nNo accessibility permissions needed for testing." :
-            "Mouse control is always active when a Joy-Con is connected.\nUse the left stick to move the cursor."
-        #else
-        let statusText = "Mouse control is always active when a Joy-Con is connected.\nUse the left stick to move the cursor."
+        let debugInfo = NSTextField(wrappingLabelWithString: "⚠️ DEBUG MODE: Input events are logged but not sent to the system.")
+        debugInfo.font = DesignSystem.Typography.caption
+        debugInfo.textColor = DesignSystem.Colors.warning
+        debugInfo.frame = NSRect(x: 0, y: 25, width: frame.width - 120, height: 20)
+        debugContent.addSubview(debugInfo)
+
+        panel.addSubview(createSectionBox(title: "Debug", content: debugContent, yPosition: &y, panelWidth: frame.width))
         #endif
-        let statusLabel = NSTextField(wrappingLabelWithString: statusText)
-        statusLabel.font = DesignSystem.Typography.bodySmall
-        statusLabel.textColor = DesignSystem.Colors.secondaryText
-        statusLabel.alignment = .center
-        statusLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 60)
-        panel.addSubview(statusLabel)
 
         return panel
     }
@@ -612,111 +627,82 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let createRow: (String, ButtonAction, Int) -> Void = { buttonName, action, tag in
             // Button name label
             let nameLabel = NSTextField(labelWithString: buttonName)
-            nameLabel.frame = NSRect(x: 10, y: rowY, width: 100, height: 20)
-            nameLabel.font = DesignSystem.Typography.bodySmall
+            nameLabel.frame = NSRect(x: DesignSystem.Spacing.sm, y: rowY, width: 100, height: 20)
+            nameLabel.font = DesignSystem.Typography.bodyMedium
             nameLabel.textColor = DesignSystem.Colors.text
             documentView.addSubview(nameLabel)
 
             // Current mapping label
             let mappingLabel = NSTextField(labelWithString: action.description)
-            mappingLabel.frame = NSRect(x: 120, y: rowY, width: 280, height: 20)
+            mappingLabel.frame = NSRect(x: 130, y: rowY, width: 250, height: 20)
             mappingLabel.font = DesignSystem.Typography.codeSmall
             mappingLabel.textColor = DesignSystem.Colors.secondaryText
             documentView.addSubview(mappingLabel)
 
             // Edit button (positioned on right side)
-            let editBtn = NSButton(frame: NSRect(x: documentView.bounds.width - 70, y: rowY - 2, width: 60, height: 22))
-            editBtn.title = "✏️ Edit"
+            let editBtn = NSButton(frame: NSRect(x: documentView.bounds.width - 80, y: rowY - 2, width: 70, height: 24))
+            editBtn.title = "Edit"
             editBtn.bezelStyle = .rounded
-            editBtn.font = DesignSystem.Typography.caption
+            editBtn.font = DesignSystem.Typography.bodySmall
             editBtn.tag = tag
             editBtn.target = self
             editBtn.action = #selector(self.editButtonMapping(_:))
             editBtn.autoresizingMask = [.minXMargin]  // Keep on right when resizing
             documentView.addSubview(editBtn)
 
-            // Debug log
-            self.log("📝 Created Edit button for \(buttonName) at x:\(editBtn.frame.origin.x), visible in documentView width:\(documentView.bounds.width)")
+            rowY += 28  // Move down for next row (improved spacing)
+        }
 
-            rowY += 25  // Move down for next row
+        // Helper to create section header
+        let createSectionHeader: (String) -> Void = { title in
+            let header = NSTextField(labelWithString: title)
+            header.frame = NSRect(x: DesignSystem.Spacing.xs, y: rowY, width: 250, height: 22)
+            header.font = DesignSystem.Typography.headlineMedium
+            header.textColor = DesignSystem.Colors.text
+            documentView.addSubview(header)
+            rowY += 30
         }
 
         // Face Buttons section
-        let faceHeader = NSTextField(labelWithString: "▸ Face Buttons")
-        faceHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        faceHeader.font = DesignSystem.Typography.headlineSmall
-        faceHeader.textColor = DesignSystem.Colors.text
-        documentView.addSubview(faceHeader)
-        rowY += 25
-
+        createSectionHeader("Face Buttons")
         createRow("A Button", profileManager.activeProfile.buttonA, 1)
         createRow("B Button", profileManager.activeProfile.buttonB, 2)
         createRow("X Button", profileManager.activeProfile.buttonX, 3)
         createRow("Y Button", profileManager.activeProfile.buttonY, 4)
-        rowY += 10
+        rowY += DesignSystem.Spacing.md
 
         // D-Pad section
-        let dpadHeader = NSTextField(labelWithString: "▸ D-Pad")
-        dpadHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        dpadHeader.font = DesignSystem.Typography.headlineSmall
-        dpadHeader.textColor = DesignSystem.Colors.text
-        documentView.addSubview(dpadHeader)
-        rowY += 25
-
+        createSectionHeader("D-Pad")
         createRow("Up", profileManager.activeProfile.dpadUp, 5)
         createRow("Right", profileManager.activeProfile.dpadRight, 6)
         createRow("Down", profileManager.activeProfile.dpadDown, 7)
         createRow("Left", profileManager.activeProfile.dpadLeft, 8)
-        rowY += 10
+        rowY += DesignSystem.Spacing.md
 
         // Triggers section
-        let triggerHeader = NSTextField(labelWithString: "▸ Triggers & Bumpers")
-        triggerHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        triggerHeader.font = DesignSystem.Typography.headlineSmall
-        triggerHeader.textColor = DesignSystem.Colors.text
-        documentView.addSubview(triggerHeader)
-        rowY += 25
-
+        createSectionHeader("Triggers & Bumpers")
         // Note: L/R bumpers are ModifierActions and handled separately
         createRow("ZL Trigger", profileManager.activeProfile.triggerZL, 11)
         createRow("ZR Trigger", profileManager.activeProfile.triggerZR, 12)
         createRow("ZL+ZR Combo", profileManager.activeProfile.triggerZLZR, 13)
-        rowY += 10
+        rowY += DesignSystem.Spacing.md
 
         // System Buttons section
-        let systemHeader = NSTextField(labelWithString: "▸ System Buttons")
-        systemHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        systemHeader.font = DesignSystem.Typography.headlineSmall
-        systemHeader.textColor = DesignSystem.Colors.text
-        documentView.addSubview(systemHeader)
-        rowY += 25
-
+        createSectionHeader("System Buttons")
         createRow("Minus", profileManager.activeProfile.buttonMinus, 14)
         createRow("Plus", profileManager.activeProfile.buttonPlus, 15)
         createRow("Home", profileManager.activeProfile.buttonHome, 16)
         createRow("Capture", profileManager.activeProfile.buttonCapture, 17)
-        rowY += 10
+        rowY += DesignSystem.Spacing.md
 
         // Stick Clicks section
-        let stickHeader = NSTextField(labelWithString: "▸ Stick Clicks")
-        stickHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        stickHeader.font = DesignSystem.Typography.headlineSmall
-        stickHeader.textColor = DesignSystem.Colors.text
-        documentView.addSubview(stickHeader)
-        rowY += 25
-
+        createSectionHeader("Stick Clicks")
         createRow("L-Stick Click", profileManager.activeProfile.leftStickClick, 18)
         createRow("R-Stick Click", profileManager.activeProfile.rightStickClick, 19)
-        rowY += 10
+        rowY += DesignSystem.Spacing.md
 
         // Side Buttons section (Joy-Con sideways mode)
-        let sideHeader = NSTextField(labelWithString: "▸ Side Buttons (SL/SR)")
-        sideHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        sideHeader.font = DesignSystem.Typography.headlineSmall
-        sideHeader.textColor = DesignSystem.Colors.text
-        documentView.addSubview(sideHeader)
-        rowY += 25
-
+        createSectionHeader("Side Buttons (SL/SR)")
         createRow("SL", profileManager.activeProfile.buttonSL, 20)
         createRow("SR", profileManager.activeProfile.buttonSR, 21)
 
@@ -737,50 +723,43 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         panel.autoresizingMask = [.width, .height]
 
-        var y: CGFloat = 20  // Start from top
+        var y: CGFloat = DesignSystem.Spacing.lg  // Start from top
 
-        // Title
-        let titleLabel = NSTextField(labelWithString: "Voice Input Settings")
-        titleLabel.font = DesignSystem.Typography.headlineLarge
-        titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
-        titleLabel.isBezeled = false
-        titleLabel.isEditable = false
-        titleLabel.drawsBackground = false
-        panel.addSubview(titleLabel)
-        y += 35
+        // SECTION 1: Permissions
+        let hasPermissions = VoiceInputManager.checkVoiceInputPermissions()
+        let permissionsContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: hasPermissions ? 20 : 50))
+        var permissionsY: CGFloat = 0
 
         // Permission Status
-        let hasPermissions = VoiceInputManager.checkVoiceInputPermissions()
         let permissionLabel = NSTextField(labelWithString: hasPermissions ? "✅ Permissions Granted" : "⚠️ Permissions Required")
         permissionLabel.font = DesignSystem.Typography.bodyMedium
         permissionLabel.textColor = hasPermissions ? DesignSystem.Colors.success : DesignSystem.Colors.warning
-        permissionLabel.frame = NSRect(x: 20, y: y, width: 300, height: 20)
-        permissionLabel.isBezeled = false
-        permissionLabel.isEditable = false
-        permissionLabel.drawsBackground = false
-        panel.addSubview(permissionLabel)
+        permissionLabel.frame = NSRect(x: 0, y: permissionsY, width: 200, height: 20)
+        permissionsContent.addSubview(permissionLabel)
 
         // Grant Permissions button (if not granted)
         if !hasPermissions {
-            let grantButton = NSButton(frame: NSRect(x: 320, y: y - 2, width: 150, height: 24))
+            let grantButton = NSButton(frame: NSRect(x: 0, y: permissionsY + 25, width: 150, height: 24))
             grantButton.title = "Grant Permissions"
             grantButton.bezelStyle = .rounded
             grantButton.target = self
             grantButton.action = #selector(grantVoicePermissionsClicked)
-            panel.addSubview(grantButton)
+            permissionsContent.addSubview(grantButton)
         }
-        y += 35
+
+        panel.addSubview(createSectionBox(title: "Permissions", content: permissionsContent, yPosition: &y, panelWidth: frame.width))
+
+        // SECTION 2: Settings
+        let settingsContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 60))
+        var settingsY: CGFloat = 0
 
         // Language Selection
-        let languageLabel = NSTextField(labelWithString: "Recognition Language:")
-        languageLabel.font = DesignSystem.Typography.headlineSmall
-        languageLabel.frame = NSRect(x: 20, y: y, width: 150, height: 20)
-        languageLabel.isBezeled = false
-        languageLabel.isEditable = false
-        languageLabel.drawsBackground = false
-        panel.addSubview(languageLabel)
+        let languageLabel = NSTextField(labelWithString: "Language")
+        languageLabel.font = DesignSystem.Typography.bodyMedium
+        languageLabel.frame = NSRect(x: 0, y: settingsY, width: 100, height: 20)
+        settingsContent.addSubview(languageLabel)
 
-        voiceLanguagePopup = NSPopUpButton(frame: NSRect(x: 180, y: y - 2, width: 250, height: 24))
+        voiceLanguagePopup = NSPopUpButton(frame: NSRect(x: 110, y: settingsY - 2, width: 250, height: 24))
         voiceLanguagePopup.addItems(withTitles: [
             "English (US)",
             "English (UK)",
@@ -809,44 +788,38 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         voiceLanguagePopup.target = self
         voiceLanguagePopup.action = #selector(languageChanged)
-        panel.addSubview(voiceLanguagePopup)
-        y += 35
+        settingsContent.addSubview(voiceLanguagePopup)
+        settingsY += 30
 
         // Status
-        voiceStatusLabel = NSTextField(labelWithString: "Status: ⏸️ Ready")
-        voiceStatusLabel.font = DesignSystem.Typography.bodyLarge
-        voiceStatusLabel.frame = NSRect(x: 20, y: y, width: 400, height: 20)
-        voiceStatusLabel.isBezeled = false
-        voiceStatusLabel.isEditable = false
-        voiceStatusLabel.drawsBackground = false
-        panel.addSubview(voiceStatusLabel)
-        y += 40
+        voiceStatusLabel = NSTextField(labelWithString: "⏸️ Ready")
+        voiceStatusLabel.font = DesignSystem.Typography.bodyMedium
+        voiceStatusLabel.textColor = DesignSystem.Colors.secondaryText
+        voiceStatusLabel.frame = NSRect(x: 0, y: settingsY, width: 400, height: 20)
+        settingsContent.addSubview(voiceStatusLabel)
 
-        // How to use
-        let howToLabel = NSTextField(labelWithString: "How to Use:")
-        howToLabel.font = DesignSystem.Typography.headlineSmall
-        howToLabel.frame = NSRect(x: 20, y: y, width: 150, height: 20)
-        howToLabel.isBezeled = false
-        howToLabel.isEditable = false
-        howToLabel.drawsBackground = false
-        panel.addSubview(howToLabel)
-        y += 25
+        panel.addSubview(createSectionBox(title: "Settings", content: settingsContent, yPosition: &y, panelWidth: frame.width))
+
+        // SECTION 3: How to Use
+        let howToContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 90))
+        var howToY: CGFloat = 0
 
         // Instructions
-        let instructionsLabel = NSTextField(wrappingLabelWithString: "1. Hold ZL + ZR on your Joy-Con to activate voice input\n2. Speak naturally in your selected language\n3. Release ZL + ZR to type your words automatically")
+        let instructionsLabel = NSTextField(wrappingLabelWithString: "1. Hold ZL + ZR on your Joy-Con to activate voice input\n\n2. Speak naturally in your selected language\n\n3. Release ZL + ZR to type your words automatically")
         instructionsLabel.font = DesignSystem.Typography.bodySmall
-        instructionsLabel.textColor = DesignSystem.Colors.secondaryText
-        instructionsLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 60)
-        panel.addSubview(instructionsLabel)
-        y += 70
+        instructionsLabel.textColor = DesignSystem.Colors.text
+        instructionsLabel.frame = NSRect(x: 0, y: howToY, width: frame.width - 120, height: 75)
+        howToContent.addSubview(instructionsLabel)
+        howToY += 80
 
         // Info text
-        let infoLabel = NSTextField(wrappingLabelWithString: "Voice input converts your speech to text and types it automatically. Perfect for hands-free typing!")
-        infoLabel.font = DesignSystem.Typography.bodySmall
+        let infoLabel = NSTextField(wrappingLabelWithString: "ℹ️ Voice input converts your speech to text and types it automatically. Perfect for hands-free typing!")
+        infoLabel.font = DesignSystem.Typography.caption
         infoLabel.textColor = DesignSystem.Colors.tertiaryText
-        infoLabel.alignment = .center
-        infoLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 30)
-        panel.addSubview(infoLabel)
+        infoLabel.frame = NSRect(x: 0, y: howToY, width: frame.width - 120, height: 30)
+        howToContent.addSubview(infoLabel)
+
+        panel.addSubview(createSectionBox(title: "How to Use", content: howToContent, yPosition: &y, panelWidth: frame.width))
 
         return panel
     }

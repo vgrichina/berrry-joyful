@@ -59,25 +59,42 @@ class ButtonMappingEditor: NSView {
     }
 
     private func setupUI(buttonName: String, currentMapping: String) {
-        // Container box
+        // Container box with shadow
         let container = NSBox()
         container.boxType = .custom
-        container.borderType = .noBorder
-        container.cornerRadius = DesignSystem.CornerRadius.medium
+        container.isTransparent = false
+        container.borderWidth = 1
+        container.borderColor = DesignSystem.Colors.separator
+        container.cornerRadius = DesignSystem.CornerRadius.large
         container.fillColor = DesignSystem.Colors.secondaryBackground
-        container.contentViewMargins = NSSize(width: DesignSystem.Spacing.md, height: DesignSystem.Spacing.sm)
+        container.contentViewMargins = NSSize(width: DesignSystem.Spacing.lg, height: DesignSystem.Spacing.md)
+        container.wantsLayer = true
+        let shadowConfig = DesignSystem.Shadow.elevated
+        container.shadow = NSShadow()
+        container.shadow?.shadowColor = shadowConfig.color.withAlphaComponent(CGFloat(shadowConfig.opacity))
+        container.shadow?.shadowBlurRadius = shadowConfig.radius
+        container.shadow?.shadowOffset = shadowConfig.offset
 
-        // Title
-        let titleLabel = NSTextField(labelWithString: "\(buttonName)")
-        titleLabel.font = DesignSystem.Typography.headlineSmall
+        // Title section
+        let titleLabel = NSTextField(labelWithString: "Edit \(buttonName)")
+        titleLabel.font = DesignSystem.Typography.headlineMedium
         titleLabel.textColor = DesignSystem.Colors.text
         titleLabel.alignment = .center
 
-        // Current mapping
+        // Current mapping in a subtle box
+        let currentBox = NSBox()
+        currentBox.boxType = .custom
+        currentBox.isTransparent = false
+        currentBox.borderWidth = 0
+        currentBox.cornerRadius = DesignSystem.CornerRadius.small
+        currentBox.fillColor = DesignSystem.Colors.background
+        currentBox.contentViewMargins = NSSize(width: DesignSystem.Spacing.sm, height: DesignSystem.Spacing.xxs)
+
         let currentLabel = NSTextField(labelWithString: "Current: \(currentMapping)")
         currentLabel.font = DesignSystem.Typography.bodySmall
         currentLabel.textColor = DesignSystem.Colors.secondaryText
         currentLabel.alignment = .center
+        currentBox.contentView = currentLabel
 
         // Preset dropdown
         let presetLabel = NSTextField(labelWithString: "Preset:")
@@ -141,14 +158,14 @@ class ButtonMappingEditor: NSView {
         // Main stack
         let mainStack = NSStackView(views: [
             titleLabel,
-            currentLabel,
+            currentBox,
             presetRow,
             separator,
             captureField,
             buttonRow
         ])
         mainStack.orientation = .vertical
-        mainStack.spacing = DesignSystem.Spacing.sm - 2  // 10pt
+        mainStack.spacing = DesignSystem.Spacing.sm
         mainStack.alignment = .centerX
 
         container.contentView = mainStack
