@@ -556,7 +556,19 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.addSubview(createSectionBox(title: "Debug", content: debugContent, yPosition: &y, panelWidth: frame.width))
         #endif
 
-        return panel
+        // Set panel height based on content
+        let contentHeight = y + DesignSystem.Spacing.lg
+        panel.frame = NSRect(x: 0, y: 0, width: frame.width, height: contentHeight)
+
+        // Wrap in scroll view for vertical scrolling
+        let scrollView = NSScrollView(frame: frame)
+        scrollView.documentView = panel
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autoresizingMask = [.width, .height]
+        scrollView.borderType = .noBorder
+
+        return scrollView
     }
 
     private func createKeyboardConfigPanel(frame: NSRect) -> NSView {
@@ -847,7 +859,19 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         panel.addSubview(createSectionBox(title: "How to Use", content: howToContent, yPosition: &y, panelWidth: frame.width))
 
-        return panel
+        // Set panel height based on content
+        let contentHeight = y + DesignSystem.Spacing.lg
+        panel.frame = NSRect(x: 0, y: 0, width: frame.width, height: contentHeight)
+
+        // Wrap in scroll view for vertical scrolling
+        let scrollView = NSScrollView(frame: frame)
+        scrollView.documentView = panel
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autoresizingMask = [.width, .height]
+        scrollView.borderType = .noBorder
+
+        return scrollView
     }
 
 
