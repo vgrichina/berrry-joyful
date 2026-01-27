@@ -1102,14 +1102,11 @@ class ViewController: NSViewController, NSTabViewDelegate {
         keyCaptureWindow = NSWindow(contentViewController: NSViewController())
         keyCaptureWindow!.contentView = editorView
         keyCaptureWindow!.styleMask = [.titled, .closable]
-        keyCaptureWindow!.setContentSize(NSSize(width: 450, height: 480))
+        keyCaptureWindow!.setContentSize(NSSize(width: 300, height: 180))
         keyCaptureWindow!.title = "Edit \(buttonName)"
         keyCaptureWindow!.center()
         keyCaptureWindow!.makeKeyAndOrderFront(nil)
         keyCaptureWindow!.level = .floating
-
-        // Make the window respond to Esc key for closing
-        keyCaptureWindow!.standardWindowButton(.closeButton)?.isEnabled = true
     }
 
     private func getButtonInfo(forTag tag: Int) -> (String, ButtonAction) {
