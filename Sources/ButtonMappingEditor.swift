@@ -63,25 +63,25 @@ class ButtonMappingEditor: NSView {
         let container = NSBox()
         container.boxType = .custom
         container.borderType = .noBorder
-        container.cornerRadius = 8
-        container.fillColor = NSColor.controlBackgroundColor
-        container.contentViewMargins = NSSize(width: 16, height: 12)
+        container.cornerRadius = DesignSystem.CornerRadius.medium
+        container.fillColor = DesignSystem.Colors.secondaryBackground
+        container.contentViewMargins = NSSize(width: DesignSystem.Spacing.md, height: DesignSystem.Spacing.sm)
 
         // Title
         let titleLabel = NSTextField(labelWithString: "\(buttonName)")
-        titleLabel.font = NSFont.boldSystemFont(ofSize: 13)
-        titleLabel.textColor = NSColor.labelColor
+        titleLabel.font = DesignSystem.Typography.headlineSmall
+        titleLabel.textColor = DesignSystem.Colors.text
         titleLabel.alignment = .center
 
         // Current mapping
         let currentLabel = NSTextField(labelWithString: "Current: \(currentMapping)")
-        currentLabel.font = NSFont.systemFont(ofSize: 11)
-        currentLabel.textColor = NSColor.secondaryLabelColor
+        currentLabel.font = DesignSystem.Typography.bodySmall
+        currentLabel.textColor = DesignSystem.Colors.secondaryText
         currentLabel.alignment = .center
 
         // Preset dropdown
         let presetLabel = NSTextField(labelWithString: "Preset:")
-        presetLabel.font = NSFont.systemFont(ofSize: 12)
+        presetLabel.font = DesignSystem.Typography.bodyMedium
 
         presetPopup.removeAllItems()
         for (index, (name, _)) in Self.presets.enumerated() {
@@ -102,12 +102,12 @@ class ButtonMappingEditor: NSView {
 
         let presetRow = NSStackView(views: [presetLabel, presetPopup])
         presetRow.orientation = .horizontal
-        presetRow.spacing = 8
+        presetRow.spacing = DesignSystem.Spacing.xs
 
         // Separator
         let separator = NSTextField(labelWithString: "─── or capture custom key ───")
-        separator.font = NSFont.systemFont(ofSize: 10)
-        separator.textColor = NSColor.tertiaryLabelColor
+        separator.font = DesignSystem.Typography.caption
+        separator.textColor = DesignSystem.Colors.tertiaryText
         separator.alignment = .center
 
         // Capture field
@@ -116,9 +116,9 @@ class ButtonMappingEditor: NSView {
         captureField.isBezeled = true
         captureField.bezelStyle = .roundedBezel
         captureField.alignment = .center
-        captureField.font = NSFont.systemFont(ofSize: 12)
+        captureField.font = DesignSystem.Typography.bodyMedium
         captureField.stringValue = "Click here, then press any key..."
-        captureField.textColor = NSColor.secondaryLabelColor
+        captureField.textColor = DesignSystem.Colors.secondaryText
 
         let clickGesture = NSClickGestureRecognizer(target: self, action: #selector(captureClicked))
         captureField.addGestureRecognizer(clickGesture)
@@ -136,7 +136,7 @@ class ButtonMappingEditor: NSView {
 
         let buttonRow = NSStackView(views: [cancelButton, applyButton])
         buttonRow.orientation = .horizontal
-        buttonRow.spacing = 12
+        buttonRow.spacing = DesignSystem.Spacing.sm
 
         // Main stack
         let mainStack = NSStackView(views: [
@@ -148,7 +148,7 @@ class ButtonMappingEditor: NSView {
             buttonRow
         ])
         mainStack.orientation = .vertical
-        mainStack.spacing = 10
+        mainStack.spacing = DesignSystem.Spacing.sm - 2  // 10pt
         mainStack.alignment = .centerX
 
         container.contentView = mainStack
@@ -185,7 +185,7 @@ class ButtonMappingEditor: NSView {
     private func startCapture() {
         isCapturing = true
         captureField.stringValue = "Press any key..."
-        captureField.textColor = NSColor.systemBlue
+        captureField.textColor = DesignSystem.Colors.info
 
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
             guard let self = self, self.isCapturing else { return event }
@@ -194,7 +194,7 @@ class ButtonMappingEditor: NSView {
             if event.keyCode == UInt16(kVK_Escape) && event.modifierFlags.intersection([.command, .shift, .option, .control]).isEmpty {
                 self.stopCapture()
                 self.captureField.stringValue = "Click here, then press any key..."
-                self.captureField.textColor = NSColor.secondaryLabelColor
+                self.captureField.textColor = DesignSystem.Colors.secondaryText
                 self.capturedAction = nil
                 return nil
             }
@@ -204,7 +204,7 @@ class ButtonMappingEditor: NSView {
 
             self.stopCapture()
             self.captureField.stringValue = "✓ \(key.description)"
-            self.captureField.textColor = NSColor.systemGreen
+            self.captureField.textColor = DesignSystem.Colors.success
 
             self.capturedAction = .keyCombo(
                 keyCode: event.keyCode,

@@ -105,7 +105,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
     // MARK: - Lifecycle
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 700))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.defaultWindowWidth, height: DesignSystem.Layout.defaultWindowHeight))
     }
 
     override func viewDidLoad() {
@@ -144,7 +144,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     private func setupUI() {
         view.wantsLayer = true
-        view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        view.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
 
         // Create main vertical stack view
         mainStackView = NSStackView(frame: view.bounds)
@@ -188,10 +188,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
     }
 
     private func createHeaderView() -> NSView {
-        let headerHeight: CGFloat = 50
-        let headerView = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: headerHeight))
+        let headerHeight = DesignSystem.Layout.headerHeight
+        let headerView = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.defaultWindowWidth, height: headerHeight))
         headerView.wantsLayer = true
-        headerView.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        headerView.layer?.backgroundColor = DesignSystem.Colors.secondaryBackground.cgColor
         headerView.heightAnchor.constraint(equalToConstant: headerHeight).isActive = true
 
         // Connection status (left side)
@@ -201,8 +201,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let debugSuffix = ""
         #endif
         connectionLabel = NSTextField(labelWithString: "🔍 No Joy-Con detected\(debugSuffix)")
-        connectionLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
-        connectionLabel.textColor = NSColor.secondaryLabelColor
+        connectionLabel.font = DesignSystem.Typography.headlineMedium
+        connectionLabel.textColor = DesignSystem.Colors.secondaryText
         connectionLabel.frame = NSRect(x: 20, y: 15, width: 350, height: 20)
         headerView.addSubview(connectionLabel)
 
@@ -218,8 +218,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Battery indicator (right side)
         batteryLabel = NSTextField(labelWithString: "")
-        batteryLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
-        batteryLabel.textColor = NSColor.tertiaryLabelColor
+        batteryLabel.font = DesignSystem.Typography.bodySmall
+        batteryLabel.textColor = DesignSystem.Colors.tertiaryText
         batteryLabel.alignment = .right
         batteryLabel.frame = NSRect(x: 490, y: 17, width: 70, height: 16)
         batteryLabel.autoresizingMask = [.minXMargin]
@@ -227,8 +227,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // LED indicator
         ledIndicator = NSTextField(labelWithString: "")
-        ledIndicator.font = NSFont.systemFont(ofSize: 11, weight: .regular)
-        ledIndicator.textColor = NSColor.tertiaryLabelColor
+        ledIndicator.font = DesignSystem.Typography.bodySmall
+        ledIndicator.textColor = DesignSystem.Colors.tertiaryText
         ledIndicator.alignment = .right
         ledIndicator.frame = NSRect(x: 570, y: 17, width: 50, height: 16)
         ledIndicator.autoresizingMask = [.minXMargin]
@@ -280,14 +280,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Use flipped view so y=0 is at top
         let panel = FlippedView(frame: frame)
         panel.wantsLayer = true
-        panel.layer?.backgroundColor = NSColor.white.cgColor
+        panel.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         panel.autoresizingMask = [.width, .height]
 
         var y: CGFloat = 20  // Start from top
 
         // Title
         let titleLabel = NSTextField(labelWithString: "Mouse Control Settings")
-        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.font = DesignSystem.Typography.headlineLarge
         titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
         titleLabel.isBezeled = false
         titleLabel.isEditable = false
@@ -405,7 +405,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Stick Function Controls
         let stickFunctionTitle = NSTextField(labelWithString: "Analog Stick Functions")
-        stickFunctionTitle.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        stickFunctionTitle.font = DesignSystem.Typography.headlineMedium
         stickFunctionTitle.frame = NSRect(x: 20, y: y, width: 300, height: 20)
         stickFunctionTitle.isBezeled = false
         stickFunctionTitle.isEditable = false
@@ -449,7 +449,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Sticky Mouse Section
         let stickyMouseTitle = NSTextField(labelWithString: "Sticky Mouse (Magnetic Cursor)")
-        stickyMouseTitle.font = NSFont.systemFont(ofSize: 14, weight: .medium)
+        stickyMouseTitle.font = DesignSystem.Typography.headlineMedium
         stickyMouseTitle.frame = NSRect(x: 20, y: y, width: 300, height: 20)
         stickyMouseTitle.isBezeled = false
         stickyMouseTitle.isEditable = false
@@ -490,8 +490,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Sticky Mouse Info
         let stickyInfoLabel = NSTextField(wrappingLabelWithString: "Sticky Mouse slows cursor near buttons and text fields, making them easier to click. Toggle with L button, adjust strength with ZL+X.")
-        stickyInfoLabel.font = NSFont.systemFont(ofSize: 10)
-        stickyInfoLabel.textColor = NSColor.tertiaryLabelColor
+        stickyInfoLabel.font = DesignSystem.Typography.caption
+        stickyInfoLabel.textColor = DesignSystem.Colors.tertiaryText
         stickyInfoLabel.alignment = .left
         stickyInfoLabel.frame = NSRect(x: 40, y: y, width: frame.width - 80, height: 30)
         panel.addSubview(stickyInfoLabel)
@@ -515,8 +515,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let statusText = "Mouse control is always active when a Joy-Con is connected.\nUse the left stick to move the cursor."
         #endif
         let statusLabel = NSTextField(wrappingLabelWithString: statusText)
-        statusLabel.font = NSFont.systemFont(ofSize: 11)
-        statusLabel.textColor = NSColor.secondaryLabelColor
+        statusLabel.font = DesignSystem.Typography.bodySmall
+        statusLabel.textColor = DesignSystem.Colors.secondaryText
         statusLabel.alignment = .center
         statusLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 60)
         panel.addSubview(statusLabel)
@@ -528,14 +528,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Use flipped view so y=0 is at top
         let panel = FlippedView(frame: frame)
         panel.wantsLayer = true
-        panel.layer?.backgroundColor = NSColor.white.cgColor
+        panel.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         panel.autoresizingMask = [.width, .height]
 
         var y: CGFloat = 20  // Start from top
 
         // Title
         let titleLabel = NSTextField(labelWithString: "Keyboard Layout & Mapping")
-        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.font = DesignSystem.Typography.headlineLarge
         titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
         titleLabel.isBezeled = false
         titleLabel.isEditable = false
@@ -582,8 +582,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Profile description
         let descLabel = NSTextField(wrappingLabelWithString: profileManager.activeProfile.description)
-        descLabel.font = NSFont.systemFont(ofSize: 11)
-        descLabel.textColor = NSColor.secondaryLabelColor
+        descLabel.font = DesignSystem.Typography.bodySmall
+        descLabel.textColor = DesignSystem.Colors.secondaryText
         descLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 20)
         descLabel.autoresizingMask = [.width]
         panel.addSubview(descLabel)
@@ -601,7 +601,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Use FlippedView for top-down coordinates (will set final height after adding content)
         let documentView = FlippedView(frame: NSRect(x: 0, y: 0, width: scrollViewWidth - 20, height: 500))
         documentView.wantsLayer = true
-        documentView.layer?.backgroundColor = NSColor.white.cgColor
+        documentView.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         documentView.autoresizingMask = [.width]  // Resize width with scroll view
 
         var rowY: CGFloat = 10  // Start from top
@@ -611,21 +611,22 @@ class ViewController: NSViewController, NSTabViewDelegate {
             // Button name label
             let nameLabel = NSTextField(labelWithString: buttonName)
             nameLabel.frame = NSRect(x: 10, y: rowY, width: 100, height: 20)
-            nameLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+            nameLabel.font = DesignSystem.Typography.bodySmall
+            nameLabel.textColor = DesignSystem.Colors.text
             documentView.addSubview(nameLabel)
 
             // Current mapping label
             let mappingLabel = NSTextField(labelWithString: action.description)
             mappingLabel.frame = NSRect(x: 120, y: rowY, width: 280, height: 20)
-            mappingLabel.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-            mappingLabel.textColor = NSColor.secondaryLabelColor
+            mappingLabel.font = DesignSystem.Typography.codeSmall
+            mappingLabel.textColor = DesignSystem.Colors.secondaryText
             documentView.addSubview(mappingLabel)
 
             // Edit button (positioned on right side)
             let editBtn = NSButton(frame: NSRect(x: documentView.bounds.width - 70, y: rowY - 2, width: 60, height: 22))
             editBtn.title = "✏️ Edit"
             editBtn.bezelStyle = .rounded
-            editBtn.font = NSFont.systemFont(ofSize: 10)
+            editBtn.font = DesignSystem.Typography.caption
             editBtn.tag = tag
             editBtn.target = self
             editBtn.action = #selector(self.editButtonMapping(_:))
@@ -641,7 +642,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Face Buttons section
         let faceHeader = NSTextField(labelWithString: "▸ Face Buttons")
         faceHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        faceHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        faceHeader.font = DesignSystem.Typography.headlineSmall
+        faceHeader.textColor = DesignSystem.Colors.text
         documentView.addSubview(faceHeader)
         rowY += 25
 
@@ -654,7 +656,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // D-Pad section
         let dpadHeader = NSTextField(labelWithString: "▸ D-Pad")
         dpadHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        dpadHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        dpadHeader.font = DesignSystem.Typography.headlineSmall
+        dpadHeader.textColor = DesignSystem.Colors.text
         documentView.addSubview(dpadHeader)
         rowY += 25
 
@@ -667,7 +670,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Triggers section
         let triggerHeader = NSTextField(labelWithString: "▸ Triggers & Bumpers")
         triggerHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        triggerHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        triggerHeader.font = DesignSystem.Typography.headlineSmall
+        triggerHeader.textColor = DesignSystem.Colors.text
         documentView.addSubview(triggerHeader)
         rowY += 25
 
@@ -680,7 +684,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // System Buttons section
         let systemHeader = NSTextField(labelWithString: "▸ System Buttons")
         systemHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        systemHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        systemHeader.font = DesignSystem.Typography.headlineSmall
+        systemHeader.textColor = DesignSystem.Colors.text
         documentView.addSubview(systemHeader)
         rowY += 25
 
@@ -693,7 +698,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Stick Clicks section
         let stickHeader = NSTextField(labelWithString: "▸ Stick Clicks")
         stickHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        stickHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        stickHeader.font = DesignSystem.Typography.headlineSmall
+        stickHeader.textColor = DesignSystem.Colors.text
         documentView.addSubview(stickHeader)
         rowY += 25
 
@@ -704,7 +710,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Side Buttons section (Joy-Con sideways mode)
         let sideHeader = NSTextField(labelWithString: "▸ Side Buttons (SL/SR)")
         sideHeader.frame = NSRect(x: 5, y: rowY, width: 200, height: 20)
-        sideHeader.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        sideHeader.font = DesignSystem.Typography.headlineSmall
+        sideHeader.textColor = DesignSystem.Colors.text
         documentView.addSubview(sideHeader)
         rowY += 25
 
@@ -725,14 +732,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Use flipped view so y=0 is at top
         let panel = FlippedView(frame: frame)
         panel.wantsLayer = true
-        panel.layer?.backgroundColor = NSColor.white.cgColor
+        panel.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         panel.autoresizingMask = [.width, .height]
 
         var y: CGFloat = 20  // Start from top
 
         // Title
         let titleLabel = NSTextField(labelWithString: "Voice Input Settings")
-        titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.font = DesignSystem.Typography.headlineLarge
         titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
         titleLabel.isBezeled = false
         titleLabel.isEditable = false
@@ -743,8 +750,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Permission Status
         let hasPermissions = VoiceInputManager.checkVoiceInputPermissions()
         let permissionLabel = NSTextField(labelWithString: hasPermissions ? "✅ Permissions Granted" : "⚠️ Permissions Required")
-        permissionLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        permissionLabel.textColor = hasPermissions ? NSColor.systemGreen : NSColor.systemOrange
+        permissionLabel.font = DesignSystem.Typography.bodyMedium
+        permissionLabel.textColor = hasPermissions ? DesignSystem.Colors.success : DesignSystem.Colors.warning
         permissionLabel.frame = NSRect(x: 20, y: y, width: 300, height: 20)
         permissionLabel.isBezeled = false
         permissionLabel.isEditable = false
@@ -764,7 +771,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Language Selection
         let languageLabel = NSTextField(labelWithString: "Recognition Language:")
-        languageLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        languageLabel.font = DesignSystem.Typography.headlineSmall
         languageLabel.frame = NSRect(x: 20, y: y, width: 150, height: 20)
         languageLabel.isBezeled = false
         languageLabel.isEditable = false
@@ -805,7 +812,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Status
         voiceStatusLabel = NSTextField(labelWithString: "Status: ⏸️ Ready")
-        voiceStatusLabel.font = NSFont.systemFont(ofSize: 13)
+        voiceStatusLabel.font = DesignSystem.Typography.bodyLarge
         voiceStatusLabel.frame = NSRect(x: 20, y: y, width: 400, height: 20)
         voiceStatusLabel.isBezeled = false
         voiceStatusLabel.isEditable = false
@@ -815,7 +822,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // How to use
         let howToLabel = NSTextField(labelWithString: "How to Use:")
-        howToLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        howToLabel.font = DesignSystem.Typography.headlineSmall
         howToLabel.frame = NSRect(x: 20, y: y, width: 150, height: 20)
         howToLabel.isBezeled = false
         howToLabel.isEditable = false
@@ -825,16 +832,16 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Instructions
         let instructionsLabel = NSTextField(wrappingLabelWithString: "1. Hold ZL + ZR on your Joy-Con to activate voice input\n2. Speak naturally in your selected language\n3. Release ZL + ZR to type your words automatically")
-        instructionsLabel.font = NSFont.systemFont(ofSize: 11)
-        instructionsLabel.textColor = NSColor.secondaryLabelColor
+        instructionsLabel.font = DesignSystem.Typography.bodySmall
+        instructionsLabel.textColor = DesignSystem.Colors.secondaryText
         instructionsLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 60)
         panel.addSubview(instructionsLabel)
         y += 70
 
         // Info text
         let infoLabel = NSTextField(wrappingLabelWithString: "Voice input converts your speech to text and types it automatically. Perfect for hands-free typing!")
-        infoLabel.font = NSFont.systemFont(ofSize: 11)
-        infoLabel.textColor = NSColor.tertiaryLabelColor
+        infoLabel.font = DesignSystem.Typography.bodySmall
+        infoLabel.textColor = DesignSystem.Colors.tertiaryText
         infoLabel.alignment = .center
         infoLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 30)
         panel.addSubview(infoLabel)
@@ -854,7 +861,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.scrollerStyle = .overlay
-        scrollView.backgroundColor = NSColor(white: 0.1, alpha: 1.0)
+        scrollView.backgroundColor = DesignSystem.Colors.debugBackground
 
         let contentSize = scrollView.contentSize
         textView = NSTextView(frame: NSRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height))
@@ -866,10 +873,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
         textView.textContainer?.containerSize = NSSize(width: contentSize.width, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.isEditable = false
-        textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        textView.textColor = NSColor(white: 0.85, alpha: 1.0)
-        textView.backgroundColor = NSColor(white: 0.1, alpha: 1.0)
-        textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.font = DesignSystem.Typography.codeMedium
+        textView.textColor = DesignSystem.Colors.debugText
+        textView.backgroundColor = DesignSystem.Colors.debugBackground
+        textView.textContainerInset = NSSize(width: DesignSystem.Spacing.xs, height: DesignSystem.Spacing.xs)
 
         scrollView.documentView = textView
         debugLogContainer.addSubview(scrollView)
@@ -1360,8 +1367,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
             let logMessage = "[\(timestamp)] \(message)\n"
 
             let attrString = NSAttributedString(string: logMessage, attributes: [
-                .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular),
-                .foregroundColor: NSColor(white: 0.85, alpha: 1.0)
+                .font: DesignSystem.Typography.codeMedium,
+                .foregroundColor: DesignSystem.Colors.debugText
             ])
 
             textView.textStorage?.append(attrString)

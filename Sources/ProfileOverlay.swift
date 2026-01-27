@@ -55,21 +55,21 @@ class ProfileOverlay: NSWindow {
         let mainBox = NSBox()
         mainBox.boxType = .custom
         mainBox.borderType = .noBorder
-        mainBox.fillColor = NSColor.windowBackgroundColor.withAlphaComponent(0.98)
-        mainBox.cornerRadius = 16
-        mainBox.contentViewMargins = NSSize(width: 30, height: 30)
+        mainBox.fillColor = DesignSystem.Colors.background.withAlphaComponent(0.98)
+        mainBox.cornerRadius = DesignSystem.CornerRadius.xlarge
+        mainBox.contentViewMargins = NSSize(width: DesignSystem.Spacing.xl, height: DesignSystem.Spacing.xl)
 
         // Title
         titleLabel.stringValue = "🎮  \(profile.name.uppercased())"
-        titleLabel.font = NSFont.boldSystemFont(ofSize: 20)
+        titleLabel.font = DesignSystem.Typography.displayLarge
         titleLabel.alignment = .center
-        titleLabel.textColor = NSColor.labelColor
+        titleLabel.textColor = DesignSystem.Colors.text
 
         // Subtitle
         let subtitleLabel = NSTextField(labelWithString: profile.description)
-        subtitleLabel.font = NSFont.systemFont(ofSize: 12)
+        subtitleLabel.font = DesignSystem.Typography.bodyMedium
         subtitleLabel.alignment = .center
-        subtitleLabel.textColor = NSColor.secondaryLabelColor
+        subtitleLabel.textColor = DesignSystem.Colors.secondaryText
 
         // Create two-column layout for mappings
         let leftColumn = createMappingsColumn(profile: profile, section: .left)
@@ -77,7 +77,7 @@ class ProfileOverlay: NSWindow {
 
         let columnsStack = NSStackView(views: [leftColumn, rightColumn])
         columnsStack.orientation = .horizontal
-        columnsStack.spacing = 30
+        columnsStack.spacing = DesignSystem.Spacing.xl
         columnsStack.distribution = .fillEqually
         columnsStack.alignment = .top
 
@@ -86,9 +86,9 @@ class ProfileOverlay: NSWindow {
 
         // Dismiss instruction
         let dismissLabel = NSTextField(labelWithString: "Press - to dismiss")
-        dismissLabel.font = NSFont.systemFont(ofSize: 11)
+        dismissLabel.font = DesignSystem.Typography.bodySmall
         dismissLabel.alignment = .center
-        dismissLabel.textColor = NSColor.tertiaryLabelColor
+        dismissLabel.textColor = DesignSystem.Colors.tertiaryText
 
         // Main stack
         let mainStack = NSStackView(views: [
@@ -99,7 +99,7 @@ class ProfileOverlay: NSWindow {
             dismissLabel
         ])
         mainStack.orientation = .vertical
-        mainStack.spacing = 20
+        mainStack.spacing = DesignSystem.Spacing.lg
         mainStack.alignment = .centerX
 
         mainBox.contentView = mainStack
@@ -119,10 +119,10 @@ class ProfileOverlay: NSWindow {
         sectionBox.boxType = .custom
         sectionBox.borderType = .lineBorder
         sectionBox.borderWidth = 1
-        sectionBox.borderColor = NSColor.separatorColor
-        sectionBox.cornerRadius = 8
-        sectionBox.fillColor = NSColor.controlBackgroundColor
-        sectionBox.contentViewMargins = NSSize(width: 15, height: 15)
+        sectionBox.borderColor = DesignSystem.Colors.separator
+        sectionBox.cornerRadius = DesignSystem.CornerRadius.medium
+        sectionBox.fillColor = DesignSystem.Colors.secondaryBackground
+        sectionBox.contentViewMargins = NSSize(width: DesignSystem.Spacing.md, height: DesignSystem.Spacing.md)
 
         var rows: [NSView] = []
 
@@ -162,7 +162,7 @@ class ProfileOverlay: NSWindow {
 
         let stack = NSStackView(views: rows)
         stack.orientation = .vertical
-        stack.spacing = 6
+        stack.spacing = DesignSystem.Spacing.xxs + 2  // 6pt
         stack.alignment = .leading
 
         sectionBox.contentView = stack
@@ -171,24 +171,24 @@ class ProfileOverlay: NSWindow {
 
     private func createSectionHeader(_ title: String) -> NSView {
         let label = NSTextField(labelWithString: title)
-        label.font = NSFont.boldSystemFont(ofSize: 10)
-        label.textColor = NSColor.secondaryLabelColor
+        label.font = DesignSystem.Typography.caption
+        label.textColor = DesignSystem.Colors.secondaryText
         return label
     }
 
     private func createMappingRow(_ button: String, action: ButtonAction) -> NSView {
         let stack = NSStackView()
         stack.orientation = .horizontal
-        stack.spacing = 8
+        stack.spacing = DesignSystem.Spacing.xs
 
         let buttonLabel = NSTextField(labelWithString: "\(button)  →")
-        buttonLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        buttonLabel.textColor = NSColor.secondaryLabelColor
+        buttonLabel.font = DesignSystem.Typography.codeMedium
+        buttonLabel.textColor = DesignSystem.Colors.secondaryText
         buttonLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
         let actionLabel = NSTextField(labelWithString: action.description)
-        actionLabel.font = NSFont.systemFont(ofSize: 11)
-        actionLabel.textColor = NSColor.labelColor
+        actionLabel.font = DesignSystem.Typography.bodySmall
+        actionLabel.textColor = DesignSystem.Colors.text
 
         stack.addArrangedSubview(buttonLabel)
         stack.addArrangedSubview(actionLabel)
@@ -199,16 +199,16 @@ class ProfileOverlay: NSWindow {
     private func createModifierRow(_ button: String, modifier: ModifierAction) -> NSView {
         let stack = NSStackView()
         stack.orientation = .horizontal
-        stack.spacing = 8
+        stack.spacing = DesignSystem.Spacing.xs
 
         let buttonLabel = NSTextField(labelWithString: "\(button)  →")
-        buttonLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        buttonLabel.textColor = NSColor.secondaryLabelColor
+        buttonLabel.font = DesignSystem.Typography.codeMedium
+        buttonLabel.textColor = DesignSystem.Colors.secondaryText
         buttonLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
         let actionLabel = NSTextField(labelWithString: "\(modifier.description) (hold)")
-        actionLabel.font = NSFont.systemFont(ofSize: 11)
-        actionLabel.textColor = NSColor.labelColor
+        actionLabel.font = DesignSystem.Typography.bodySmall
+        actionLabel.textColor = DesignSystem.Colors.text
 
         stack.addArrangedSubview(buttonLabel)
         stack.addArrangedSubview(actionLabel)
@@ -219,16 +219,16 @@ class ProfileOverlay: NSWindow {
     private func createInfoRow(_ label: String, description: String) -> NSView {
         let stack = NSStackView()
         stack.orientation = .horizontal
-        stack.spacing = 8
+        stack.spacing = DesignSystem.Spacing.xs
 
         let keyLabel = NSTextField(labelWithString: label)
-        keyLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        keyLabel.textColor = NSColor.secondaryLabelColor
+        keyLabel.font = DesignSystem.Typography.codeMedium
+        keyLabel.textColor = DesignSystem.Colors.secondaryText
         keyLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
 
         let descLabel = NSTextField(labelWithString: description)
-        descLabel.font = NSFont.systemFont(ofSize: 11)
-        descLabel.textColor = NSColor.labelColor
+        descLabel.font = DesignSystem.Typography.bodySmall
+        descLabel.textColor = DesignSystem.Colors.text
 
         stack.addArrangedSubview(keyLabel)
         stack.addArrangedSubview(descLabel)
@@ -259,9 +259,9 @@ class ProfileOverlay: NSWindow {
         let tipsText = tips.isEmpty ? "" : "💡 " + tips.joined(separator: " • ")
 
         let label = NSTextField(labelWithString: tipsText)
-        label.font = NSFont.systemFont(ofSize: 11)
+        label.font = DesignSystem.Typography.bodySmall
         label.alignment = .center
-        label.textColor = NSColor.secondaryLabelColor
+        label.textColor = DesignSystem.Colors.secondaryText
         label.maximumNumberOfLines = 2
         label.lineBreakMode = .byWordWrapping
 
