@@ -242,4 +242,113 @@ enum DesignSystem {
         box.contentView = stack
         return box
     }
+
+    // MARK: - System Settings Style (Flat)
+
+    /// Create a flat section divider (System Settings style)
+    static func createSectionDivider(width: CGFloat) -> NSBox {
+        let divider = NSBox(frame: NSRect(x: 0, y: 0, width: width, height: 1))
+        divider.boxType = .separator
+        divider.autoresizingMask = [.width]
+        return divider
+    }
+
+    /// Create a section header for flat layout (System Settings style)
+    static func createFlatSectionHeader(_ text: String, frame: NSRect) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = Typography.headlineMedium
+        label.textColor = Colors.text
+        label.frame = frame
+        label.autoresizingMask = [.width]
+        return label
+    }
+
+    /// Create a horizontal row with label and control (System Settings style)
+    /// Returns a container view with the label on left and control on right
+    static func createHorizontalRow(
+        label: String,
+        control: NSView,
+        width: CGFloat,
+        height: CGFloat = 32,
+        labelWidth: CGFloat = 240,
+        description: String? = nil
+    ) -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        container.autoresizingMask = [.width]
+
+        // Label on left
+        let labelView = NSTextField(labelWithString: label)
+        labelView.font = Typography.bodyMedium
+        labelView.textColor = Colors.text
+        labelView.alignment = .left
+        labelView.frame = NSRect(x: Spacing.lg, y: (height - 20) / 2, width: labelWidth, height: 20)
+        labelView.autoresizingMask = [.maxXMargin]
+        container.addSubview(labelView)
+
+        // Control on right
+        control.frame.origin = NSPoint(x: Spacing.lg + labelWidth + Spacing.md, y: (height - control.frame.height) / 2)
+        control.autoresizingMask = [.minXMargin]
+        container.addSubview(control)
+
+        // Optional description text below
+        if let desc = description {
+            let descLabel = NSTextField(wrappingLabelWithString: desc)
+            descLabel.font = Typography.caption
+            descLabel.textColor = Colors.secondaryText
+            descLabel.alignment = .left
+            descLabel.frame = NSRect(x: Spacing.lg, y: 0, width: width - Spacing.lg * 2, height: 16)
+            descLabel.autoresizingMask = [.width]
+
+            // Adjust container height to fit description
+            container.frame.size.height = height + 20
+            descLabel.frame.origin.y = 4
+            labelView.frame.origin.y = height - 16
+            control.frame.origin.y = height - 20
+
+            container.addSubview(descLabel)
+        }
+
+        return container
+    }
+
+    /// Create a flat section (System Settings style - no box, no shadow)
+    /// Just groups related controls with a header and optional background
+    static func createFlatSection(
+        title: String,
+        rows: [NSView],
+        width: CGFloat,
+        backgroundColor: NSColor? = nil
+    ) -> NSView {
+        var y: CGFloat = 0
+
+        // Calculate total height
+        let totalHeight = Spacing.lg + 24 + Spacing.sm + rows.reduce(0) { $0 + $1.frame.height + Spacing.xs } + Spacing.md
+
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: totalHeight))
+        container.autoresizingMask = [.width]
+
+        // Optional subtle background
+        if let bgColor = backgroundColor {
+            container.wantsLayer = true
+            container.layer?.backgroundColor = bgColor.cgColor
+            container.layer?.cornerRadius = CornerRadius.medium
+        }
+
+        y = totalHeight - Spacing.lg
+
+        // Section header
+        let header = createFlatSectionHeader(title, frame: NSRect(x: Spacing.lg, y: y - 24, width: width - Spacing.lg * 2, height: 24))
+        container.addSubview(header)
+        y -= 24 + Spacing.sm
+
+        // Add all rows
+        for row in rows {
+            y -= row.frame.height
+            row.frame.origin = NSPoint(x: 0, y: y)
+            container.addSubview(row)
+            y -= Spacing.xs
+        }
+
+        return container
+    }
 }

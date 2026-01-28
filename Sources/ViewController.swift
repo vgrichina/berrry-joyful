@@ -42,22 +42,22 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private var leftDeadzoneLabel: NSTextField!
     private var rightDeadzoneSlider: NSSlider!
     private var rightDeadzoneLabel: NSTextField!
-    private var invertYCheckbox: NSButton!
-    private var accelerationCheckbox: NSButton!
+    private var invertYCheckbox: NSControl!  // NSSwitch
+    private var accelerationCheckbox: NSControl!  // NSSwitch
     private var leftStickFunctionPopup: NSPopUpButton!
     private var rightStickFunctionPopup: NSPopUpButton!
 
     // Sticky Mouse Controls
-    private var stickyMouseCheckbox: NSButton!
+    private var stickyMouseCheckbox: NSControl!  // NSSwitch
     private var stickyStrengthPopup: NSPopUpButton!
-    private var stickyOverlayCheckbox: NSButton!
+    private var stickyOverlayCheckbox: NSControl!  // NSSwitch
 
     // Keyboard Controls
     private var keyboardPresetPopup: NSPopUpButton!
 
     // Debug Controls
     #if DEBUG
-    private var debugModeCheckbox: NSButton!
+    private var debugModeCheckbox: NSControl!  // NSSwitch
     #endif
 
     // Voice Controls
@@ -253,49 +253,177 @@ class ViewController: NSViewController, NSTabViewDelegate {
         return headerView
     }
 
+    // MARK: - System Settings Style Row Helpers
+
+    /// Create a horizontal slider row (System Settings style)
+    private func createSliderRow(
+        label: String,
+        slider: inout NSSlider?,
+        valueLabel: inout NSTextField?,
+        value: Double,
+        minValue: Double,
+        maxValue: Double,
+        formatString: String,
+        action: Selector,
+        yPosition: CGFloat,
+        width: CGFloat,
+        labelWidth: CGFloat
+    ) -> NSView {
+        let row = NSView(frame: NSRect(x: 0, y: yPosition, width: width, height: 32))
+        row.autoresizingMask = [.width]
+
+        // Label on left
+        let labelView = NSTextField(labelWithString: label)
+        labelView.font = DesignSystem.Typography.bodyMedium
+        labelView.textColor = DesignSystem.Colors.text
+        labelView.alignment = .left
+        labelView.frame = NSRect(x: DesignSystem.Spacing.lg, y: 6, width: labelWidth, height: 20)
+        labelView.autoresizingMask = [.maxXMargin]
+        row.addSubview(labelView)
+
+        // Value label on far right (60px from right edge)
+        let valueLbl = NSTextField(labelWithString: String(format: formatString, value))
+        valueLbl.font = DesignSystem.Typography.bodyMedium
+        valueLbl.textColor = DesignSystem.Colors.secondaryText
+        valueLbl.alignment = .right
+        valueLbl.frame = NSRect(x: width - 60 - DesignSystem.Spacing.lg, y: 6, width: 60, height: 20)
+        valueLbl.autoresizingMask = [.minXMargin]
+        row.addSubview(valueLbl)
+        valueLabel = valueLbl
+
+        // Slider in the middle (between label and value)
+        let sldr = NSSlider(frame: NSRect(x: DesignSystem.Spacing.lg + labelWidth + DesignSystem.Spacing.md, y: 6, width: width - labelWidth - 60 - DesignSystem.Spacing.lg * 3 - DesignSystem.Spacing.md, height: 20))
+        sldr.minValue = minValue
+        sldr.maxValue = maxValue
+        sldr.doubleValue = value
+        sldr.target = self
+        sldr.action = action
+        sldr.autoresizingMask = [.width]  // Grow with window
+        row.addSubview(sldr)
+        slider = sldr
+
+        return row
+    }
+
+    /// Create a horizontal switch row (System Settings style)
+    private func createCheckboxRow(
+        label: String,
+        checkbox: inout NSControl?,
+        isChecked: Bool,
+        action: Selector,
+        yPosition: CGFloat,
+        width: CGFloat,
+        labelWidth: CGFloat
+    ) -> NSView {
+        let row = NSView(frame: NSRect(x: 0, y: yPosition, width: width, height: 28))
+        row.autoresizingMask = [.width]
+
+        // Label on left
+        let labelView = NSTextField(labelWithString: label)
+        labelView.font = DesignSystem.Typography.bodyMedium
+        labelView.textColor = DesignSystem.Colors.text
+        labelView.alignment = .left
+        labelView.frame = NSRect(x: DesignSystem.Spacing.lg, y: 4, width: labelWidth, height: 20)
+        labelView.autoresizingMask = [.maxXMargin]
+        row.addSubview(labelView)
+
+        // Switch on right (iOS-style toggle)
+        let toggle = NSSwitch()
+        toggle.state = isChecked ? .on : .off
+        toggle.target = self
+        toggle.action = action
+        toggle.frame = NSRect(x: width - 60, y: 2, width: 50, height: 24)
+        toggle.autoresizingMask = [.minXMargin]
+        row.addSubview(toggle)
+
+        // Store as NSControl (NSSwitch inherits from NSControl)
+        checkbox = toggle
+
+        return row
+    }
+
+    /// Create a horizontal popup button row (System Settings style)
+    private func createPopupRow(
+        label: String,
+        popup: inout NSPopUpButton?,
+        items: [String],
+        selectedItem: String?,
+        action: Selector,
+        yPosition: CGFloat,
+        width: CGFloat,
+        labelWidth: CGFloat
+    ) -> NSView {
+        let row = NSView(frame: NSRect(x: 0, y: yPosition, width: width, height: 32))
+        row.autoresizingMask = [.width]
+
+        // Label on left
+        let labelView = NSTextField(labelWithString: label)
+        labelView.font = DesignSystem.Typography.bodyMedium
+        labelView.textColor = DesignSystem.Colors.text
+        labelView.alignment = .left
+        labelView.frame = NSRect(x: DesignSystem.Spacing.lg, y: 6, width: labelWidth, height: 20)
+        labelView.autoresizingMask = [.maxXMargin]
+        row.addSubview(labelView)
+
+        // Popup on right
+        let pop = NSPopUpButton(frame: NSRect(x: width - 180 - DesignSystem.Spacing.lg, y: 3, width: 180, height: 25))
+        pop.removeAllItems()
+        pop.addItems(withTitles: items)
+        if let selected = selectedItem {
+            pop.selectItem(withTitle: selected)
+        }
+        pop.target = self
+        pop.action = action
+        pop.autoresizingMask = [.minXMargin]
+        row.addSubview(pop)
+        popup = pop
+
+        return row
+    }
+
     // MARK: - Section Box Helper
 
     /// Creates a visual section box with title and content
     private func createSectionBox(title: String, content: NSView, yPosition: inout CGFloat, panelWidth: CGFloat) -> NSView {
-        let container = NSView(frame: NSRect(x: DesignSystem.Spacing.lg, y: yPosition, width: panelWidth - (DesignSystem.Spacing.lg * 2), height: content.bounds.height + 60))
-        container.autoresizingMask = [.width]  // Allow horizontal resizing
+        // System Settings style: flat sections with barely visible background
+        let contentHeight = content.bounds.height
 
-        // Section box with rounded corners and border
-        let box = NSBox(frame: container.bounds)
-        box.autoresizingMask = [.width, .height]  // Resize with container
-        box.boxType = .custom
-        box.isTransparent = false
-        box.borderWidth = 1
-        box.borderColor = DesignSystem.Colors.separator
-        box.cornerRadius = DesignSystem.CornerRadius.large
-        box.fillColor = DesignSystem.Colors.secondaryBackground
-        box.contentViewMargins = NSSize(width: DesignSystem.Spacing.md, height: DesignSystem.Spacing.md)
+        // Tighter vertical spacing like System Settings
+        let topPadding: CGFloat = 16  // Above title
+        let titleHeight: CGFloat = 20
+        let titleToContent: CGFloat = 8  // Between title and first row
+        let bottomPadding: CGFloat = 12  // Below content
 
-        // Apply subtle shadow
-        box.wantsLayer = true
-        let shadowConfig = DesignSystem.Shadow.card
-        box.shadow = NSShadow()
-        box.shadow?.shadowColor = shadowConfig.color.withAlphaComponent(CGFloat(shadowConfig.opacity))
-        box.shadow?.shadowBlurRadius = shadowConfig.radius
-        box.shadow?.shadowOffset = shadowConfig.offset
+        let totalHeight = topPadding + titleHeight + titleToContent + contentHeight + bottomPadding
 
-        // Section title
+        // Slight inset from edges (System Settings has ~20px margin)
+        let horizontalInset: CGFloat = 20
+        let container = NSView(frame: NSRect(x: horizontalInset, y: yPosition, width: panelWidth - (horizontalInset * 2), height: totalHeight))
+        container.autoresizingMask = [.width]
+
+        // EXTREMELY subtle background (barely visible, like System Settings)
+        container.wantsLayer = true
+        container.layer?.backgroundColor = DesignSystem.Colors.tertiaryBackground.withAlphaComponent(0.04).cgColor
+        container.layer?.cornerRadius = 6  // Very small radius like System Settings
+
+        // Section title (bold, prominent)
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = DesignSystem.Typography.headlineMedium
         titleLabel.textColor = DesignSystem.Colors.text
-        titleLabel.frame = NSRect(x: DesignSystem.Spacing.md, y: content.bounds.height + 30, width: container.bounds.width - (DesignSystem.Spacing.md * 2), height: 20)
-        titleLabel.autoresizingMask = [.width]  // Resize with container
+        titleLabel.frame = NSRect(x: DesignSystem.Spacing.md, y: totalHeight - topPadding - titleHeight, width: container.bounds.width - DesignSystem.Spacing.md * 2, height: titleHeight)
+        titleLabel.autoresizingMask = [.width]
+        container.addSubview(titleLabel)
 
         // Position content below title
-        content.frame.origin = NSPoint(x: DesignSystem.Spacing.md, y: DesignSystem.Spacing.md)
-        content.autoresizingMask = [.width]  // Resize with container
+        content.frame.origin = NSPoint(x: 0, y: bottomPadding)
+        content.autoresizingMask = [.width]
+        container.addSubview(content)
 
-        box.addSubview(titleLabel)
-        box.addSubview(content)
-        container.addSubview(box)
+        // Bottom divider (subtle separator between sections) - removed, System Settings uses whitespace
+        // No divider needed with subtle backgrounds
 
-        // Update y position for next section
-        yPosition += container.bounds.height + DesignSystem.Spacing.md
+        // Update y position for next section (System Settings spacing)
+        yPosition += totalHeight + DesignSystem.Spacing.md
 
         return container
     }
@@ -338,226 +466,232 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.autoresizingMask = [.width, .height]
 
         var y: CGFloat = DesignSystem.Spacing.lg  // Start from top
+        let labelWidth: CGFloat = 200
+
+        // Account for section container insets (20px each side)
+        let contentWidth = frame.width - 40
 
         // SECTION 1: Movement
-        let movementContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 130))
+        let movementContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 140))
         var movementY: CGFloat = 0
 
-        // Sensitivity Slider
-        let sensitivityTitleLabel = NSTextField(labelWithString: "Sensitivity")
-        sensitivityTitleLabel.font = DesignSystem.Typography.bodyMedium
-        sensitivityTitleLabel.frame = NSRect(x: 0, y: movementY, width: 100, height: 20)
-        movementContent.addSubview(sensitivityTitleLabel)
+        // Sensitivity Slider Row
+        let sensitivityRow = createSliderRow(
+            label: "Sensitivity",
+            slider: &sensitivitySlider,
+            valueLabel: &sensitivityLabel,
+            value: Double(settings.mouseSensitivity),
+            minValue: 0.5,
+            maxValue: 20.0,
+            formatString: "%.1fx",
+            action: #selector(sensitivityChanged(_:)),
+            yPosition: movementY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        movementContent.addSubview(sensitivityRow)
+        movementY += 36
 
-        sensitivitySlider = NSSlider(frame: NSRect(x: 110, y: movementY, width: 250, height: 20))
-        sensitivitySlider.autoresizingMask = [.width]  // Grow with window
-        sensitivitySlider.minValue = 0.5
-        sensitivitySlider.maxValue = 20.0
-        sensitivitySlider.doubleValue = Double(settings.mouseSensitivity)
-        sensitivitySlider.target = self
-        sensitivitySlider.action = #selector(sensitivityChanged(_:))
-        sensitivitySlider.setAccessibilityLabel("Mouse sensitivity slider")
-        sensitivitySlider.setAccessibilityValue(String(format: "%.1fx", settings.mouseSensitivity))
-        movementContent.addSubview(sensitivitySlider)
+        // Scroll Speed Slider Row
+        let scrollRow = createSliderRow(
+            label: "Scroll Speed",
+            slider: &scrollSensitivitySlider,
+            valueLabel: &scrollSensitivityLabel,
+            value: Double(settings.scrollSensitivity),
+            minValue: 0.5,
+            maxValue: 10.0,
+            formatString: "%.1fx",
+            action: #selector(scrollSensitivityChanged(_:)),
+            yPosition: movementY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        movementContent.addSubview(scrollRow)
+        movementY += 36
 
-        sensitivityLabel = NSTextField(labelWithString: String(format: "%.1fx", settings.mouseSensitivity))
-        sensitivityLabel.font = DesignSystem.Typography.bodyMedium
-        sensitivityLabel.frame = NSRect(x: 370, y: movementY, width: 60, height: 20)
-        sensitivityLabel.autoresizingMask = [.minXMargin]  // Stay anchored to right
-        movementContent.addSubview(sensitivityLabel)
-        movementY += 30
+        // Invert Y-Axis Row
+        let invertRow = createCheckboxRow(
+            label: "Invert Y-Axis",
+            checkbox: &invertYCheckbox,
+            isChecked: settings.invertY,
+            action: #selector(invertYChanged(_:)),
+            yPosition: movementY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        movementContent.addSubview(invertRow)
+        movementY += 32
 
-        // Scroll Sensitivity Slider
-        let scrollSensitivityTitleLabel = NSTextField(labelWithString: "Scroll Speed")
-        scrollSensitivityTitleLabel.font = DesignSystem.Typography.bodyMedium
-        scrollSensitivityTitleLabel.frame = NSRect(x: 0, y: movementY, width: 100, height: 20)
-        movementContent.addSubview(scrollSensitivityTitleLabel)
-
-        scrollSensitivitySlider = NSSlider(frame: NSRect(x: 110, y: movementY, width: 250, height: 20))
-        scrollSensitivitySlider.autoresizingMask = [.width]  // Grow with window
-        scrollSensitivitySlider.minValue = 0.5
-        scrollSensitivitySlider.maxValue = 10.0
-        scrollSensitivitySlider.doubleValue = Double(settings.scrollSensitivity)
-        scrollSensitivitySlider.target = self
-        scrollSensitivitySlider.action = #selector(scrollSensitivityChanged(_:))
-        scrollSensitivitySlider.setAccessibilityLabel("Scroll speed slider")
-        scrollSensitivitySlider.setAccessibilityValue(String(format: "%.1fx", settings.scrollSensitivity))
-        movementContent.addSubview(scrollSensitivitySlider)
-
-        scrollSensitivityLabel = NSTextField(labelWithString: String(format: "%.1fx", settings.scrollSensitivity))
-        scrollSensitivityLabel.font = DesignSystem.Typography.bodyMedium
-        scrollSensitivityLabel.frame = NSRect(x: 370, y: movementY, width: 60, height: 20)
-        scrollSensitivityLabel.autoresizingMask = [.minXMargin]  // Stay anchored to right
-        movementContent.addSubview(scrollSensitivityLabel)
-        movementY += 35
-
-        // Checkboxes
-        invertYCheckbox = NSButton(checkboxWithTitle: "Invert Y-Axis", target: self, action: #selector(invertYChanged(_:)))
-        invertYCheckbox.font = DesignSystem.Typography.bodyMedium
-        invertYCheckbox.frame = NSRect(x: 0, y: movementY, width: 150, height: 20)
-        invertYCheckbox.state = settings.invertY ? .on : .off
-        invertYCheckbox.setAccessibilityLabel("Invert Y-Axis for scrolling")
-        movementContent.addSubview(invertYCheckbox)
-
-        accelerationCheckbox = NSButton(checkboxWithTitle: "Acceleration", target: self, action: #selector(accelerationChanged(_:)))
-        accelerationCheckbox.font = DesignSystem.Typography.bodyMedium
-        accelerationCheckbox.frame = NSRect(x: 160, y: movementY, width: 150, height: 20)
-        accelerationCheckbox.state = settings.mouseAcceleration ? .on : .off
-        accelerationCheckbox.setAccessibilityLabel("Enable mouse acceleration")
-        movementContent.addSubview(accelerationCheckbox)
+        // Acceleration Row
+        let accelRow = createCheckboxRow(
+            label: "Acceleration",
+            checkbox: &accelerationCheckbox,
+            isChecked: settings.mouseAcceleration,
+            action: #selector(accelerationChanged(_:)),
+            yPosition: movementY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        movementContent.addSubview(accelRow)
 
         panel.addSubview(createSectionBox(title: "Movement", content: movementContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 2: Deadzone
-        let deadzoneContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 70))
+        let deadzoneContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 72))
         var deadzoneY: CGFloat = 0
 
-        // Left Stick Deadzone Slider
-        let leftDeadzoneTitleLabel = NSTextField(labelWithString: "Left Stick")
-        leftDeadzoneTitleLabel.font = DesignSystem.Typography.bodyMedium
-        leftDeadzoneTitleLabel.frame = NSRect(x: 0, y: deadzoneY, width: 100, height: 20)
-        deadzoneContent.addSubview(leftDeadzoneTitleLabel)
+        // Left Stick Deadzone Row
+        let leftDeadzoneRow = createSliderRow(
+            label: "Left Stick",
+            slider: &leftDeadzoneSlider,
+            valueLabel: &leftDeadzoneLabel,
+            value: Double(settings.leftStickDeadzone),
+            minValue: 0.0,
+            maxValue: 0.3,
+            formatString: "%.0f%%",
+            action: #selector(leftDeadzoneChanged(_:)),
+            yPosition: deadzoneY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        // Custom formatter for percentage
+        leftDeadzoneLabel?.stringValue = String(format: "%.0f%%", settings.leftStickDeadzone * 100)
+        deadzoneContent.addSubview(leftDeadzoneRow)
+        deadzoneY += 36
 
-        leftDeadzoneSlider = NSSlider(frame: NSRect(x: 110, y: deadzoneY, width: 250, height: 20))
-        leftDeadzoneSlider.autoresizingMask = [.width]  // Grow with window
-        leftDeadzoneSlider.minValue = 0.0
-        leftDeadzoneSlider.maxValue = 0.3
-        leftDeadzoneSlider.doubleValue = Double(settings.leftStickDeadzone)
-        leftDeadzoneSlider.target = self
-        leftDeadzoneSlider.action = #selector(leftDeadzoneChanged(_:))
-        deadzoneContent.addSubview(leftDeadzoneSlider)
-
-        leftDeadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.leftStickDeadzone * 100))
-        leftDeadzoneLabel.font = DesignSystem.Typography.bodyMedium
-        leftDeadzoneLabel.frame = NSRect(x: 370, y: deadzoneY, width: 60, height: 20)
-        leftDeadzoneLabel.autoresizingMask = [.minXMargin]  // Stay anchored to right
-        deadzoneContent.addSubview(leftDeadzoneLabel)
-        deadzoneY += 30
-
-        // Right Stick Deadzone Slider
-        let rightDeadzoneTitleLabel = NSTextField(labelWithString: "Right Stick")
-        rightDeadzoneTitleLabel.font = DesignSystem.Typography.bodyMedium
-        rightDeadzoneTitleLabel.frame = NSRect(x: 0, y: deadzoneY, width: 100, height: 20)
-        deadzoneContent.addSubview(rightDeadzoneTitleLabel)
-
-        rightDeadzoneSlider = NSSlider(frame: NSRect(x: 110, y: deadzoneY, width: 250, height: 20))
-        rightDeadzoneSlider.autoresizingMask = [.width]  // Grow with window
-        rightDeadzoneSlider.minValue = 0.0
-        rightDeadzoneSlider.maxValue = 0.3
-        rightDeadzoneSlider.doubleValue = Double(settings.rightStickDeadzone)
-        rightDeadzoneSlider.target = self
-        rightDeadzoneSlider.action = #selector(rightDeadzoneChanged(_:))
-        deadzoneContent.addSubview(rightDeadzoneSlider)
-
-        rightDeadzoneLabel = NSTextField(labelWithString: String(format: "%.0f%%", settings.rightStickDeadzone * 100))
-        rightDeadzoneLabel.font = DesignSystem.Typography.bodyMedium
-        rightDeadzoneLabel.frame = NSRect(x: 370, y: deadzoneY, width: 60, height: 20)
-        rightDeadzoneLabel.autoresizingMask = [.minXMargin]  // Stay anchored to right
-        deadzoneContent.addSubview(rightDeadzoneLabel)
+        // Right Stick Deadzone Row
+        let rightDeadzoneRow = createSliderRow(
+            label: "Right Stick",
+            slider: &rightDeadzoneSlider,
+            valueLabel: &rightDeadzoneLabel,
+            value: Double(settings.rightStickDeadzone),
+            minValue: 0.0,
+            maxValue: 0.3,
+            formatString: "%.0f%%",
+            action: #selector(rightDeadzoneChanged(_:)),
+            yPosition: deadzoneY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        // Custom formatter for percentage
+        rightDeadzoneLabel?.stringValue = String(format: "%.0f%%", settings.rightStickDeadzone * 100)
+        deadzoneContent.addSubview(rightDeadzoneRow)
 
         panel.addSubview(createSectionBox(title: "Deadzone", content: deadzoneContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 3: Stick Functions
-        let stickFunctionContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 70))
+        let stickFunctionContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 68))
         var stickFunctionY: CGFloat = 0
 
-        // Left Stick Function
-        let leftStickLabel = NSTextField(labelWithString: "Left Stick")
-        leftStickLabel.font = DesignSystem.Typography.bodyMedium
-        leftStickLabel.frame = NSRect(x: 0, y: stickFunctionY, width: 100, height: 20)
-        stickFunctionContent.addSubview(leftStickLabel)
+        // Left Stick Function Row
+        let leftStickRow = createPopupRow(
+            label: "Left Stick",
+            popup: &leftStickFunctionPopup,
+            items: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"],
+            selectedItem: profileManager.activeProfile.leftStickFunction.rawValue,
+            action: #selector(leftStickFunctionChanged(_:)),
+            yPosition: stickFunctionY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        stickFunctionContent.addSubview(leftStickRow)
+        stickFunctionY += 34
 
-        leftStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickFunctionY - 2, width: 150, height: 25))
-        leftStickFunctionPopup.autoresizingMask = [.maxXMargin]  // Stay anchored to left
-        leftStickFunctionPopup.removeAllItems()
-        leftStickFunctionPopup.addItems(withTitles: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"])
-        leftStickFunctionPopup.selectItem(withTitle: profileManager.activeProfile.leftStickFunction.rawValue)
-        leftStickFunctionPopup.target = self
-        leftStickFunctionPopup.action = #selector(leftStickFunctionChanged(_:))
-        stickFunctionContent.addSubview(leftStickFunctionPopup)
-        stickFunctionY += 30
-
-        // Right Stick Function
-        let rightStickLabel = NSTextField(labelWithString: "Right Stick")
-        rightStickLabel.font = DesignSystem.Typography.bodyMedium
-        rightStickLabel.frame = NSRect(x: 0, y: stickFunctionY, width: 100, height: 20)
-        stickFunctionContent.addSubview(rightStickLabel)
-
-        rightStickFunctionPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickFunctionY - 2, width: 150, height: 25))
-        rightStickFunctionPopup.autoresizingMask = [.maxXMargin]  // Stay anchored to left
-        rightStickFunctionPopup.removeAllItems()
-        rightStickFunctionPopup.addItems(withTitles: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"])
-        rightStickFunctionPopup.selectItem(withTitle: profileManager.activeProfile.rightStickFunction.rawValue)
-        rightStickFunctionPopup.target = self
-        rightStickFunctionPopup.action = #selector(rightStickFunctionChanged(_:))
-        stickFunctionContent.addSubview(rightStickFunctionPopup)
+        // Right Stick Function Row
+        let rightStickRow = createPopupRow(
+            label: "Right Stick",
+            popup: &rightStickFunctionPopup,
+            items: ["Mouse", "Scroll", "Arrow Keys", "WASD", "Disabled"],
+            selectedItem: profileManager.activeProfile.rightStickFunction.rawValue,
+            action: #selector(rightStickFunctionChanged(_:)),
+            yPosition: stickFunctionY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        stickFunctionContent.addSubview(rightStickRow)
 
         panel.addSubview(createSectionBox(title: "Stick Functions", content: stickFunctionContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 4: Sticky Mouse
-        let stickyMouseContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 135))
+        let stickyMouseContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 146))
         var stickyMouseY: CGFloat = 0
 
-        // Sticky Mouse Enable Checkbox
-        stickyMouseCheckbox = NSButton(checkboxWithTitle: "Enable sticky mouse", target: self, action: #selector(stickyMouseToggled(_:)))
-        stickyMouseCheckbox.font = DesignSystem.Typography.bodyMedium
-        stickyMouseCheckbox.frame = NSRect(x: 0, y: stickyMouseY, width: 300, height: 20)
-        stickyMouseCheckbox.autoresizingMask = [.maxXMargin]  // Stay anchored to left
-        stickyMouseCheckbox.state = StickyMouseManager.shared.isEnabled ? .on : .off
-        stickyMouseContent.addSubview(stickyMouseCheckbox)
-        stickyMouseY += 25
+        // Enable Sticky Mouse Row
+        let enableRow = createCheckboxRow(
+            label: "Enable sticky mouse",
+            checkbox: &stickyMouseCheckbox,
+            isChecked: StickyMouseManager.shared.isEnabled,
+            action: #selector(stickyMouseToggled(_:)),
+            yPosition: stickyMouseY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        stickyMouseContent.addSubview(enableRow)
+        stickyMouseY += 32
 
-        // Magnetic Strength Popup
-        let strengthLabel = NSTextField(labelWithString: "Strength")
-        strengthLabel.font = DesignSystem.Typography.bodyMedium
-        strengthLabel.frame = NSRect(x: 0, y: stickyMouseY, width: 100, height: 20)
-        stickyMouseContent.addSubview(strengthLabel)
+        // Strength Row
+        let strengthRow = createPopupRow(
+            label: "Strength",
+            popup: &stickyStrengthPopup,
+            items: ["Weak", "Medium", "Strong"],
+            selectedItem: StickyMouseManager.shared.magneticStrength.description,
+            action: #selector(stickyStrengthChanged(_:)),
+            yPosition: stickyMouseY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        stickyMouseContent.addSubview(strengthRow)
+        stickyMouseY += 34
 
-        stickyStrengthPopup = NSPopUpButton(frame: NSRect(x: 110, y: stickyMouseY - 2, width: 120, height: 25))
-        stickyStrengthPopup.autoresizingMask = [.maxXMargin]  // Stay anchored to left
-        stickyStrengthPopup.removeAllItems()
-        stickyStrengthPopup.addItems(withTitles: ["Weak", "Medium", "Strong"])
-        stickyStrengthPopup.selectItem(withTitle: StickyMouseManager.shared.magneticStrength.description)
-        stickyStrengthPopup.target = self
-        stickyStrengthPopup.action = #selector(stickyStrengthChanged(_:))
-        stickyMouseContent.addSubview(stickyStrengthPopup)
-        stickyMouseY += 30
+        // Show Visual Overlay Row
+        let overlayRow = createCheckboxRow(
+            label: "Show visual overlay",
+            checkbox: &stickyOverlayCheckbox,
+            isChecked: StickyMouseManager.shared.showVisualOverlay,
+            action: #selector(stickyOverlayToggled(_:)),
+            yPosition: stickyMouseY,
+            width: contentWidth,
+            labelWidth: labelWidth
+        )
+        stickyMouseContent.addSubview(overlayRow)
+        stickyMouseY += 36
 
-        // Visual Overlay Checkbox
-        stickyOverlayCheckbox = NSButton(checkboxWithTitle: "Show visual overlay", target: self, action: #selector(stickyOverlayToggled(_:)))
-        stickyOverlayCheckbox.font = DesignSystem.Typography.bodyMedium
-        stickyOverlayCheckbox.frame = NSRect(x: 0, y: stickyMouseY, width: 300, height: 20)
-        stickyOverlayCheckbox.autoresizingMask = [.maxXMargin]  // Stay anchored to left
-        stickyOverlayCheckbox.state = StickyMouseManager.shared.showVisualOverlay ? .on : .off
-        stickyMouseContent.addSubview(stickyOverlayCheckbox)
-        stickyMouseY += 30
-
-        // Sticky Mouse Info
-        let stickyInfoLabel = NSTextField(wrappingLabelWithString: "ℹ️ Slows cursor near buttons and text fields, making them easier to click. Toggle with L button, adjust strength with ZL+X.")
+        // Info text (full-width below controls)
+        let stickyInfoLabel = NSTextField(wrappingLabelWithString: "Slows cursor near buttons and text fields, making them easier to click. Toggle with L button, adjust strength with ZL+X.")
         stickyInfoLabel.font = DesignSystem.Typography.caption
-        stickyInfoLabel.textColor = DesignSystem.Colors.tertiaryText
+        stickyInfoLabel.textColor = DesignSystem.Colors.secondaryText
         stickyInfoLabel.alignment = .left
-        stickyInfoLabel.frame = NSRect(x: 0, y: stickyMouseY, width: frame.width - 120, height: 30)
-        stickyInfoLabel.autoresizingMask = [.width]  // Grow with window
+        stickyInfoLabel.frame = NSRect(x: DesignSystem.Spacing.lg, y: stickyMouseY, width: contentWidth - DesignSystem.Spacing.lg * 2, height: 40)
+        stickyInfoLabel.autoresizingMask = [.width]
         stickyMouseContent.addSubview(stickyInfoLabel)
 
         panel.addSubview(createSectionBox(title: "Sticky Mouse", content: stickyMouseContent, yPosition: &y, panelWidth: frame.width))
 
         // Debug mode toggle (only in debug builds)
         #if DEBUG
-        let debugContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 50))
-        debugModeCheckbox = NSButton(checkboxWithTitle: "Debug Mode (skip system input events)", target: self, action: #selector(debugModeChanged(_:)))
-        debugModeCheckbox.font = DesignSystem.Typography.bodyMedium
-        debugModeCheckbox.frame = NSRect(x: 0, y: 0, width: 350, height: 20)
-        debugModeCheckbox.autoresizingMask = [.maxXMargin]  // Stay anchored to left
-        debugModeCheckbox.state = inputController.debugMode ? .on : .off
-        debugContent.addSubview(debugModeCheckbox)
+        let debugContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 60))
+        var debugY: CGFloat = 0
 
+        // Debug Mode Row
+        let debugRow = createCheckboxRow(
+            label: "Debug Mode (skip system input events)",
+            checkbox: &debugModeCheckbox,
+            isChecked: inputController.debugMode,
+            action: #selector(debugModeChanged(_:)),
+            yPosition: debugY,
+            width: contentWidth,
+            labelWidth: 280
+        )
+        debugContent.addSubview(debugRow)
+        debugY += 32
+
+        // Info text
         let debugInfo = NSTextField(wrappingLabelWithString: "⚠️ DEBUG MODE: Input events are logged but not sent to the system.")
         debugInfo.font = DesignSystem.Typography.caption
         debugInfo.textColor = DesignSystem.Colors.warning
-        debugInfo.frame = NSRect(x: 0, y: 25, width: frame.width - 120, height: 20)
-        debugInfo.autoresizingMask = [.width]  // Grow with window
+        debugInfo.alignment = .left
+        debugInfo.frame = NSRect(x: DesignSystem.Spacing.lg, y: debugY, width: contentWidth - DesignSystem.Spacing.lg * 2, height: 20)
+        debugInfo.autoresizingMask = [.width]
         debugContent.addSubview(debugInfo)
 
         panel.addSubview(createSectionBox(title: "Debug", content: debugContent, yPosition: &y, panelWidth: frame.width))
