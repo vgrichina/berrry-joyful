@@ -1449,10 +1449,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 self.connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))\(debugSuffix)"
                 self.connectionLabel.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
 
-                // Battery (placeholder - JoyConSwift doesn't expose battery easily)
-                if !self.controllers.isEmpty {
-                    self.batteryLabel.stringValue = "🔋 ---%"
-                }
+                // Update battery display
+                self.updateBatteryDisplay()
 
                 // LED indicator
                 let count = self.controllers.count
@@ -1460,6 +1458,123 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 self.helpButton?.isHidden = true  // Hide help button when connected
             }
         }
+    }
+
+    private func updateBatteryDisplay() {
+        if controllers.count == 1 {
+            // Single controller - simple display
+            let controller = controllers[0]
+            let (icon, percentage, bars) = formatBatteryDisplay(controller.battery, isCharging: controller.isCharging)
+
+            if percentage >= 0 {
+                batteryLabel.stringValue = "\(icon) \(percentage)% \(bars)"
+            } else {
+                batteryLabel.stringValue = "\(icon) \(bars)"
+            }
+            batteryLabel.textColor = batteryColor(for: controller.battery)
+        } else if controllers.count == 2 {
+            // Two controllers - compact display
+            let left = controllers.first { $0.type == .JoyConL }
+            let right = controllers.first { $0.type == .JoyConR }
+
+            var parts: [String] = []
+
+            if let left = left {
+                let (icon, percentage, bars) = formatBatteryDisplay(left.battery, isCharging: left.isCharging)
+                if percentage >= 0 {
+                    parts.append("L:\(percentage)% \(bars)")
+                } else {
+                    parts.append("L:\(bars)")
+                }
+            }
+
+            if let right = right {
+                let (icon, percentage, bars) = formatBatteryDisplay(right.battery, isCharging: right.isCharging)
+                if percentage >= 0 {
+                    parts.append("R:\(percentage)% \(bars)")
+                } else {
+                    parts.append("R:\(bars)")
+                }
+            }
+
+            batteryLabel.stringValue = parts.joined(separator: " | ")
+            batteryLabel.textColor = DesignSystem.Colors.tertiaryText
+        }
+    }
+
+    private func formatBatteryDisplay(_ battery: JoyCon.BatteryStatus, isCharging: Bool) -> (icon: String, percentage: Int, bars: String) {
+        let icon = isCharging ? "⚡" : (battery == .empty ? "🪫" : "🔋")
+
+        let percentage: Int
+        let barCount: Int
+        let totalBars = 8  // Compact 8-bar display for header
+
+        switch battery {
+        case .full:
+            percentage = 100
+            barCount = totalBars
+        case .medium:
+            percentage = 50
+            barCount = totalBars / 2
+        case .low:
+            percentage = 25
+            barCount = totalBars / 4
+        case .critical:
+            percentage = 10
+            barCount = 1
+        case .empty:
+            percentage = 0
+            barCount = 0
+        case .unknown:
+            percentage = -1  // Signal unknown
+            barCount = 0
+        }
+
+        let bars: String
+        if percentage < 0 {
+            bars = "---"
+        } else {
+            bars = String(repeating: "█", count: barCount) + String(repeating: "░", count: totalBars - barCount)
+        }
+
+        return (icon, percentage, bars)
+    }
+
+    private func batteryColor(for battery: JoyCon.BatteryStatus) -> NSColor {
+        switch battery {
+        case .full, .medium:
+            return DesignSystem.Colors.success
+        case .low:
+            return DesignSystem.Colors.warning
+        case .critical, .empty:
+            return DesignSystem.Colors.error
+        case .unknown:
+            return DesignSystem.Colors.tertiaryText
+        }
+    }
+
+    private func handleBatteryChange(newState: JoyCon.BatteryStatus, oldState: JoyCon.BatteryStatus) {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateBatteryDisplay()
+        }
+
+        // Log significant battery events
+        if newState == .critical && oldState != .empty {
+            log("⚠️ Battery Critical! Please charge your Joy-Con soon")
+        }
+        if newState == .low && oldState == .medium {
+            log("🔋 Battery Low (25%)")
+        }
+        if newState == .full && oldState != .unknown {
+            log("✅ Battery Full!")
+        }
+    }
+
+    private func handleChargingChange(isCharging: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateBatteryDisplay()
+        }
+        log(isCharging ? "⚡ Charging started" : "⚡ Charging stopped")
     }
 
     // MARK: - JoyConSwift Handlers
@@ -1596,6 +1711,15 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         controller.rightStickPosHandler = { [weak self] pos in
             self?.handleRightStick(x: Float(pos.x), y: Float(pos.y))
+        }
+
+        // Battery monitoring
+        controller.batteryChangeHandler = { [weak self] newState, oldState in
+            self?.handleBatteryChange(newState: newState, oldState: oldState)
+        }
+
+        controller.isChargingChangeHandler = { [weak self] isCharging in
+            self?.handleChargingChange(isCharging: isCharging)
         }
 
         log("   ✅ Handlers configured")
