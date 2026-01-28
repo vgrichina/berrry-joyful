@@ -19,6 +19,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
     // Header
     private var connectionLabel: NSTextField!
     private var batteryLabel: NSTextField!
+    private var batteryProgressView: NSView!  // Container for battery progress bars
     private var ledIndicator: NSTextField!
     private var helpButton: NSButton!
 
@@ -216,22 +217,28 @@ class ViewController: NSViewController, NSTabViewDelegate {
         helpButton.isHidden = true  // Hidden by default, shown when no controller
         headerView.addSubview(helpButton)
 
-        // Battery indicator (right side)
+        // Battery indicator container (right side)
+        batteryProgressView = NSView(frame: NSRect(x: 380, y: 12, width: 240, height: 26))
+        batteryProgressView.autoresizingMask = [.minXMargin]
+        headerView.addSubview(batteryProgressView)
+
+        // Hidden text label (kept for compatibility)
         batteryLabel = NSTextField(labelWithString: "")
         batteryLabel.font = DesignSystem.Typography.bodySmall
         batteryLabel.textColor = DesignSystem.Colors.tertiaryText
         batteryLabel.alignment = .right
-        batteryLabel.frame = NSRect(x: 490, y: 17, width: 70, height: 16)
-        batteryLabel.autoresizingMask = [.minXMargin]
+        batteryLabel.frame = NSRect(x: 0, y: 0, width: 0, height: 0)
+        batteryLabel.isHidden = true
         headerView.addSubview(batteryLabel)
 
-        // LED indicator
+        // LED indicator (removed to make space for battery display)
         ledIndicator = NSTextField(labelWithString: "")
         ledIndicator.font = DesignSystem.Typography.bodySmall
         ledIndicator.textColor = DesignSystem.Colors.tertiaryText
         ledIndicator.alignment = .right
-        ledIndicator.frame = NSRect(x: 570, y: 17, width: 50, height: 16)
+        ledIndicator.frame = NSRect(x: 0, y: 0, width: 0, height: 0)  // Hidden
         ledIndicator.autoresizingMask = [.minXMargin]
+        ledIndicator.isHidden = true
         headerView.addSubview(ledIndicator)
 
         // Debug Log button (right side)
@@ -1441,7 +1448,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             if self.controllers.isEmpty {
                 self.connectionLabel.stringValue = "🔍 No Joy-Con detected\(debugSuffix)"
                 self.connectionLabel.textColor = NSColor.secondaryLabelColor
-                self.batteryLabel.stringValue = ""
+                self.batteryProgressView.subviews.forEach { $0.removeFromSuperview() }
                 self.ledIndicator.stringValue = ""
                 self.helpButton?.isHidden = false  // Show help button when no controller
             } else {
@@ -1461,83 +1468,106 @@ class ViewController: NSViewController, NSTabViewDelegate {
     }
 
     private func updateBatteryDisplay() {
-        if controllers.count == 1 {
-            // Single controller - simple display
-            let controller = controllers[0]
-            let (icon, percentage, bars) = formatBatteryDisplay(controller.battery, isCharging: controller.isCharging)
+        // Clear existing battery UI
+        batteryProgressView.subviews.forEach { $0.removeFromSuperview() }
 
-            if percentage >= 0 {
-                batteryLabel.stringValue = "\(icon) \(percentage)% \(bars)"
-            } else {
-                batteryLabel.stringValue = "\(icon) \(bars)"
-            }
-            batteryLabel.textColor = batteryColor(for: controller.battery)
+        if controllers.count == 1 {
+            // Single controller - full width display
+            let controller = controllers[0]
+            createBatteryIndicator(
+                for: controller,
+                label: nil,
+                frame: NSRect(x: 0, y: 0, width: 240, height: 26)
+            )
         } else if controllers.count == 2 {
-            // Two controllers - compact display
+            // Two controllers - split display
             let left = controllers.first { $0.type == .JoyConL }
             let right = controllers.first { $0.type == .JoyConR }
 
-            var parts: [String] = []
-
             if let left = left {
-                let (icon, percentage, bars) = formatBatteryDisplay(left.battery, isCharging: left.isCharging)
-                if percentage >= 0 {
-                    parts.append("L:\(percentage)% \(bars)")
-                } else {
-                    parts.append("L:\(bars)")
-                }
+                createBatteryIndicator(
+                    for: left,
+                    label: "L",
+                    frame: NSRect(x: 0, y: 0, width: 110, height: 26)
+                )
             }
 
             if let right = right {
-                let (icon, percentage, bars) = formatBatteryDisplay(right.battery, isCharging: right.isCharging)
-                if percentage >= 0 {
-                    parts.append("R:\(percentage)% \(bars)")
-                } else {
-                    parts.append("R:\(bars)")
-                }
+                createBatteryIndicator(
+                    for: right,
+                    label: "R",
+                    frame: NSRect(x: 130, y: 0, width: 110, height: 26)
+                )
             }
-
-            batteryLabel.stringValue = parts.joined(separator: " | ")
-            batteryLabel.textColor = DesignSystem.Colors.tertiaryText
         }
     }
 
-    private func formatBatteryDisplay(_ battery: JoyCon.BatteryStatus, isCharging: Bool) -> (icon: String, percentage: Int, bars: String) {
-        let icon = isCharging ? "⚡" : (battery == .empty ? "🪫" : "🔋")
+    private func createBatteryIndicator(for controller: Controller, label: String?, frame: NSRect) {
+        let container = NSView(frame: frame)
 
-        let percentage: Int
-        let barCount: Int
-        let totalBars = 8  // Compact 8-bar display for header
+        var xOffset: CGFloat = 0
 
-        switch battery {
-        case .full:
-            percentage = 100
-            barCount = totalBars
-        case .medium:
-            percentage = 50
-            barCount = totalBars / 2
-        case .low:
-            percentage = 25
-            barCount = totalBars / 4
-        case .critical:
-            percentage = 10
-            barCount = 1
-        case .empty:
-            percentage = 0
-            barCount = 0
-        case .unknown:
-            percentage = -1  // Signal unknown
-            barCount = 0
+        // Controller label (L/R) if provided
+        if let label = label {
+            let labelField = NSTextField(labelWithString: "\(label):")
+            labelField.font = DesignSystem.Typography.bodySmall
+            labelField.textColor = DesignSystem.Colors.tertiaryText
+            labelField.frame = NSRect(x: xOffset, y: 8, width: 15, height: 14)
+            container.addSubview(labelField)
+            xOffset += 18
         }
 
-        let bars: String
-        if percentage < 0 {
-            bars = "---"
+        let percentage = batteryPercentage(for: controller.battery)
+        let color = batteryColor(for: controller.battery)
+
+        if percentage >= 0 {
+            // Charging indicator
+            if controller.isCharging {
+                let chargeLabel = NSTextField(labelWithString: "⚡")
+                chargeLabel.font = DesignSystem.Typography.bodySmall
+                chargeLabel.textColor = DesignSystem.Colors.warning
+                chargeLabel.frame = NSRect(x: xOffset, y: 6, width: 15, height: 16)
+                container.addSubview(chargeLabel)
+                xOffset += 16
+            }
+
+            // Progress bar
+            let progressBar = NSProgressIndicator(frame: NSRect(x: xOffset, y: 8, width: 50, height: 10))
+            progressBar.style = .bar
+            progressBar.isIndeterminate = false
+            progressBar.minValue = 0
+            progressBar.maxValue = 100
+            progressBar.doubleValue = Double(percentage)
+            container.addSubview(progressBar)
+            xOffset += 55
+
+            // Percentage label
+            let percentLabel = NSTextField(labelWithString: "\(percentage)%")
+            percentLabel.font = DesignSystem.Typography.bodySmall
+            percentLabel.textColor = color
+            percentLabel.frame = NSRect(x: xOffset, y: 8, width: 35, height: 14)
+            container.addSubview(percentLabel)
         } else {
-            bars = String(repeating: "█", count: barCount) + String(repeating: "░", count: totalBars - barCount)
+            // Unknown battery state
+            let unknownLabel = NSTextField(labelWithString: "---")
+            unknownLabel.font = DesignSystem.Typography.bodySmall
+            unknownLabel.textColor = DesignSystem.Colors.tertiaryText
+            unknownLabel.frame = NSRect(x: xOffset, y: 8, width: 30, height: 14)
+            container.addSubview(unknownLabel)
         }
 
-        return (icon, percentage, bars)
+        batteryProgressView.addSubview(container)
+    }
+
+    private func batteryPercentage(for battery: JoyCon.BatteryStatus) -> Int {
+        switch battery {
+        case .full: return 100
+        case .medium: return 50
+        case .low: return 25
+        case .critical: return 10
+        case .empty: return 0
+        case .unknown: return -1
+        }
     }
 
     private func batteryColor(for battery: JoyCon.BatteryStatus) -> NSColor {
