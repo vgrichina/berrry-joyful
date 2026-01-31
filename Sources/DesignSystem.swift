@@ -143,6 +143,33 @@ enum DesignSystem {
         // Debug log
         static let debugLogDefaultHeight: CGFloat = 200
         static let debugLogMinHeight: CGFloat = 100
+
+        // Section Box Layout (8pt grid aligned)
+        static let sectionBoxHorizontalInset: CGFloat = 24  // Horizontal margin from window edge (3×8)
+        static let sectionBoxTopPadding: CGFloat = 16      // Above title (2×8)
+        static let sectionBoxTitleHeight: CGFloat = 24     // Title text height (3×8)
+        static let sectionBoxTitleGap: CGFloat = 8         // Between title and content (1×8)
+        static let sectionBoxBottomPadding: CGFloat = 16   // Below content (2×8)
+        static let sectionBoxSpacing: CGFloat = 16         // Gap between sections (2×8)
+
+        /// Total overhead added by createSectionBox (vertical) - includes spacing after
+        static var sectionBoxOverhead: CGFloat {
+            sectionBoxTopPadding + sectionBoxTitleHeight + sectionBoxTitleGap + sectionBoxBottomPadding + sectionBoxSpacing
+        }
+
+        /// Section box chrome (non-content vertical space) - excludes spacing after
+        static var sectionBoxChrome: CGFloat {
+            sectionBoxTopPadding + sectionBoxTitleHeight + sectionBoxTitleGap + sectionBoxBottomPadding
+        }
+
+        /// Content width for views inside section boxes
+        /// panelWidth - (2 * sectionBoxHorizontalInset + extra margin)
+        static func contentWidth(for panelWidth: CGFloat, extraMargin: CGFloat = 40) -> CGFloat {
+            panelWidth - (2 * sectionBoxHorizontalInset + extraMargin)
+        }
+
+        // Content alignment
+        static let contentLeftInset: CGFloat = 0  // Content aligns flush left within section boxes
     }
 
     // MARK: - Helper Methods

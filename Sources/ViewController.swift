@@ -224,7 +224,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Hidden text label (kept for compatibility)
         batteryLabel = NSTextField(labelWithString: "")
-        batteryLabel.font = DesignSystem.Typography.bodySmall
+        batteryLabel.font = DesignSystem.Typography.bodyMedium
         batteryLabel.textColor = DesignSystem.Colors.tertiaryText
         batteryLabel.alignment = .right
         batteryLabel.frame = NSRect(x: 0, y: 0, width: 0, height: 0)
@@ -233,7 +233,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // LED indicator (removed to make space for battery display)
         ledIndicator = NSTextField(labelWithString: "")
-        ledIndicator.font = DesignSystem.Typography.bodySmall
+        ledIndicator.font = DesignSystem.Typography.bodyMedium
         ledIndicator.textColor = DesignSystem.Colors.tertiaryText
         ledIndicator.alignment = .right
         ledIndicator.frame = NSRect(x: 0, y: 0, width: 0, height: 0)  // Hidden
@@ -243,7 +243,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Debug Log button (right side)
         debugLogButton = NSButton(frame: NSRect(x: 640, y: 10, width: 140, height: 30))
-        debugLogButton.title = "▶ Debug Log"  // Initial title (will be synced in viewDidLayout)
+        debugLogButton.title = "Debug Log"  // Initial title (will be synced in viewDidLayout)
         debugLogButton.bezelStyle = .rounded
         debugLogButton.target = self
         debugLogButton.action = #selector(toggleDebugLog(_:))
@@ -277,7 +277,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         labelView.font = DesignSystem.Typography.bodyMedium
         labelView.textColor = DesignSystem.Colors.text
         labelView.alignment = .left
-        labelView.frame = NSRect(x: DesignSystem.Spacing.lg, y: 6, width: labelWidth, height: 20)
+        labelView.frame = NSRect(x: DesignSystem.Layout.contentLeftInset, y: 6, width: labelWidth, height: 20)
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
@@ -323,7 +323,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         labelView.font = DesignSystem.Typography.bodyMedium
         labelView.textColor = DesignSystem.Colors.text
         labelView.alignment = .left
-        labelView.frame = NSRect(x: DesignSystem.Spacing.lg, y: 4, width: labelWidth, height: 20)
+        labelView.frame = NSRect(x: DesignSystem.Layout.contentLeftInset, y: 4, width: labelWidth, height: 20)
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
@@ -361,7 +361,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         labelView.font = DesignSystem.Typography.bodyMedium
         labelView.textColor = DesignSystem.Colors.text
         labelView.alignment = .left
-        labelView.frame = NSRect(x: DesignSystem.Spacing.lg, y: 6, width: labelWidth, height: 20)
+        labelView.frame = NSRect(x: DesignSystem.Layout.contentLeftInset, y: 6, width: labelWidth, height: 20)
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
@@ -388,42 +388,47 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // System Settings style: flat sections with barely visible background
         let contentHeight = content.bounds.height
 
-        // Tighter vertical spacing like System Settings
-        let topPadding: CGFloat = 16  // Above title
-        let titleHeight: CGFloat = 20
-        let titleToContent: CGFloat = 8  // Between title and first row
-        let bottomPadding: CGFloat = 12  // Below content
+        let totalHeight = DesignSystem.Layout.sectionBoxTopPadding +
+                         DesignSystem.Layout.sectionBoxTitleHeight +
+                         DesignSystem.Layout.sectionBoxTitleGap +
+                         contentHeight +
+                         DesignSystem.Layout.sectionBoxBottomPadding
 
-        let totalHeight = topPadding + titleHeight + titleToContent + contentHeight + bottomPadding
-
-        // Slight inset from edges (System Settings has ~20px margin)
-        let horizontalInset: CGFloat = 20
-        let container = NSView(frame: NSRect(x: horizontalInset, y: yPosition, width: panelWidth - (horizontalInset * 2), height: totalHeight))
+        let container = NSView(frame: NSRect(
+            x: DesignSystem.Layout.sectionBoxHorizontalInset,
+            y: yPosition,
+            width: panelWidth - (DesignSystem.Layout.sectionBoxHorizontalInset * 2),
+            height: totalHeight
+        ))
         container.autoresizingMask = [.width]
 
-        // EXTREMELY subtle background (barely visible, like System Settings)
+        // EXTREMELY subtle background and border (like System Settings)
         container.wantsLayer = true
-        container.layer?.backgroundColor = DesignSystem.Colors.tertiaryBackground.withAlphaComponent(0.04).cgColor
-        container.layer?.cornerRadius = 6  // Very small radius like System Settings
+        container.layer?.backgroundColor = DesignSystem.Colors.tertiaryBackground.withAlphaComponent(0.3).cgColor
+        container.layer?.cornerRadius = 8
+        container.layer?.borderWidth = 0.5
+        container.layer?.borderColor = DesignSystem.Colors.separator.withAlphaComponent(0.3).cgColor
 
-        // Section title (bold, prominent)
+        // Section title (bold, prominent) - left-aligned with content
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = DesignSystem.Typography.headlineMedium
         titleLabel.textColor = DesignSystem.Colors.text
-        titleLabel.frame = NSRect(x: DesignSystem.Spacing.md, y: totalHeight - topPadding - titleHeight, width: container.bounds.width - DesignSystem.Spacing.md * 2, height: titleHeight)
+        titleLabel.frame = NSRect(
+            x: DesignSystem.Layout.contentLeftInset,
+            y: totalHeight - DesignSystem.Layout.sectionBoxTopPadding - DesignSystem.Layout.sectionBoxTitleHeight,
+            width: container.bounds.width,
+            height: DesignSystem.Layout.sectionBoxTitleHeight
+        )
         titleLabel.autoresizingMask = [.width]
         container.addSubview(titleLabel)
 
         // Position content below title
-        content.frame.origin = NSPoint(x: 0, y: bottomPadding)
+        content.frame.origin = NSPoint(x: DesignSystem.Layout.contentLeftInset, y: DesignSystem.Layout.sectionBoxBottomPadding)
         content.autoresizingMask = [.width]
         container.addSubview(content)
 
-        // Bottom divider (subtle separator between sections) - removed, System Settings uses whitespace
-        // No divider needed with subtle backgrounds
-
-        // Update y position for next section (System Settings spacing)
-        yPosition += totalHeight + DesignSystem.Spacing.md
+        // Update y position for next section
+        yPosition += totalHeight + DesignSystem.Layout.sectionBoxSpacing
 
         return container
     }
@@ -719,122 +724,127 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         panel.autoresizingMask = [.width, .height]
 
-        var y: CGFloat = 20  // Start from top
+        var y: CGFloat = DesignSystem.Spacing.lg  // Start from top
 
-        // Title
-        let titleLabel = NSTextField(labelWithString: "Keyboard Layout & Mapping")
-        titleLabel.font = DesignSystem.Typography.headlineLarge
-        titleLabel.frame = NSRect(x: 20, y: y, width: 300, height: 25)
-        titleLabel.isBezeled = false
-        titleLabel.isEditable = false
-        titleLabel.drawsBackground = false
-        panel.addSubview(titleLabel)
-        y += 35
+        // SECTION 1: Profile Selection (8pt grid aligned)
+        let profileContentHeight: CGFloat = 32 + 32 + 24  // popup row + buttons row + description (all 8pt multiples)
+        let profileContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: profileContentHeight))
+        var profileY: CGFloat = 0
 
-        // Profile Selection
-        let profileLabel = NSTextField(labelWithString: "Button Profile:")
-        profileLabel.frame = NSRect(x: 20, y: y, width: 100, height: 20)
-        profileLabel.isBezeled = false
-        profileLabel.isEditable = false
-        profileLabel.drawsBackground = false
-        panel.addSubview(profileLabel)
+        // Profile selection dropdown using helper
+        let profileRow = createPopupRow(
+            label: "Button Profile",
+            popup: &keyboardPresetPopup,
+            items: profileManager.getProfileNames(),
+            selectedItem: profileManager.activeProfile.name,
+            action: #selector(profileSelectionChanged(_:)),
+            yPosition: profileY,
+            width: profileContent.bounds.width,
+            labelWidth: 150
+        )
+        profileContent.addSubview(profileRow)
+        profileY += 32
 
-        keyboardPresetPopup = NSPopUpButton(frame: NSRect(x: 130, y: y - 5, width: 180, height: 25))
-        keyboardPresetPopup.addItems(withTitles: profileManager.getProfileNames())
-        if let activeIndex = profileManager.getProfileNames().firstIndex(of: profileManager.activeProfile.name) {
-            keyboardPresetPopup.selectItem(at: activeIndex)
-        }
-        keyboardPresetPopup.target = self
-        keyboardPresetPopup.action = #selector(profileSelectionChanged(_:))
-        panel.addSubview(keyboardPresetPopup)
+        // Action buttons row
+        let buttonsRow = NSView(frame: NSRect(x: 0, y: profileY, width: profileContent.bounds.width, height: 32))
 
-        // Reset button (with better spacing)
-        let resetButton = NSButton(frame: NSRect(x: 330, y: y - 5, width: 70, height: 25))
+        let resetButton = NSButton(frame: NSRect(x: 0, y: 2, width: 90, height: 25))
         resetButton.title = "Reset"
         resetButton.bezelStyle = .rounded
         resetButton.target = self
         resetButton.action = #selector(resetProfileToDefaults(_:))
-        resetButton.autoresizingMask = [.minXMargin]
-        panel.addSubview(resetButton)
+        buttonsRow.addSubview(resetButton)
 
-        // Clone button (adjusted for new spacing)
-        let cloneButton = NSButton(frame: NSRect(x: 410, y: y - 5, width: 70, height: 25))
+        let cloneButton = NSButton(frame: NSRect(x: 100, y: 2, width: 90, height: 25))
         cloneButton.title = "Clone"
         cloneButton.bezelStyle = .rounded
         cloneButton.target = self
         cloneButton.action = #selector(cloneProfile(_:))
-        cloneButton.autoresizingMask = [.minXMargin]
-        panel.addSubview(cloneButton)
+        buttonsRow.addSubview(cloneButton)
 
-        y += 30
+        profileContent.addSubview(buttonsRow)
+        profileY += 32
 
         // Profile description
         let descLabel = NSTextField(wrappingLabelWithString: profileManager.activeProfile.description)
-        descLabel.font = DesignSystem.Typography.bodySmall
+        descLabel.font = DesignSystem.Typography.bodyMedium
         descLabel.textColor = DesignSystem.Colors.secondaryText
-        descLabel.frame = NSRect(x: 20, y: y, width: frame.width - 40, height: 20)
+        descLabel.frame = NSRect(x: 0, y: profileY, width: profileContent.bounds.width, height: 24)
         descLabel.autoresizingMask = [.width]
-        panel.addSubview(descLabel)
-        y += 30
+        profileContent.addSubview(descLabel)
 
-        // Scrollable button mapping editor - fills remaining space
-        let scrollViewHeight: CGFloat = frame.height - y - 20  // 20 = bottom padding
-        let scrollViewWidth: CGFloat = frame.width - 40
-        let scrollView = NSScrollView(frame: NSRect(x: 20, y: y, width: scrollViewWidth, height: scrollViewHeight))
+        panel.addSubview(createSectionBox(title: "Profile", content: profileContent, yPosition: &y, panelWidth: frame.width))
+
+        // SECTION 2: Button Mapping - Scrollable editor fills remaining space
+        // Calculate available height: remaining window height minus section box chrome (not spacing, since this is last section)
+        let availableHeight: CGFloat = frame.height - y - DesignSystem.Layout.sectionBoxChrome
+
+        // DEBUG: Log the calculation
+        print("DEBUG Keyboard Tab - frame.height: \(frame.height), y after Profile: \(y), sectionBoxChrome: \(DesignSystem.Layout.sectionBoxChrome), availableHeight: \(availableHeight)")
+
+        // Create section box for button mapping
+        let mappingContainer = NSView(frame: NSRect(
+            x: 0,
+            y: 0,
+            width: DesignSystem.Layout.contentWidth(for: frame.width),
+            height: availableHeight
+        ))
+        mappingContainer.autoresizingMask = [.width, .height]  // Resize with window
+
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: mappingContainer.bounds.width, height: mappingContainer.bounds.height))
         scrollView.hasVerticalScroller = true
-        scrollView.autohidesScrollers = false  // Always show for clarity
+        scrollView.autohidesScrollers = false
         scrollView.borderType = .bezelBorder
-        scrollView.autoresizingMask = [.width, .height]  // Resize with window
+        scrollView.autoresizingMask = [.width, .height]  // Resize with parent
 
-        // Use FlippedView for top-down coordinates (will set final height after adding content)
-        // Subtract scroller width to prevent dark bar on right side
+        // Use FlippedView for top-down coordinates
         let contentWidth = scrollView.contentSize.width
         let documentView = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 500))
         documentView.wantsLayer = true
         documentView.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
-        documentView.autoresizingMask = [.width]  // Resize width with scroll view
+        documentView.autoresizingMask = [.width]
 
-        var rowY: CGFloat = 10  // Start from top
+        var rowY: CGFloat = 8  // Start from top (8pt grid aligned)
 
-        // Helper to create button row
+        // Helper to create button row (8pt grid aligned)
         let createRow: (String, ButtonAction, Int) -> Void = { buttonName, action, tag in
             // Button name label
             let nameLabel = NSTextField(labelWithString: buttonName)
-            nameLabel.frame = NSRect(x: DesignSystem.Spacing.sm, y: rowY, width: 100, height: 20)
+            nameLabel.frame = NSRect(x: DesignSystem.Spacing.sm, y: rowY, width: 100, height: 24)
             nameLabel.font = DesignSystem.Typography.bodyMedium
             nameLabel.textColor = DesignSystem.Colors.text
             documentView.addSubview(nameLabel)
 
             // Current mapping label
             let mappingLabel = NSTextField(labelWithString: action.description)
-            mappingLabel.frame = NSRect(x: 130, y: rowY, width: 250, height: 20)
-            mappingLabel.font = DesignSystem.Typography.codeSmall
+            mappingLabel.frame = NSRect(x: 130, y: rowY, width: 250, height: 24)
+            mappingLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
             mappingLabel.textColor = DesignSystem.Colors.secondaryText
             mappingLabel.autoresizingMask = [.width]  // Grow with window
             documentView.addSubview(mappingLabel)
 
             // Edit button (positioned on right side)
-            let editBtn = NSButton(frame: NSRect(x: documentView.bounds.width - 80, y: rowY - 2, width: 70, height: 24))
+            let editBtn = NSButton(frame: NSRect(x: documentView.bounds.width - 80, y: rowY, width: 70, height: 24))
             editBtn.title = "Edit"
             editBtn.bezelStyle = .rounded
-            editBtn.font = DesignSystem.Typography.bodySmall
+            editBtn.font = DesignSystem.Typography.bodyMedium
             editBtn.tag = tag
             editBtn.target = self
             editBtn.action = #selector(self.editButtonMapping(_:))
             editBtn.autoresizingMask = [.minXMargin]  // Keep on right when resizing
             documentView.addSubview(editBtn)
 
-            rowY += 28  // Move down for next row (improved spacing)
+            rowY += 32  // Move down for next row (8pt grid: 4×8)
         }
 
-        // Helper to create section header
+        // Helper to create section header (8pt grid aligned)
         let createSectionHeader: (String) -> Void = { title in
             let header = NSTextField(labelWithString: title)
-            header.frame = NSRect(x: DesignSystem.Spacing.xs, y: rowY, width: 250, height: 22)
+            header.frame = NSRect(x: DesignSystem.Spacing.xs, y: rowY, width: 250, height: 24)
             header.font = DesignSystem.Typography.headlineMedium
             header.textColor = DesignSystem.Colors.text
             documentView.addSubview(header)
-            rowY += 30
+            rowY += 32  // 8pt grid: 4×8
         }
 
         // Face Buttons section
@@ -881,11 +891,13 @@ class ViewController: NSViewController, NSTabViewDelegate {
         createRow("SR", profileManager.activeProfile.buttonSR, 21)
 
         // Set final documentView height based on actual content
-        let finalHeight = rowY + 20  // Add padding at bottom
-        documentView.frame = NSRect(x: 0, y: 0, width: scrollViewWidth - 20, height: finalHeight)
+        let finalHeight = rowY + 24  // Add padding at bottom (8pt grid: 3×8)
+        documentView.frame = NSRect(x: 0, y: 0, width: contentWidth, height: finalHeight)
 
         scrollView.documentView = documentView
-        panel.addSubview(scrollView)
+        mappingContainer.addSubview(scrollView)
+
+        panel.addSubview(createSectionBox(title: "Button Mapping", content: mappingContainer, yPosition: &y, panelWidth: frame.width))
 
         return panel
     }
@@ -901,11 +913,11 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // SECTION 1: Permissions
         let hasPermissions = VoiceInputManager.checkVoiceInputPermissions()
-        let permissionsContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: hasPermissions ? 20 : 50))
+        let permissionsContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: hasPermissions ? 20 : 50))
         var permissionsY: CGFloat = 0
 
         // Permission Status
-        let permissionLabel = NSTextField(labelWithString: hasPermissions ? "✅ Permissions Granted" : "⚠️ Permissions Required")
+        let permissionLabel = NSTextField(labelWithString: hasPermissions ? "Permissions Granted" : "Permissions Required")
         permissionLabel.font = DesignSystem.Typography.bodyMedium
         permissionLabel.textColor = hasPermissions ? DesignSystem.Colors.success : DesignSystem.Colors.warning
         permissionLabel.frame = NSRect(x: 0, y: permissionsY, width: 200, height: 20)
@@ -925,65 +937,65 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.addSubview(createSectionBox(title: "Permissions", content: permissionsContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 2: Settings
-        let settingsContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 60))
+        let settingsContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: 62))
         var settingsY: CGFloat = 0
 
-        // Language Selection
-        let languageLabel = NSTextField(labelWithString: "Language")
-        languageLabel.font = DesignSystem.Typography.bodyMedium
-        languageLabel.frame = NSRect(x: 0, y: settingsY, width: 100, height: 20)
-        settingsContent.addSubview(languageLabel)
-
-        voiceLanguagePopup = NSPopUpButton(frame: NSRect(x: 110, y: settingsY - 2, width: 250, height: 24))
-        voiceLanguagePopup.autoresizingMask = [.maxXMargin]  // Stay anchored to left
-        voiceLanguagePopup.addItems(withTitles: [
-            "English (US)",
-            "English (UK)",
-            "English (Australia)",
-            "Spanish",
-            "French",
-            "German",
-            "Italian",
-            "Japanese",
-            "Chinese (Simplified)",
-            "Chinese (Traditional)",
-            "Korean",
-            "Portuguese",
-            "Russian",
-            "Arabic"
-        ])
-
-        // Select current language
+        // Language Selection using helper
         let languageCodes = [
             "en-US", "en-GB", "en-AU", "es-ES", "fr-FR", "de-DE", "it-IT",
             "ja-JP", "zh-CN", "zh-TW", "ko-KR", "pt-PT", "ru-RU", "ar-SA"
         ]
-        if let savedIndex = languageCodes.firstIndex(of: settings.voiceLanguage) {
-            voiceLanguagePopup.selectItem(at: savedIndex)
-        }
+        let languageNames = [
+            "English (US)", "English (UK)", "English (Australia)",
+            "Spanish", "French", "German", "Italian",
+            "Japanese", "Chinese (Simplified)", "Chinese (Traditional)",
+            "Korean", "Portuguese", "Russian", "Arabic"
+        ]
+        let selectedLanguage = languageNames[languageCodes.firstIndex(of: settings.voiceLanguage) ?? 0]
 
-        voiceLanguagePopup.target = self
-        voiceLanguagePopup.action = #selector(languageChanged)
-        settingsContent.addSubview(voiceLanguagePopup)
-        settingsY += 30
+        let languageRow = createPopupRow(
+            label: "Language",
+            popup: &voiceLanguagePopup,
+            items: languageNames,
+            selectedItem: selectedLanguage,
+            action: #selector(languageChanged),
+            yPosition: settingsY,
+            width: settingsContent.bounds.width,
+            labelWidth: 150
+        )
+        settingsContent.addSubview(languageRow)
+        settingsY += 32
 
-        // Status
+        // Status - use horizontal row style
+        let statusRow = NSView(frame: NSRect(x: 0, y: settingsY, width: settingsContent.bounds.width, height: 30))
+
+        let statusLabel = NSTextField(labelWithString: "Status")
+        statusLabel.font = DesignSystem.Typography.bodyMedium
+        statusLabel.textColor = DesignSystem.Colors.text
+        statusLabel.alignment = .left
+        statusLabel.frame = NSRect(x: DesignSystem.Spacing.lg, y: 5, width: 150, height: 20)
+        statusLabel.autoresizingMask = [.maxXMargin]
+        statusRow.addSubview(statusLabel)
+
         voiceStatusLabel = NSTextField(labelWithString: "⏸️ Ready")
         voiceStatusLabel.font = DesignSystem.Typography.bodyMedium
         voiceStatusLabel.textColor = DesignSystem.Colors.secondaryText
-        voiceStatusLabel.frame = NSRect(x: 0, y: settingsY, width: 400, height: 20)
-        voiceStatusLabel.autoresizingMask = [.width]  // Grow with window
-        settingsContent.addSubview(voiceStatusLabel)
+        voiceStatusLabel.alignment = .right
+        voiceStatusLabel.frame = NSRect(x: settingsContent.bounds.width - 180 - DesignSystem.Spacing.lg, y: 5, width: 180, height: 20)
+        voiceStatusLabel.autoresizingMask = [.minXMargin]
+        statusRow.addSubview(voiceStatusLabel)
+
+        settingsContent.addSubview(statusRow)
 
         panel.addSubview(createSectionBox(title: "Settings", content: settingsContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 3: How to Use
-        let howToContent = NSView(frame: NSRect(x: 0, y: 0, width: frame.width - 100, height: 90))
+        let howToContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: 90))
         var howToY: CGFloat = 0
 
         // Instructions
         let instructionsLabel = NSTextField(wrappingLabelWithString: "1. Hold ZL + ZR on your Joy-Con to activate voice input\n\n2. Speak naturally in your selected language\n\n3. Release ZL + ZR to type your words automatically")
-        instructionsLabel.font = DesignSystem.Typography.bodySmall
+        instructionsLabel.font = DesignSystem.Typography.bodyMedium
         instructionsLabel.textColor = DesignSystem.Colors.text
         instructionsLabel.frame = NSRect(x: 0, y: howToY, width: frame.width - 120, height: 75)
         instructionsLabel.autoresizingMask = [.width]  // Grow with window
@@ -1153,7 +1165,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             connectionLabel.stringValue = "🔍 No Joy-Con detected\(debugSuffix)"
         } else {
             let names = controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
-            connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))\(debugSuffix)"
+            connectionLabel.stringValue = "Connected: \(names.joined(separator: " + "))\(debugSuffix)"
         }
 
         // Refresh mouse config panel to update status text
@@ -1174,10 +1186,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
     }
 
     private func refreshKeyboardPanel() {
-        // Recreate the keyboard tab content
-        let newKeyboardView = createKeyboardConfigPanel(
-            frame: NSRect(x: 0, y: 0, width: view.bounds.width - 20, height: 300)
-        )
+        // Recreate the keyboard tab content with correct dimensions
+        let newKeyboardView = createKeyboardConfigPanel(frame: tabView.bounds)
         keyboardTabViewItem.view = newKeyboardView
     }
 
@@ -1403,7 +1413,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     /// Synchronizes the debug log button state with the actual visibility
     private func syncDebugLogButtonState() {
-        debugLogButton.title = isDebugLogExpanded ? "▼ Debug Log" : "▶ Debug Log"
+        debugLogButton.title = isDebugLogExpanded ? "Hide Debug Log" : "Show Debug Log"
     }
 
     @objc private func toggleDebugLog(_ sender: NSButton) {
@@ -1511,7 +1521,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             InputController.shared.typeText(transcript)
             // Add space after voice input for easier continuous typing
             InputController.shared.typeText(" ")
-            self.voiceStatusLabel.stringValue = "Status: ✅ Typed"
+            self.voiceStatusLabel.stringValue = "Status: Typed"
         }
         voiceManager.onError = { [weak self] error in
             self?.log("❌ Voice Error: \(error)")
@@ -1587,7 +1597,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
                 self.helpButton?.isHidden = false  // Show help button when no controller
             } else {
                 let names = self.controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
-                self.connectionLabel.stringValue = "✅ Connected: \(names.joined(separator: " + "))\(debugSuffix)"
+                self.connectionLabel.stringValue = "Connected: \(names.joined(separator: " + "))\(debugSuffix)"
                 self.connectionLabel.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
 
                 // Update battery display
@@ -1644,7 +1654,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Controller label (L/R) if provided
         if let label = label {
             let labelField = NSTextField(labelWithString: "\(label):")
-            labelField.font = DesignSystem.Typography.bodySmall
+            labelField.font = DesignSystem.Typography.bodyMedium
             labelField.textColor = DesignSystem.Colors.tertiaryText
             labelField.frame = NSRect(x: xOffset, y: 8, width: 15, height: 14)
             container.addSubview(labelField)
@@ -1655,10 +1665,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let color = batteryColor(for: controller.battery)
 
         if percentage >= 0 {
-            // Charging indicator
+            // Charging indicator (remove emoji, use text)
             if controller.isCharging {
                 let chargeLabel = NSTextField(labelWithString: "⚡")
-                chargeLabel.font = DesignSystem.Typography.bodySmall
+                chargeLabel.font = DesignSystem.Typography.bodyMedium
                 chargeLabel.textColor = DesignSystem.Colors.warning
                 chargeLabel.frame = NSRect(x: xOffset, y: 6, width: 15, height: 16)
                 container.addSubview(chargeLabel)
@@ -1677,14 +1687,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
             // Percentage label
             let percentLabel = NSTextField(labelWithString: "\(percentage)%")
-            percentLabel.font = DesignSystem.Typography.bodySmall
+            percentLabel.font = DesignSystem.Typography.bodyMedium
             percentLabel.textColor = color
             percentLabel.frame = NSRect(x: xOffset, y: 8, width: 35, height: 14)
             container.addSubview(percentLabel)
         } else {
             // Unknown battery state
             let unknownLabel = NSTextField(labelWithString: "---")
-            unknownLabel.font = DesignSystem.Typography.bodySmall
+            unknownLabel.font = DesignSystem.Typography.bodyMedium
             unknownLabel.textColor = DesignSystem.Colors.tertiaryText
             unknownLabel.frame = NSRect(x: xOffset, y: 8, width: 30, height: 14)
             container.addSubview(unknownLabel)
