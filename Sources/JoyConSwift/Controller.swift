@@ -113,11 +113,21 @@ public class Controller {
     }
     
     /// true if the controller is connected to this mac
-    public internal(set) var isConnected: Bool
+    public internal(set) var isConnected: Bool {
+        didSet {
+            if self.isConnected != oldValue {
+                print("[Controller] Connection state changed: \(self.type) (Serial: \(self.serialID)): \(oldValue) → \(self.isConnected)")
+            }
+        }
+    }
     /// Battery status
     public internal(set) var battery: JoyCon.BatteryStatus {
         didSet {
             if self.battery != oldValue {
+                print("[Controller] Battery changed: \(self.type) (Serial: \(self.serialID)): \(oldValue) → \(self.battery)")
+                if self.battery == .critical || self.battery == .empty {
+                    print("[Controller] ⚠️  LOW BATTERY WARNING: \(self.battery) - may disconnect soon!")
+                }
                 self.batteryChangeHandler?(self.battery, oldValue)
             }
         }
@@ -127,6 +137,7 @@ public class Controller {
     public internal(set) var isCharging: Bool {
         didSet {
             if self.isCharging != oldValue {
+                print("[Controller] Charging state changed: \(self.type) (Serial: \(self.serialID)): \(oldValue) → \(self.isCharging)")
                 self.isChargingChangeHandler?(self.isCharging)
             }
         }
@@ -182,14 +193,25 @@ public class Controller {
     }
     
     func readInitializeData(_ done: @escaping () -> Void) {
+        print("[Controller] Reading initialization data: \(self.type) (Serial: \(self.serialID))")
         self.readControllerColor {
+            print("[Controller] Controller color read complete: \(self.type)")
             self.readCalibration()
             // TODO: Call done() after readCalibration() is done
+            print("[Controller] Calibration read started: \(self.type)")
             done()
         }
     }
     
-    func handleError(result: Int32, value: IOHIDValue) {}
+    func handleError(result: Int32, value: IOHIDValue) {
+        let element = IOHIDValueGetElement(value)
+        let reportID = IOHIDElementGetReportID(element)
+        print("[Controller] ⚠️  INPUT ERROR: \(self.type) (Serial: \(self.serialID))")
+        print("[Controller]    IOReturn: \(result) (\(String(format: "0x%08X", result)))")
+        print("[Controller]    Report ID: \(String(format: "0x%02X", reportID))")
+        print("[Controller]    Battery: \(self.battery), Charging: \(self.isCharging)")
+        print("[Controller]    isConnected: \(self.isConnected)")
+    }
 
     func handleInput(value: IOHIDValue) {
         let element = IOHIDValueGetElement(value)
@@ -332,11 +354,15 @@ public class Controller {
     
     func reportOutput(type: JoyCon.OutputType, data: [UInt8]) {
         self.packetCounter = (self.packetCounter + 1) & 0x0f;
-        
+
         let report: [UInt8] = [type.rawValue, self.packetCounter] + data
         let result = IOHIDDeviceSetReport(self.device, kIOHIDReportTypeOutput, CFIndex(type.rawValue), report, report.count);
         if (result != kIOReturnSuccess) {
-            print(String(format: "IOHIDDeviceSetReport error: %d", result))
+            print("[Controller] ⚠️  OUTPUT ERROR: \(self.type) (Serial: \(self.serialID))")
+            print("[Controller]    IOHIDDeviceSetReport failed: \(result) (\(String(format: "0x%08X", result)))")
+            print("[Controller]    Output type: \(type) (0x\(String(format: "%02X", type.rawValue)))")
+            print("[Controller]    Packet counter: \(self.packetCounter)")
+            print("[Controller]    isConnected: \(self.isConnected)")
             return
         }
     }
@@ -424,11 +450,14 @@ public class Controller {
     }
     
     func sendSubcommand(type: Subcommand.CommandType, data: [UInt8], responseHandler: @escaping (_ value: IOHIDValue?) -> Void) {
-        guard self.isConnected else { return }
+        guard self.isConnected else {
+            print("[Controller] WARNING: sendSubcommand called but controller not connected (type: \(type))")
+            return
+        }
 
         let sendData = self.rumbleData + [type.rawValue] + data
         let command = Subcommand(type: type, data: sendData, responseHandler: responseHandler)
-        
+
         self.subcommandQueue.append(command)
         self.processSubcommand()
     }
@@ -443,14 +472,18 @@ public class Controller {
         let ptr = IOHIDValueGetBytePtr(value)
         let ack = (ptr+12).pointee
         let subcommand = (ptr+13).pointee
-        
+
         if cmd.type.rawValue == subcommand {
             if ack & 0x80 == 0 {
                 // NACK
+                print("[Controller] ⚠️  NACK received: \(self.type) (Serial: \(self.serialID))")
+                print("[Controller]    Subcommand: \(cmd.type) (0x\(String(format: "%02X", subcommand)))")
+                print("[Controller]    ACK byte: 0x\(String(format: "%02X", ack))")
                 cmd.responseHandler?(nil)
             } else {
                 cmd.responseHandler?(value)
             }
+            cmd.timer?.invalidate()
             self.processingSubcommand = nil
             self.processSubcommand()
         }
@@ -459,20 +492,26 @@ public class Controller {
     func processSubcommand() {
         guard self.processingSubcommand == nil else { return }
         guard self.subcommandQueue.count > 0 else { return }
-        
+
         let cmd = self.subcommandQueue.removeFirst()
         self.processingSubcommand = cmd
 
         cmd.timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] timer in
             timer.invalidate()
-            guard let processingSubcommand = self?.processingSubcommand else { return }
+            guard let self = self else { return }
+            guard let processingSubcommand = self.processingSubcommand else { return }
             guard timer == processingSubcommand.timer else { return }
-            
+
+            print("[Controller] ⚠️  SUBCOMMAND TIMEOUT: \(self.type) (Serial: \(self.serialID))")
+            print("[Controller]    Subcommand: \(cmd.type)")
+            print("[Controller]    Queue remaining: \(self.subcommandQueue.count)")
+            print("[Controller]    isConnected: \(self.isConnected)")
+
             cmd.responseHandler?(nil)
-            self?.processingSubcommand = nil
-            self?.processSubcommand()
+            self.processingSubcommand = nil
+            self.processSubcommand()
         }
-        
+
         self.reportOutput(type: .subcommand, data: cmd.data)
     }
     
@@ -594,11 +633,13 @@ public class Controller {
         ]
         self.spiReadHandler[address] = handler
         self.sendSubcommand(type: .getSPIFlash, data: data) { [weak self] response in
+            guard let self = self else { return }
             guard let data = response else {
                 // NACK or Timeout
+                print("[Controller] SPI Flash read failed (NACK/Timeout): address=0x\(String(format: "%08X", address)), length=\(length)")
                 return
             }
-            self?.handleReadSPIFlash(value: data)
+            self.handleReadSPIFlash(value: data)
         }
     }
     
@@ -972,5 +1013,14 @@ public class Controller {
         }
     }
     
-    func cleanUp() {}
+    func cleanUp() {
+        print("[Controller] Cleaning up: \(self.type) (Serial: \(self.serialID))")
+        print("[Controller]   Pending subcommands in queue: \(self.subcommandQueue.count)")
+        if let pending = self.processingSubcommand {
+            print("[Controller]   Processing subcommand: \(pending.type)")
+            pending.timer?.invalidate()
+        }
+        self.subcommandQueue.removeAll()
+        self.processingSubcommand = nil
+    }
 }
