@@ -1,5 +1,4 @@
 import Cocoa
-import JoyConSwift
 import Carbon.HIToolbox
 
 // FlippedView: Custom view with flipped coordinates (y=0 at top)

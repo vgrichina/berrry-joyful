@@ -1,5 +1,4 @@
 import Cocoa
-import JoyConSwift
 import ApplicationServices
 import IOKit.hid
 

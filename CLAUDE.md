@@ -10,11 +10,10 @@ berrry-joyful is a macOS application that enables Mac control using Nintendo Joy
 - **Platform**: macOS 14.0+
 - **Frameworks**:
   - Cocoa (AppKit)
-  - JoyConSwift (via CocoaPods) - Joy-Con controller support
+  - JoyConSwift (vendored) - Joy-Con controller support
   - Speech (for voice input)
-- **Build System**: XcodeGen + CocoaPods + Xcode
-- **Dependency Management**: CocoaPods
-- **Project Configuration**: `project.yml`, `Podfile`
+- **Build System**: XcodeGen + Xcode
+- **Project Configuration**: `project.yml`
 
 ## Project Structure
 
@@ -29,7 +28,14 @@ berrry-joyful/
 │   ├── StatusOverlay.swift        # On-screen status display
 │   ├── main.swift                 # Entry point
 │   ├── Info.plist                 # App metadata
-│   └── berrry-joyful.entitlements # Security entitlements
+│   ├── berrry-joyful.entitlements # Security entitlements
+│   └── JoyConSwift/               # Vendored JoyConSwift library
+│       ├── Controller.swift
+│       ├── JoyCon.swift
+│       ├── JoyConManager.swift
+│       ├── Utils.swift            # Contains pointer alignment fix
+│       ├── controllers/           # Controller subclasses
+│       └── ...
 ├── project.yml                    # XcodeGen configuration
 └── berrry-joyful.xcodeproj/       # Generated Xcode project
 ```
@@ -70,37 +76,30 @@ berrry-joyful/
 - Help screen display
 - Mode indicators
 
+### JoyConSwift (Vendored)
+- IOKit wrapper for Joy-Con and Pro Controller
+- See `Sources/JoyConSwift/CLAUDE.md` for details
+- Contains fix for pointer alignment crash
+
 ## Build Instructions
 
 ### Prerequisites
 - macOS 14.0 or later
 - Xcode 15.0+
-- CocoaPods (`sudo gem install cocoapods`)
 - XcodeGen (`brew install xcodegen`)
 
 ### Initial Setup
 
-1. **Install dependencies via CocoaPods**:
-   ```bash
-   pod install
-   ```
-   This will:
-   - Download JoyConSwift framework
-   - Automatically apply pointer alignment patch (see Troubleshooting)
-   - Generate `berrry-joyful.xcworkspace`
-
-2. **Regenerate Xcode project** (if adding/removing source files):
+1. **Generate Xcode project**:
    ```bash
    xcodegen
    ```
 
 ### Building
 
-**IMPORTANT**: Always use the `.xcworkspace` file, not the `.xcodeproj` file!
-
 1. **Build from command line**:
    ```bash
-   xcodebuild -workspace berrry-joyful.xcworkspace -scheme berrry-joyful -configuration Debug build
+   xcodebuild -project berrry-joyful.xcodeproj -scheme berrry-joyful -configuration Debug build
    ```
 
 2. **Run the app**:
@@ -112,8 +111,7 @@ berrry-joyful/
 
 1. Make code changes in `Sources/` directory
 2. If adding new `.swift` files, run `xcodegen` to update the Xcode project
-3. Build using Xcode (open `berrry-joyful.xcworkspace`) or `xcodebuild`
-4. If adding/updating CocoaPods dependencies, run `pod install`
+3. Build using Xcode (open `berrry-joyful.xcodeproj`) or `xcodebuild`
 
 ## Permissions Required
 
@@ -138,8 +136,8 @@ The app will prompt for these permissions on first launch.
 
 ## Controller Support
 
-- Nintendo Joy-Con (L/R) - via JoyConSwift
-- Nintendo Pro Controller - via JoyConSwift
+- Nintendo Joy-Con (L/R) - via vendored JoyConSwift
+- Nintendo Pro Controller - via vendored JoyConSwift
 - Automatic controller detection via IOHIDManager
 - Direct HID communication for full Joy-Con feature access
 
@@ -152,7 +150,7 @@ The app will prompt for these permissions on first launch.
 - Always run `xcodegen` after:
   - Adding or removing source files
   - Changing build settings in `project.yml`
-  - Updating dependencies or entitlements
+  - Updating entitlements
 
 ### Adding New Files
 1. Add the `.swift` file to `Sources/` directory
@@ -180,11 +178,9 @@ This is a **Berrry Computer** branded application. The branding reflects the Ber
 ## Troubleshooting
 
 ### Build Failures
-1. Ensure you're using `berrry-joyful.xcworkspace`, not `.xcodeproj`
-2. Run `pod install` to ensure dependencies are installed
-3. Run `xcodegen` to regenerate project
-4. Clean build folder: `xcodebuild clean`
-5. Check that all Swift files in `Sources/` are valid
+1. Run `xcodegen` to regenerate project
+2. Clean build folder: `xcodebuild clean`
+3. Check that all Swift files in `Sources/` are valid
 
 ### Missing Files in Build
 - Run `xcodegen` - it automatically picks up all files in `Sources/`
@@ -193,24 +189,8 @@ This is a **Berrry Computer** branded application. The branding reflects the Ber
 - Grant Accessibility and Microphone permissions in System Settings
 - Restart the app after granting permissions
 
-### JoyConSwift Pointer Alignment Crash
+### JoyConSwift Pointer Alignment
 
-**Issue**: JoyConSwift v0.2.1 has a pointer alignment bug that causes crashes with:
-```
-Fatal error: self must be a properly aligned pointer
-```
+The vendored JoyConSwift in `Sources/JoyConSwift/` already includes the fix for the pointer alignment crash. The fix is in `Utils.swift` which uses safe byte-by-byte reading instead of `withMemoryRebound`.
 
-**Solution**: This is automatically fixed by our Podfile's `post_install` hook! When you run `pod install`, it patches `Pods/JoyConSwift/Source/Utils.swift` to use safe byte-by-byte reading instead of unsafe `withMemoryRebound` calls.
-
-If you encounter this crash:
-1. Delete the `Pods/` directory
-2. Run `pod install` again
-3. Verify you see: "✓ Patched successfully" in the output
-
-### CocoaPods Issues
-
-**Error**: `[!] CocoaPods could not find compatible versions for pod "JoyConSwift"`
-- Solution: Run `pod repo update` then `pod install`
-
-**Error**: Workspace not found
-- Solution: Run `pod install` to generate the workspace
+If you ever need to update JoyConSwift from upstream, make sure to apply this fix to `Utils.swift`.
