@@ -144,22 +144,25 @@ enum DesignSystem {
         static let debugLogDefaultHeight: CGFloat = 200
         static let debugLogMinHeight: CGFloat = 100
 
-        // Section Box Layout (8pt grid aligned)
+        // Section Box Layout (matched to System Settings via Gemini analysis)
         static let sectionBoxHorizontalInset: CGFloat = 24  // Horizontal margin from window edge (3×8)
-        static let sectionBoxTopPadding: CGFloat = 16      // Above title (2×8)
+        static let sectionBoxTopPadding: CGFloat = 20      // Above title (measured: 19-24px avg)
         static let sectionBoxTitleHeight: CGFloat = 24     // Title text height (3×8)
         static let sectionBoxTitleGap: CGFloat = 8         // Between title and content (1×8)
-        static let sectionBoxBottomPadding: CGFloat = 16   // Below content (2×8)
-        static let sectionBoxSpacing: CGFloat = 16         // Gap between sections (2×8)
+        static let sectionBoxBottomPadding: CGFloat = 20   // Below content (measured: ~20px)
+        static let sectionBoxSpacing: CGFloat = 20         // Gap between sections (measured: 20px)
+        static let sectionBoxContentPadding: CGFloat = 20  // Internal left/right padding for content (measured: 20px)
 
         /// Total overhead added by createSectionBox (vertical) - includes spacing after
+        /// Title is OUTSIDE box, so: title + gap + (box top padding + box bottom padding) + spacing
         static var sectionBoxOverhead: CGFloat {
-            sectionBoxTopPadding + sectionBoxTitleHeight + sectionBoxTitleGap + sectionBoxBottomPadding + sectionBoxSpacing
+            sectionBoxTitleHeight + sectionBoxTitleGap + sectionBoxTopPadding + sectionBoxBottomPadding + sectionBoxSpacing
         }
 
         /// Section box chrome (non-content vertical space) - excludes spacing after
+        /// Title is OUTSIDE box, so: title + gap + (box top padding + box bottom padding)
         static var sectionBoxChrome: CGFloat {
-            sectionBoxTopPadding + sectionBoxTitleHeight + sectionBoxTitleGap + sectionBoxBottomPadding
+            sectionBoxTitleHeight + sectionBoxTitleGap + sectionBoxTopPadding + sectionBoxBottomPadding
         }
 
         /// Content width for views inside section boxes
@@ -168,8 +171,8 @@ enum DesignSystem {
             panelWidth - (2 * sectionBoxHorizontalInset + extraMargin)
         }
 
-        // Content alignment
-        static let contentLeftInset: CGFloat = 0  // Content aligns flush left within section boxes
+        // Content alignment (measured from System Settings)
+        static let contentLeftInset: CGFloat = 20  // Content has 20px left padding inside section boxes
     }
 
     // MARK: - Helper Methods
@@ -377,5 +380,33 @@ enum DesignSystem {
         }
 
         return container
+    }
+}
+
+// MARK: - NSColor Hex Extension
+
+extension NSColor {
+    /// Create NSColor from hex string (e.g. "#F2F2F2" or "F2F2F2")
+    convenience init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            red: CGFloat(r) / 255,
+            green: CGFloat(g) / 255,
+            blue: CGFloat(b) / 255,
+            alpha: CGFloat(a) / 255
+        )
     }
 }

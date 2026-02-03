@@ -385,52 +385,70 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     /// Creates a visual section box with title and content
     private func createSectionBox(title: String, content: NSView, yPosition: inout CGFloat, panelWidth: CGFloat) -> NSView {
-        // System Settings style: flat sections with barely visible background
+        // System Settings style: title OUTSIDE box, content inside
         let contentHeight = content.bounds.height
 
-        let totalHeight = DesignSystem.Layout.sectionBoxTopPadding +
-                         DesignSystem.Layout.sectionBoxTitleHeight +
-                         DesignSystem.Layout.sectionBoxTitleGap +
-                         contentHeight +
-                         DesignSystem.Layout.sectionBoxBottomPadding
+        // Box height (no title inside)
+        let boxHeight = DesignSystem.Layout.sectionBoxTopPadding +
+                       contentHeight +
+                       DesignSystem.Layout.sectionBoxBottomPadding
 
-        let container = NSView(frame: NSRect(
+        // Total wrapper height: title + gap + box
+        let totalHeight = DesignSystem.Layout.sectionBoxTitleHeight +
+                         DesignSystem.Layout.sectionBoxTitleGap +
+                         boxHeight
+
+        // Wrapper view holds both title and box
+        let wrapper = NSView(frame: NSRect(
             x: DesignSystem.Layout.sectionBoxHorizontalInset,
             y: yPosition,
             width: panelWidth - (DesignSystem.Layout.sectionBoxHorizontalInset * 2),
             height: totalHeight
         ))
-        container.autoresizingMask = [.width]
+        wrapper.autoresizingMask = [.width]
 
-        // EXTREMELY subtle background and border (like System Settings)
-        container.wantsLayer = true
-        container.layer?.backgroundColor = DesignSystem.Colors.tertiaryBackground.withAlphaComponent(0.3).cgColor
-        container.layer?.cornerRadius = 8
-        container.layer?.borderWidth = 0.5
-        container.layer?.borderColor = DesignSystem.Colors.separator.withAlphaComponent(0.3).cgColor
-
-        // Section title (bold, prominent) - left-aligned with content
+        // Section title (OUTSIDE the box, at top of wrapper)
+        // Aligned with content inside box (same x offset)
         let titleLabel = NSTextField(labelWithString: title)
         titleLabel.font = DesignSystem.Typography.headlineMedium
         titleLabel.textColor = DesignSystem.Colors.text
         titleLabel.frame = NSRect(
             x: DesignSystem.Layout.contentLeftInset,
-            y: totalHeight - DesignSystem.Layout.sectionBoxTopPadding - DesignSystem.Layout.sectionBoxTitleHeight,
-            width: container.bounds.width,
+            y: totalHeight - DesignSystem.Layout.sectionBoxTitleHeight,
+            width: wrapper.bounds.width - DesignSystem.Layout.contentLeftInset,
             height: DesignSystem.Layout.sectionBoxTitleHeight
         )
         titleLabel.autoresizingMask = [.width]
-        container.addSubview(titleLabel)
+        wrapper.addSubview(titleLabel)
 
-        // Position content below title
+        // Section box container (below title)
+        let box = NSView(frame: NSRect(
+            x: 0,
+            y: 0,
+            width: wrapper.bounds.width,
+            height: boxHeight
+        ))
+        box.autoresizingMask = [.width]
+
+        // System Settings exact colors (from Gemini analysis)
+        // Background: #F2F2F2 @ 0.8 opacity, Border: #E5E5E5 @ 0.8 opacity
+        box.wantsLayer = true
+        box.layer?.backgroundColor = NSColor(hex: "#F2F2F2").withAlphaComponent(0.8).cgColor
+        box.layer?.cornerRadius = 8
+        box.layer?.borderWidth = 0.5
+        box.layer?.borderColor = NSColor(hex: "#E5E5E5").withAlphaComponent(0.8).cgColor
+
+        // Position content inside box with padding
         content.frame.origin = NSPoint(x: DesignSystem.Layout.contentLeftInset, y: DesignSystem.Layout.sectionBoxBottomPadding)
         content.autoresizingMask = [.width]
-        container.addSubview(content)
+        box.addSubview(content)
+
+        wrapper.addSubview(box)
 
         // Update y position for next section
         yPosition += totalHeight + DesignSystem.Layout.sectionBoxSpacing
 
-        return container
+        return wrapper
     }
 
     private func createTabView() {

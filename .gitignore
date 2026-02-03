@@ -51,3 +51,7 @@ Podfile.lock
 *.swp
 *~
 .*.sw?
+
+# Debug and scratch directories
+debug/
+scratch/
