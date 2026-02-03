@@ -142,23 +142,32 @@ class InputController {
 
         let clampedX = max(0, min(newX, maxX))
         let clampedY = max(0, min(newY, maxY))
-
-        // Use CGWarpMouseCursorPosition to actually move the cursor
-        // This triggers Dock/hot corners, unlike CGEvent posting
         let newPosition = CGPoint(x: clampedX, y: clampedY)
-        CGWarpMouseCursorPosition(newPosition)
 
-        // Check if cursor is near Dock edge and manually trigger reveal
-        DockManager.shared.checkCursorForDockReveal(at: newPosition)
-
-        // Post event for proper event handling in applications
         if isDragging {
-            if let moveEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseDragged,
+            // When dragging, DO NOT use CGWarpMouseCursorPosition - it breaks drag state
+            // Instead, use CGAssociateMouseAndMouseCursorPosition to allow cursor movement
+            // while maintaining the drag connection
+            CGAssociateMouseAndMouseCursorPosition(0)  // Disassociate
+            CGWarpMouseCursorPosition(newPosition)
+            CGAssociateMouseAndMouseCursorPosition(1)  // Re-associate
+
+            // Post drag event with delta values for proper drag tracking
+            if let dragEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseDragged,
                                        mouseCursorPosition: newPosition,
                                        mouseButton: .left) {
-                moveEvent.post(tap: .cghidEventTap)
+                dragEvent.setIntegerValueField(.mouseEventDeltaX, value: Int64(adjustedDeltaX))
+                dragEvent.setIntegerValueField(.mouseEventDeltaY, value: Int64(adjustedDeltaY))
+                dragEvent.post(tap: .cghidEventTap)
             }
         } else {
+            // Use CGWarpMouseCursorPosition to actually move the cursor
+            // This triggers Dock/hot corners, unlike CGEvent posting
+            CGWarpMouseCursorPosition(newPosition)
+
+            // Check if cursor is near Dock edge and manually trigger reveal
+            DockManager.shared.checkCursorForDockReveal(at: newPosition)
+
             // Post .mouseMoved event for browsers/apps that rely on the event loop
             // CGWarpMouseCursorPosition alone doesn't generate events that apps listen for
             if let moveEvent = CGEvent(mouseEventSource: eventSource, mouseType: .mouseMoved,
@@ -245,25 +254,52 @@ class InputController {
         onLog?("🖱️ Middle click")
     }
 
-    func startDrag() {
+    func leftMouseDown(modifiers: ModifierState = ModifierState()) {
+        if debugMode { return }
+
         guard let pos = CGEvent(source: eventSource)?.location else { return }
+
+        var flags: CGEventFlags = []
+        if modifiers.command { flags.insert(.maskCommand) }
+        if modifiers.option { flags.insert(.maskAlternate) }
+        if modifiers.shift { flags.insert(.maskShift) }
+        if modifiers.control { flags.insert(.maskControl) }
 
         if let downEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseDown,
                                    mouseCursorPosition: pos, mouseButton: .left) {
+            downEvent.flags = flags
             downEvent.post(tap: .cghidEventTap)
         }
         isDragging = true
+    }
+
+    func leftMouseUp(modifiers: ModifierState = ModifierState()) {
+        if debugMode { return }
+
+        guard let pos = CGEvent(source: eventSource)?.location else { return }
+
+        var flags: CGEventFlags = []
+        if modifiers.command { flags.insert(.maskCommand) }
+        if modifiers.option { flags.insert(.maskAlternate) }
+        if modifiers.shift { flags.insert(.maskShift) }
+        if modifiers.control { flags.insert(.maskControl) }
+
+        if let upEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseUp,
+                                 mouseCursorPosition: pos, mouseButton: .left) {
+            upEvent.flags = flags
+            upEvent.post(tap: .cghidEventTap)
+        }
+        isDragging = false
+    }
+
+    // Legacy methods for compatibility
+    func startDrag() {
+        leftMouseDown()
         onLog?("🖱️ Drag started")
     }
 
     func endDrag() {
-        guard let pos = CGEvent(source: eventSource)?.location else { return }
-
-        if let upEvent = CGEvent(mouseEventSource: eventSource, mouseType: .leftMouseUp,
-                                 mouseCursorPosition: pos, mouseButton: .left) {
-            upEvent.post(tap: .cghidEventTap)
-        }
-        isDragging = false
+        leftMouseUp()
         onLog?("🖱️ Drag ended")
     }
 

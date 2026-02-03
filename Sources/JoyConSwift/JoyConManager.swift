@@ -75,21 +75,73 @@ public class JoyConManager {
             return
         }
 
-        self.matchingControllers.append(device)
-        jcsLog("[JoyConManager] Requesting controller type from device...")
-        let result = IOHIDDeviceSetReport(device, kIOHIDReportTypeOutput, CFIndex(0x01), controllerTypeOutputReport, controllerTypeOutputReport.count);
-        if (result != kIOReturnSuccess) {
-            jcsLog("[JoyConManager] ERROR: IOHIDDeviceSetReport failed with code: \(result) (\(String(format: "0x%08X", result)))")
+        // Use product ID directly to determine controller type (more reliable than SPI read)
+        var controller: Controller? = nil
+        var typeName = "Unknown"
+
+        switch Int32(productID) {
+        case JoyConManager.joyConLID:
+            controller = JoyConL(device: device)
+            typeName = "Joy-Con (L)"
+        case JoyConManager.joyConRID:
+            // Could be Joy-Con R or Famicom controller - default to Joy-Con R
+            controller = JoyConR(device: device)
+            typeName = "Joy-Con (R)"
+        case JoyConManager.proConID:
+            controller = ProController(device: device)
+            typeName = "Pro Controller"
+        case JoyConManager.snesConID:
+            controller = SNESController(device: device)
+            typeName = "SNES Controller"
+        default:
+            jcsLog("[JoyConManager] Unknown product ID: \(String(format: "0x%04X", productID))")
             return
+        }
+
+        guard let ctrl = controller else {
+            jcsLog("[JoyConManager] ERROR: Failed to create controller")
+            return
+        }
+
+        jcsLog("[JoyConManager] Identified: \(typeName) (Serial: \(ctrl.serialID))")
+        self.controllers[device] = ctrl
+        ctrl.isConnected = true
+
+        jcsLog("[JoyConManager] Reading initialization data for \(typeName)...")
+        ctrl.readInitializeData { [weak self] in
+            jcsLog("[JoyConManager] Controller ready: \(typeName) (Serial: \(ctrl.serialID))")
+            self?.connectHandler?(ctrl)
         }
     }
     
     func handleControllerType(device: IOHIDDevice, result: IOReturn, value: IOHIDValue) {
-        guard self.matchingControllers.contains(device) else { return }
+        guard self.matchingControllers.contains(device) else {
+            jcsLog("[JoyConManager] handleControllerType: device not in matchingControllers")
+            return
+        }
         let ptr = IOHIDValueGetBytePtr(value)
+        let reportLength = IOHIDValueGetLength(value)
+
+        // Log first few bytes of the report for debugging
+        var hexDump = ""
+        for i in 0..<min(12, reportLength) {
+            hexDump += String(format: "%02X ", ptr[i])
+        }
+        jcsLog("[JoyConManager] Report len=\(reportLength): [\(hexDump.trimmingCharacters(in: .whitespaces))]")
+
+        // Check byte 0 for actual report type
+        let byte0 = ptr[0]
+        guard byte0 == 0x21, reportLength >= 20 else {
+            return
+        }
+
         let address = ReadUInt32(from: ptr+14)
         let length = Int((ptr+18).pointee)
-        guard address == 0x6012, length == 1 else { return }
+        jcsLog("[JoyConManager] Subcommand reply: address=0x\(String(format: "%04X", address)), length=\(length)")
+        guard address == 0x6012, length == 1 else {
+            jcsLog("[JoyConManager]   (ignoring - not controller type response)")
+            return
+        }
         let buffer = UnsafeBufferPointer(start: ptr+19, count: length)
         let data = Array(buffer)
 
@@ -143,11 +195,6 @@ public class JoyConManager {
             return
         }
         let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue();
-
-        if self.matchingControllers.contains(device) {
-            self.handleControllerType(device: device, result: result, value: value)
-            return
-        }
 
         guard let controller = self.controllers[device] else { return }
         if (result == kIOReturnSuccess) {

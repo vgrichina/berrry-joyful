@@ -63,12 +63,6 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private var voiceStatusLabel: NSTextField!
     private var voiceLanguagePopup: NSPopUpButton!
 
-    // Bottom Bar & Debug Log
-    private var debugLogButton: NSButton!
-    private var debugLogContainer: NSView!
-    private var scrollView: NSScrollView!
-    private var textView: NSTextView!
-    private var isDebugLogExpanded: Bool = false
     private var hasPerformedInitialLayout: Bool = false
 
     // MARK: - Controllers & State
@@ -118,26 +112,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
     override func viewDidLayout() {
         super.viewDidLayout()
-
-        // Set initial split position after layout (only once)
-        if !hasPerformedInitialLayout && contentSplitView.bounds.height > 0 {
-            hasPerformedInitialLayout = true
-            let splitHeight = contentSplitView.bounds.height
-
-            if isDebugLogExpanded {
-                // Start with debug log visible at 200px
-                let dividerPosition = max(splitHeight - 200, 100)
-                contentSplitView.setPosition(dividerPosition, ofDividerAt: 0)
-                debugLogContainer.isHidden = false
-            } else {
-                // Start collapsed - position divider at the very bottom
-                contentSplitView.setPosition(splitHeight, ofDividerAt: 0)
-                debugLogContainer.isHidden = true
-            }
-
-            // Ensure button state is synchronized with actual visibility
-            syncDebugLogButtonState()
-        }
+        hasPerformedInitialLayout = true
     }
 
     // MARK: - UI Setup
@@ -165,16 +140,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Create tab view
         createTabView()
 
-        // Create debug log container
-        createDebugLogView()
-
         // Add to split view
         contentSplitView.addArrangedSubview(tabView)
-        contentSplitView.addArrangedSubview(debugLogContainer)
-
-        // Set holding priorities so tab view can shrink but debug log stays at preferred size
-        contentSplitView.setHoldingPriority(.defaultLow - 1, forSubviewAt: 0)  // Tab view
-        contentSplitView.setHoldingPriority(.defaultHigh, forSubviewAt: 1)  // Debug log
 
         // Add all to main stack - header at BOTTOM
         mainStackView.addArrangedSubview(contentSplitView)
@@ -239,15 +206,6 @@ class ViewController: NSViewController, NSTabViewDelegate {
         ledIndicator.autoresizingMask = [.minXMargin]
         ledIndicator.isHidden = true
         headerView.addSubview(ledIndicator)
-
-        // Debug Log button (right side)
-        debugLogButton = NSButton(frame: NSRect(x: 640, y: 10, width: 140, height: 30))
-        debugLogButton.title = "Debug Log"  // Initial title (will be synced in viewDidLayout)
-        debugLogButton.bezelStyle = .rounded
-        debugLogButton.target = self
-        debugLogButton.action = #selector(toggleDebugLog(_:))
-        debugLogButton.autoresizingMask = [.minXMargin]
-        headerView.addSubview(debugLogButton)
 
         return headerView
     }
@@ -1051,39 +1009,6 @@ class ViewController: NSViewController, NSTabViewDelegate {
         return scrollView
     }
 
-
-    private func createDebugLogView() {
-        // Debug log container
-        debugLogContainer = NSView(frame: NSRect(x: 0, y: 0, width: 800, height: 200))
-        debugLogContainer.isHidden = true  // Start hidden (matches isDebugLogExpanded = false)
-        debugLogContainer.wantsLayer = true  // Enable layer-backing for smooth animation
-
-        scrollView = NSScrollView(frame: debugLogContainer.bounds)
-        scrollView.autoresizingMask = [.width, .height]
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.scrollerStyle = .overlay
-        scrollView.backgroundColor = DesignSystem.Colors.debugBackground
-
-        let contentSize = scrollView.contentSize
-        textView = NSTextView(frame: NSRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height))
-        textView.minSize = NSSize(width: 0, height: contentSize.height)
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.autoresizingMask = .width
-        textView.textContainer?.containerSize = NSSize(width: contentSize.width, height: CGFloat.greatestFiniteMagnitude)
-        textView.textContainer?.widthTracksTextView = true
-        textView.isEditable = false
-        textView.font = DesignSystem.Typography.codeMedium
-        textView.textColor = DesignSystem.Colors.debugText
-        textView.backgroundColor = DesignSystem.Colors.debugBackground
-        textView.textContainerInset = NSSize(width: DesignSystem.Spacing.xs, height: DesignSystem.Spacing.xs)
-
-        scrollView.documentView = textView
-        debugLogContainer.addSubview(scrollView)
-    }
-
     // MARK: - UI Actions & Delegates
 
     // NSTabViewDelegate
@@ -1433,53 +1358,6 @@ class ViewController: NSViewController, NSTabViewDelegate {
         }
     }
 
-    // MARK: - Debug Log Toggle
-
-    /// Synchronizes the debug log button state with the actual visibility
-    private func syncDebugLogButtonState() {
-        debugLogButton.title = isDebugLogExpanded ? "Hide Debug Log" : "Show Debug Log"
-    }
-
-    @objc private func toggleDebugLog(_ sender: NSButton) {
-        isDebugLogExpanded = !isDebugLogExpanded
-
-        if isDebugLogExpanded {
-            // Expand: show debug log at 200px height
-            debugLogContainer.isHidden = false
-            syncDebugLogButtonState()
-
-            let splitHeight = contentSplitView.bounds.height
-            let targetPosition = max(splitHeight - 200, 100)  // Ensure minimum tab view size
-
-            // Use implicit animation - AppKit will animate the layer geometry changes
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.25
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                context.allowsImplicitAnimation = true
-
-                // Call setPosition directly - implicit animation will handle it
-                self.contentSplitView.setPosition(targetPosition, ofDividerAt: 0)
-            })
-        } else {
-            // Collapse: hide debug log
-            syncDebugLogButtonState()
-
-            let splitHeight = contentSplitView.bounds.height
-
-            // Use implicit animation - AppKit will animate the layer geometry changes
-            NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.25
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                context.allowsImplicitAnimation = true
-
-                // Call setPosition directly - implicit animation will handle it
-                self.contentSplitView.setPosition(splitHeight, ofDividerAt: 0)
-            }, completionHandler: {
-                self.debugLogContainer.isHidden = true
-            })
-        }
-    }
-
     @objc private func showConnectionHelp() {
         let alert = NSAlert()
         alert.messageText = "🎮 How to Connect Joy-Con Controllers"
@@ -1556,24 +1434,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
     // MARK: - Logging
 
     func log(_ message: String) {
-        // Log to console (stdout)
-        NSLog(message)
-
-        // Log to UI
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self, let textView = self.textView else { return }
-
-            let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
-            let logMessage = "[\(timestamp)] \(message)\n"
-
-            let attrString = NSAttributedString(string: logMessage, attributes: [
-                .font: DesignSystem.Typography.codeMedium,
-                .foregroundColor: DesignSystem.Colors.debugText
-            ])
-
-            textView.textStorage?.append(attrString)
-            textView.scrollToEndOfDocument(nil)
-        }
+        NSLog("%@", message)
     }
 
     // MARK: - Controller Connection (JoyConSwift)
@@ -1864,40 +1725,69 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         controller.buttonReleaseHandler = { [weak self] button in
             guard let self = self else { return }
+            let profile = self.profileManager.activeProfile
 
             switch button {
+            case .A:
+                self.executeButtonRelease(profile.buttonA, buttonName: "A")
+            case .B:
+                self.executeButtonRelease(profile.buttonB, buttonName: "B")
+            case .X:
+                self.executeButtonRelease(profile.buttonX, buttonName: "X")
+            case .Y:
+                self.executeButtonRelease(profile.buttonY, buttonName: "Y")
             case .L:
-                // L and R can participate in chords, so execute action on release
-                self.removeModifier(self.profileManager.activeProfile.bumperL)
+                self.removeModifier(profile.bumperL)
                 self.updateSpecialMode()
             case .R:
-                // L and R can participate in chords, so execute action on release
-                self.removeModifier(self.profileManager.activeProfile.bumperR)
+                self.removeModifier(profile.bumperR)
                 self.updateSpecialMode()
             case .ZL:
                 // Execute ZL action only if it was NOT used in a chord
                 if !self.wasZLInChord {
-                    self.executeButtonAction(self.profileManager.activeProfile.triggerZL, buttonName: "ZL")
+                    self.executeButtonAction(profile.triggerZL, buttonName: "ZL")
                 }
                 self.isZLHeld = false
-                self.wasZLInChord = false  // Reset chord tracking
+                self.wasZLInChord = false
                 self.updateSpecialMode()
             case .ZR:
                 // Execute ZR action only if it was NOT used in a chord
                 if !self.wasZRInChord {
-                    self.executeButtonAction(self.profileManager.activeProfile.triggerZR, buttonName: "ZR")
+                    self.executeButtonAction(profile.triggerZR, buttonName: "ZR")
                 }
                 self.isZRHeld = false
-                self.wasZRInChord = false  // Reset chord tracking
+                self.wasZRInChord = false
                 self.updateSpecialMode()
+            case .Up:
+                self.executeButtonRelease(profile.dpadUp, buttonName: "D-Up")
+            case .Down:
+                self.executeButtonRelease(profile.dpadDown, buttonName: "D-Down")
+            case .Left:
+                self.executeButtonRelease(profile.dpadLeft, buttonName: "D-Left")
+            case .Right:
+                self.executeButtonRelease(profile.dpadRight, buttonName: "D-Right")
             case .Minus:
+                self.executeButtonRelease(profile.buttonMinus, buttonName: "Minus")
                 self.isMinusHeld = false
             case .Plus:
-                // Stop marking drift when Plus is released
                 if self.isPlusHeldForDriftMarking {
                     self.isPlusHeldForDriftMarking = false
                     self.log("🚩 Drift marking stopped")
+                } else {
+                    self.executeButtonRelease(profile.buttonPlus, buttonName: "Plus")
                 }
+            case .Home:
+                self.executeButtonRelease(profile.buttonHome, buttonName: "Home")
+            case .Capture:
+                self.executeButtonRelease(profile.buttonCapture, buttonName: "Capture")
+            case .LeftSL, .RightSL:
+                self.executeButtonRelease(profile.buttonSL, buttonName: "SL")
+            case .LeftSR, .RightSR:
+                self.executeButtonRelease(profile.buttonSR, buttonName: "SR")
+            case .LStick:
+                self.executeButtonRelease(profile.leftStickClick, buttonName: "L-Stick")
+            case .RStick:
+                self.executeButtonRelease(profile.rightStickClick, buttonName: "R-Stick")
             default:
                 break
             }
@@ -1950,11 +1840,22 @@ class ViewController: NSViewController, NSTabViewDelegate {
         }
     }
 
+    /// Handle button release for actions that need up/down tracking (like mouseClick for drag)
+    private func executeButtonRelease(_ action: ButtonAction, buttonName: String) {
+        switch action {
+        case .mouseClick:
+            log("🕹️ \(buttonName) → Mouse Up")
+            inputController.leftMouseUp(modifiers: modifiers)
+        default:
+            break  // Other actions don't need release handling
+        }
+    }
+
     private func executeButtonAction(_ action: ButtonAction, buttonName: String) {
         switch action {
         case .mouseClick:
-            log("🕹️ \(buttonName) → Click")
-            inputController.leftClick(modifiers: modifiers)
+            log("🕹️ \(buttonName) → Mouse Down")
+            inputController.leftMouseDown(modifiers: modifiers)
         case .rightClick:
             log("🕹️ \(buttonName) → Right Click")
             inputController.rightClick()

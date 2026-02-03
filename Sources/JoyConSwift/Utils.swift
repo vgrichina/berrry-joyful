@@ -7,13 +7,9 @@
 //
 
 import Foundation
-import os.log
-
-// Direct os_log for JoyConSwift - avoids stdout buffering issues
-private let jcsLogger = OSLog(subsystem: "app.berrry.joyful", category: "JoyConSwift")
 
 func jcsLog(_ message: String) {
-    os_log("%{public}@", log: jcsLogger, type: .default, message)
+    NSLog("%@", message)
 }
 
 func ReadInt16(from ptr: UnsafePointer<UInt8>) -> Int16 {
