@@ -68,18 +68,18 @@ public class JoyConManager {
         let vendorID = IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? Int ?? 0
         let productID = IOHIDDeviceGetProperty(device, kIOHIDProductIDKey as CFString) as? Int ?? 0
 
-        print("[JoyConManager] Device matched: \(productName) (VID: \(String(format: "0x%04X", vendorID)), PID: \(String(format: "0x%04X", productID)), Serial: \(serialNumber))")
+        jcsLog("[JoyConManager] Device matched: \(productName) (VID: \(String(format: "0x%04X", vendorID)), PID: \(String(format: "0x%04X", productID)), Serial: \(serialNumber))")
 
         if (self.controllers.contains { (dev, ctrl) in dev == device }) {
-            print("[JoyConManager] Device already registered, ignoring duplicate match")
+            jcsLog("[JoyConManager] Device already registered, ignoring duplicate match")
             return
         }
 
         self.matchingControllers.append(device)
-        print("[JoyConManager] Requesting controller type from device...")
+        jcsLog("[JoyConManager] Requesting controller type from device...")
         let result = IOHIDDeviceSetReport(device, kIOHIDReportTypeOutput, CFIndex(0x01), controllerTypeOutputReport, controllerTypeOutputReport.count);
         if (result != kIOReturnSuccess) {
-            print("[JoyConManager] ERROR: IOHIDDeviceSetReport failed with code: \(result) (\(String(format: "0x%08X", result)))")
+            jcsLog("[JoyConManager] ERROR: IOHIDDeviceSetReport failed with code: \(result) (\(String(format: "0x%08X", result)))")
             return
         }
     }
@@ -94,7 +94,7 @@ public class JoyConManager {
         let data = Array(buffer)
 
         let typeCode = data[0]
-        print("[JoyConManager] Controller type response: 0x\(String(format: "%02X", typeCode))")
+        jcsLog("[JoyConManager] Controller type response: 0x\(String(format: "%02X", typeCode))")
 
         var _controller: Controller? = nil
         var typeName = "Unknown"
@@ -118,28 +118,28 @@ public class JoyConManager {
             _controller = SNESController(device: device)
             typeName = "SNES Controller"
         default:
-            print("[JoyConManager] WARNING: Unknown controller type: 0x\(String(format: "%02X", typeCode))")
+            jcsLog("[JoyConManager] WARNING: Unknown controller type: 0x\(String(format: "%02X", typeCode))")
         }
 
         guard let controller = _controller else {
-            print("[JoyConManager] ERROR: Failed to create controller instance for type: \(typeName)")
+            jcsLog("[JoyConManager] ERROR: Failed to create controller instance for type: \(typeName)")
             return
         }
 
-        print("[JoyConManager] Identified: \(typeName) (Serial: \(controller.serialID))")
+        jcsLog("[JoyConManager] Identified: \(typeName) (Serial: \(controller.serialID))")
         self.matchingControllers.removeAll { $0 == device }
         self.controllers[device] = controller
         controller.isConnected = true
-        print("[JoyConManager] Reading initialization data for \(typeName)...")
+        jcsLog("[JoyConManager] Reading initialization data for \(typeName)...")
         controller.readInitializeData { [weak self] in
-            print("[JoyConManager] Controller ready: \(typeName) (Serial: \(controller.serialID))")
+            jcsLog("[JoyConManager] Controller ready: \(typeName) (Serial: \(controller.serialID))")
             self?.connectHandler?(controller)
         }
     }
     
     func handleInput(result: IOReturn, sender: UnsafeMutableRawPointer?, value: IOHIDValue) {
         guard let sender = sender else {
-            print("[JoyConManager] WARNING: handleInput called with nil sender")
+            jcsLog("[JoyConManager] WARNING: handleInput called with nil sender")
             return
         }
         let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue();
@@ -153,7 +153,7 @@ public class JoyConManager {
         if (result == kIOReturnSuccess) {
             controller.handleInput(value: value)
         } else {
-            print("[JoyConManager] INPUT ERROR: IOReturn=\(result) (\(String(format: "0x%08X", result))) for \(controller.type) (Serial: \(controller.serialID))")
+            jcsLog("[JoyConManager] INPUT ERROR: IOReturn=\(result) (\(String(format: "0x%08X", result))) for \(controller.type) (Serial: \(controller.serialID))")
             controller.handleError(result: result, value: value)
         }
     }
@@ -162,31 +162,31 @@ public class JoyConManager {
         let productName = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "Unknown"
         let serialNumber = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String ?? "Unknown"
 
-        print("[JoyConManager] ⚠️  DEVICE REMOVED: \(productName) (Serial: \(serialNumber))")
-        print("[JoyConManager]    IOReturn result: \(result) (\(String(format: "0x%08X", result)))")
+        jcsLog("[JoyConManager] ⚠️  DEVICE REMOVED: \(productName) (Serial: \(serialNumber))")
+        jcsLog("[JoyConManager]    IOReturn result: \(result) (\(String(format: "0x%08X", result)))")
 
         guard let controller = self.controllers[device] else {
-            print("[JoyConManager]    WARNING: Device was not in controllers dictionary (may have been removed during matching)")
+            jcsLog("[JoyConManager]    WARNING: Device was not in controllers dictionary (may have been removed during matching)")
             // Also check if it was in matchingControllers
             if self.matchingControllers.contains(device) {
-                print("[JoyConManager]    Device was in matchingControllers, removing...")
+                jcsLog("[JoyConManager]    Device was in matchingControllers, removing...")
                 self.matchingControllers.removeAll { $0 == device }
             }
             return
         }
 
-        print("[JoyConManager]    Controller type: \(controller.type)")
-        print("[JoyConManager]    Battery at disconnect: \(controller.battery) (charging: \(controller.isCharging))")
-        print("[JoyConManager]    Was connected: \(controller.isConnected)")
+        jcsLog("[JoyConManager]    Controller type: \(controller.type)")
+        jcsLog("[JoyConManager]    Battery at disconnect: \(controller.battery) (charging: \(controller.isCharging))")
+        jcsLog("[JoyConManager]    Was connected: \(controller.isConnected)")
 
         controller.isConnected = false
 
         self.controllers.removeValue(forKey: device)
-        print("[JoyConManager]    Remaining controllers: \(self.controllers.count)")
+        jcsLog("[JoyConManager]    Remaining controllers: \(self.controllers.count)")
         controller.cleanUp()
 
         self.disconnectHandler?(controller)
-        print("[JoyConManager]    Disconnect handler called")
+        jcsLog("[JoyConManager]    Disconnect handler called")
     }
     
     private func registerDeviceCallback() {
@@ -212,13 +212,13 @@ public class JoyConManager {
     /// If you don't want to stop the current thread, use `runAsync()` instead.
     /// - Returns: kIOReturnSuccess if succeeded. IOReturn error value if failed.
     public func run() -> IOReturn {
-        print("[JoyConManager] Starting HID manager...")
-        print("[JoyConManager] Vendor ID: \(String(format: "0x%04X", JoyConManager.vendorID)) (Nintendo)")
-        print("[JoyConManager] Supported devices:")
-        print("[JoyConManager]   - Joy-Con (L): PID \(String(format: "0x%04X", JoyConManager.joyConLID))")
-        print("[JoyConManager]   - Joy-Con (R): PID \(String(format: "0x%04X", JoyConManager.joyConRID))")
-        print("[JoyConManager]   - Pro Controller: PID \(String(format: "0x%04X", JoyConManager.proConID))")
-        print("[JoyConManager]   - SNES Controller: PID \(String(format: "0x%04X", JoyConManager.snesConID))")
+        jcsLog("[JoyConManager] Starting HID manager...")
+        jcsLog("[JoyConManager] Vendor ID: \(String(format: "0x%04X", JoyConManager.vendorID)) (Nintendo)")
+        jcsLog("[JoyConManager] Supported devices:")
+        jcsLog("[JoyConManager]   - Joy-Con (L): PID \(String(format: "0x%04X", JoyConManager.joyConLID))")
+        jcsLog("[JoyConManager]   - Joy-Con (R): PID \(String(format: "0x%04X", JoyConManager.joyConRID))")
+        jcsLog("[JoyConManager]   - Pro Controller: PID \(String(format: "0x%04X", JoyConManager.proConID))")
+        jcsLog("[JoyConManager]   - SNES Controller: PID \(String(format: "0x%04X", JoyConManager.snesConID))")
 
         let joyConLCriteria: [String: Any] = [
             kIOHIDDeviceUsagePageKey: kHIDPage_GenericDesktop,
@@ -250,24 +250,24 @@ public class JoyConManager {
 
         IOHIDManagerSetDeviceMatchingMultiple(self.manager, criteria as CFArray)
         IOHIDManagerScheduleWithRunLoop(self.manager, runLoop.getCFRunLoop(), CFRunLoopMode.defaultMode.rawValue)
-        print("[JoyConManager] Opening HID manager with seize device option...")
+        jcsLog("[JoyConManager] Opening HID manager with seize device option...")
         let ret = IOHIDManagerOpen(self.manager, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
         if (ret != kIOReturnSuccess) {
-            print("[JoyConManager] ERROR: Failed to open HID manager, IOReturn: \(ret) (\(String(format: "0x%08X", ret)))")
+            jcsLog("[JoyConManager] ERROR: Failed to open HID manager, IOReturn: \(ret) (\(String(format: "0x%08X", ret)))")
             return ret
         }
-        print("[JoyConManager] HID manager opened successfully")
+        jcsLog("[JoyConManager] HID manager opened successfully")
 
         self.registerDeviceCallback()
-        print("[JoyConManager] Device callbacks registered, entering run loop...")
+        jcsLog("[JoyConManager] Device callbacks registered, entering run loop...")
 
         self.runLoop = runLoop
         self.runLoop?.run()
 
-        print("[JoyConManager] Run loop exited, closing HID manager...")
+        jcsLog("[JoyConManager] Run loop exited, closing HID manager...")
         IOHIDManagerClose(self.manager, IOOptionBits(kIOHIDOptionsTypeSeizeDevice))
         IOHIDManagerUnscheduleFromRunLoop(self.manager, runLoop.getCFRunLoop(), CFRunLoopMode.defaultMode.rawValue)
-        print("[JoyConManager] HID manager closed")
+        jcsLog("[JoyConManager] HID manager closed")
 
         return kIOReturnSuccess
     }
@@ -284,9 +284,9 @@ public class JoyConManager {
     
     /// Stop waiting for controller connection/disconnection events
     public func stop() {
-        print("[JoyConManager] Stopping JoyConManager...")
-        print("[JoyConManager]   Active controllers: \(self.controllers.count)")
-        print("[JoyConManager]   Matching controllers: \(self.matchingControllers.count)")
+        jcsLog("[JoyConManager] Stopping JoyConManager...")
+        jcsLog("[JoyConManager]   Active controllers: \(self.controllers.count)")
+        jcsLog("[JoyConManager]   Matching controllers: \(self.matchingControllers.count)")
 
         if let currentLoop = self.runLoop?.getCFRunLoop() {
             CFRunLoopStop(currentLoop)
@@ -294,6 +294,6 @@ public class JoyConManager {
 
         self.unregisterDeviceCallback()
         self.cleanUp()
-        print("[JoyConManager] JoyConManager stopped")
+        jcsLog("[JoyConManager] JoyConManager stopped")
     }
 }
