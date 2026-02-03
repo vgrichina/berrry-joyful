@@ -271,12 +271,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let row = NSView(frame: NSRect(x: 0, y: yPosition, width: width, height: 32))
         row.autoresizingMask = [.width]
 
-        // Label on left
+        // Label on left (x=0 since content is already offset by contentLeftInset)
         let labelView = NSTextField(labelWithString: label)
         labelView.font = DesignSystem.Typography.bodyMedium
         labelView.textColor = DesignSystem.Colors.text
         labelView.alignment = .left
-        labelView.frame = NSRect(x: DesignSystem.Layout.contentLeftInset, y: 6, width: labelWidth, height: 20)
+        labelView.frame = NSRect(x: 0, y: 6, width: labelWidth, height: 20)
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
@@ -291,7 +291,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         valueLabel = valueLbl
 
         // Slider in the middle (between label and value)
-        let sldr = NSSlider(frame: NSRect(x: DesignSystem.Spacing.lg + labelWidth + DesignSystem.Spacing.md, y: 6, width: width - labelWidth - 60 - DesignSystem.Spacing.lg * 3 - DesignSystem.Spacing.md, height: 20))
+        let sldr = NSSlider(frame: NSRect(x: labelWidth + DesignSystem.Spacing.md, y: 6, width: width - labelWidth - 60 - DesignSystem.Spacing.lg - DesignSystem.Spacing.md, height: 20))
         sldr.minValue = minValue
         sldr.maxValue = maxValue
         sldr.doubleValue = value
@@ -317,12 +317,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let row = NSView(frame: NSRect(x: 0, y: yPosition, width: width, height: 28))
         row.autoresizingMask = [.width]
 
-        // Label on left
+        // Label on left (x=0 since content is already offset by contentLeftInset)
         let labelView = NSTextField(labelWithString: label)
         labelView.font = DesignSystem.Typography.bodyMedium
         labelView.textColor = DesignSystem.Colors.text
         labelView.alignment = .left
-        labelView.frame = NSRect(x: DesignSystem.Layout.contentLeftInset, y: 4, width: labelWidth, height: 20)
+        labelView.frame = NSRect(x: 0, y: 4, width: labelWidth, height: 20)
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
@@ -355,12 +355,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let row = NSView(frame: NSRect(x: 0, y: yPosition, width: width, height: 32))
         row.autoresizingMask = [.width]
 
-        // Label on left
+        // Label on left (x=0 since content is already offset by contentLeftInset)
         let labelView = NSTextField(labelWithString: label)
         labelView.font = DesignSystem.Typography.bodyMedium
         labelView.textColor = DesignSystem.Colors.text
         labelView.alignment = .left
-        labelView.frame = NSRect(x: DesignSystem.Layout.contentLeftInset, y: 6, width: labelWidth, height: 20)
+        labelView.frame = NSRect(x: 0, y: 6, width: labelWidth, height: 20)
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
@@ -439,7 +439,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Position content inside box with padding
         content.frame.origin = NSPoint(x: DesignSystem.Layout.contentLeftInset, y: DesignSystem.Layout.sectionBoxBottomPadding)
-        content.autoresizingMask = [.width]
+        // Note: Don't override content's autoresizingMask - preserve what was set by caller
         box.addSubview(content)
 
         wrapper.addSubview(box)
@@ -490,11 +490,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
         var y: CGFloat = DesignSystem.Spacing.lg  // Start from top
         let labelWidth: CGFloat = 200
 
-        // Account for section container insets (20px each side)
-        let contentWidth = frame.width - 40
+        // Use proper content width calculation (accounts for all margins and padding)
+        let contentWidth = DesignSystem.Layout.contentWidth(for: frame.width)
 
         // SECTION 1: Movement
         let movementContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 140))
+        movementContent.autoresizingMask = [.width]
         var movementY: CGFloat = 0
 
         // Sensitivity Slider Row
@@ -560,6 +561,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // SECTION 2: Deadzone
         let deadzoneContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 72))
+        deadzoneContent.autoresizingMask = [.width]
         var deadzoneY: CGFloat = 0
 
         // Left Stick Deadzone Row
@@ -603,6 +605,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // SECTION 3: Stick Functions
         let stickFunctionContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 68))
+        stickFunctionContent.autoresizingMask = [.width]
         var stickFunctionY: CGFloat = 0
 
         // Left Stick Function Row
@@ -636,6 +639,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // SECTION 4: Sticky Mouse
         let stickyMouseContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 146))
+        stickyMouseContent.autoresizingMask = [.width]
         var stickyMouseY: CGFloat = 0
 
         // Enable Sticky Mouse Row
@@ -692,6 +696,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Debug mode toggle (only in debug builds)
         #if DEBUG
         let debugContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 60))
+        debugContent.autoresizingMask = [.width]
         var debugY: CGFloat = 0
 
         // Debug Mode Row
@@ -825,9 +830,9 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Helper to create button row (8pt grid aligned)
         let createRow: (String, ButtonAction, Int) -> Void = { buttonName, action, tag in
-            // Button name label
+            // Button name label (x=0 since scroll view is already offset by contentLeftInset)
             let nameLabel = NSTextField(labelWithString: buttonName)
-            nameLabel.frame = NSRect(x: DesignSystem.Spacing.sm, y: rowY, width: 100, height: 24)
+            nameLabel.frame = NSRect(x: 0, y: rowY, width: 100, height: 24)
             nameLabel.font = DesignSystem.Typography.bodyMedium
             nameLabel.textColor = DesignSystem.Colors.text
             documentView.addSubview(nameLabel)
@@ -857,7 +862,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Helper to create section header (8pt grid aligned)
         let createSectionHeader: (String) -> Void = { title in
             let header = NSTextField(labelWithString: title)
-            header.frame = NSRect(x: DesignSystem.Spacing.xs, y: rowY, width: 250, height: 24)
+            header.frame = NSRect(x: 0, y: rowY, width: 250, height: 24)
             header.font = DesignSystem.Typography.headlineMedium
             header.textColor = DesignSystem.Colors.text
             documentView.addSubview(header)
@@ -990,7 +995,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         statusLabel.font = DesignSystem.Typography.bodyMedium
         statusLabel.textColor = DesignSystem.Colors.text
         statusLabel.alignment = .left
-        statusLabel.frame = NSRect(x: DesignSystem.Spacing.lg, y: 5, width: 150, height: 20)
+        statusLabel.frame = NSRect(x: 0, y: 5, width: 150, height: 20)
         statusLabel.autoresizingMask = [.maxXMargin]
         statusRow.addSubview(statusLabel)
 
