@@ -209,7 +209,7 @@ public class JoyConManager {
         let productName = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "Unknown"
         let serialNumber = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String ?? "Unknown"
 
-        jcsLog("[JoyConManager] ⚠️  DEVICE REMOVED: \(productName) (Serial: \(serialNumber))")
+        jcsLog("[JoyConManager] DEVICE REMOVED: \(productName) (Serial: \(serialNumber))")
         jcsLog("[JoyConManager]    IOReturn result: \(result) (\(String(format: "0x%08X", result)))")
 
         guard let controller = self.controllers[device] else {

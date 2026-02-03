@@ -107,7 +107,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         setupUI()
         setupInputController()
         setupVoiceManager()
-        log("🫐 berrry-joyful initialized - waiting for controllers...")
+        log("berrry-joyful initialized - waiting for controllers...")
     }
 
     override func viewDidLayout() {
@@ -167,7 +167,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         #else
         let debugSuffix = ""
         #endif
-        connectionLabel = NSTextField(labelWithString: "🔍 No Joy-Con detected\(debugSuffix)")
+        connectionLabel = NSTextField(labelWithString: "No Joy-Con detected\(debugSuffix)")
         connectionLabel.font = DesignSystem.Typography.headlineMedium
         connectionLabel.textColor = DesignSystem.Colors.secondaryText
         connectionLabel.frame = NSRect(x: 20, y: 15, width: 350, height: 20)
@@ -673,7 +673,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         debugY += 32
 
         // Info text
-        let debugInfo = NSTextField(wrappingLabelWithString: "⚠️ DEBUG MODE: Input events are logged but not sent to the system.")
+        let debugInfo = NSTextField(wrappingLabelWithString: "DEBUG MODE: Input events are logged but not sent to the system.")
         debugInfo.font = DesignSystem.Typography.caption
         debugInfo.textColor = DesignSystem.Colors.warning
         debugInfo.alignment = .left
@@ -959,7 +959,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         statusLabel.autoresizingMask = [.maxXMargin]
         statusRow.addSubview(statusLabel)
 
-        voiceStatusLabel = NSTextField(labelWithString: "⏸️ Ready")
+        voiceStatusLabel = NSTextField(labelWithString: "Ready")
         voiceStatusLabel.font = DesignSystem.Typography.bodyMedium
         voiceStatusLabel.textColor = DesignSystem.Colors.secondaryText
         voiceStatusLabel.alignment = .right
@@ -1106,12 +1106,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
     @objc private func debugModeChanged(_ sender: NSButton) {
         inputController.debugMode = (sender.state == .on)
         let status = inputController.debugMode ? "enabled" : "disabled"
-        log("🐛 Debug mode \(status) - input events will \(inputController.debugMode ? "NOT" : "") be sent to system")
+        log("Debug mode \(status) - input events will \(inputController.debugMode ? "NOT" : "") be sent to system")
 
         // Update header label
         let debugSuffix = inputController.debugMode ? " [DEBUG MODE]" : ""
         if controllers.isEmpty {
-            connectionLabel.stringValue = "🔍 No Joy-Con detected\(debugSuffix)"
+            connectionLabel.stringValue = "No Joy-Con detected\(debugSuffix)"
         } else {
             let names = controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
             connectionLabel.stringValue = "Connected: \(names.joined(separator: " + "))\(debugSuffix)"
@@ -1128,7 +1128,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
     @objc private func profileSelectionChanged(_ sender: NSPopUpButton) {
         guard let profileName = sender.titleOfSelectedItem else { return }
         profileManager.setActiveProfile(named: profileName)
-        log("✅ Profile changed to: \(profileName)")
+        log("Profile changed to: \(profileName)")
 
         // Refresh the keyboard config panel to show new mapping
         refreshKeyboardPanel()
@@ -1206,7 +1206,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Map tag to button name and current action
         let (buttonName, currentAction) = getButtonInfo(forTag: tag)
 
-        log("🎹 Editing \(buttonName)...")
+        log("Editing \(buttonName)...")
 
         // Create mapping editor view
         let editorView = ButtonMappingEditor(
@@ -1216,7 +1216,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         editorView.onActionSelected = { [weak self] action in
             self?.updateButtonAction(forTag: tag, newAction: action)
-            self?.log("✅ Updated \(buttonName) → \(action.description)")
+            self?.log("Updated \(buttonName) -> \(action.description)")
             self?.refreshKeyboardPanel()
             // Close the window
             self?.keyCaptureWindow?.close()
@@ -1224,7 +1224,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         }
 
         editorView.onCancelled = { [weak self] in
-            self?.log("⌨️ Cancelled editing")
+            self?.log("Cancelled editing")
             // Close the window
             self?.keyCaptureWindow?.close()
             self?.keyCaptureWindow = nil
@@ -1283,7 +1283,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             guard let self = self else { return }
 
             self.updateButtonAction(forTag: tag, newAction: newAction)
-            self.log("✅ Updated \(buttonName) → \(newAction.description)")
+            self.log("Updated \(buttonName) -> \(newAction.description)")
 
             // Refresh the keyboard panel to show new mapping
             self.refreshKeyboardPanel()
@@ -1327,7 +1327,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         VoiceInputManager.requestVoiceInputPermissions { [weak self] granted in
             DispatchQueue.main.async {
                 if granted {
-                    self?.log("✅ Voice input permissions granted!")
+                    self?.log("Voice input permissions granted!")
                     self?.voiceManager.isAuthorized = true
                     // Recreate the voice panel to update UI
                     guard let self = self else { return }
@@ -1336,7 +1336,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
                     )
                     self.voiceTabViewItem.view = newVoiceView
                 } else {
-                    self?.log("❌ Voice input permissions denied")
+                    self?.log("Voice input permissions denied")
                 }
             }
         }
@@ -1354,13 +1354,13 @@ class ViewController: NSViewController, NSTabViewDelegate {
             voiceManager.setLanguage(languageCode)
             settings.voiceLanguage = languageCode
             settings.saveToUserDefaults()
-            log("🌍 Voice language changed to: \(sender.titleOfSelectedItem ?? languageCode)")
+            log("Voice language changed to: \(sender.titleOfSelectedItem ?? languageCode)")
         }
     }
 
     @objc private func showConnectionHelp() {
         let alert = NSAlert()
-        alert.messageText = "🎮 How to Connect Joy-Con Controllers"
+        alert.messageText = "How to Connect Joy-Con Controllers"
         alert.informativeText = """
         1. Open System Settings → Bluetooth
 
@@ -1405,29 +1405,29 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // The VoiceInputManager now initializes its own authorization state.
         // We just log the status on startup.
         if voiceManager.isAuthorized {
-            log("🎤 Voice permissions already granted")
+            log("Voice permissions already granted")
         } else {
-            log("⚠️ Voice permissions not yet granted")
+            log("Voice permissions not yet granted")
         }
 
         voiceManager.onLog = { [weak self] message in
             self?.log(message)
         }
         voiceManager.onTranscriptUpdate = { [weak self] transcript in
-            self?.log("🎤 \(transcript)")
-            self?.voiceStatusLabel.stringValue = "Status: 🎤 Listening... \"\(transcript)\""
+            self?.log("[Voice] \(transcript)")
+            self?.voiceStatusLabel.stringValue = "Status: Listening... \"\(transcript)\""
         }
         voiceManager.onFinalTranscript = { [weak self] transcript in
             guard let self = self, !transcript.isEmpty else { return }
-            self.log("⌨️ Typing final transcript: \(transcript)")
+            self.log("[Keyboard] Typing final transcript: \(transcript)")
             InputController.shared.typeText(transcript)
             // Add space after voice input for easier continuous typing
             InputController.shared.typeText(" ")
             self.voiceStatusLabel.stringValue = "Status: Typed"
         }
         voiceManager.onError = { [weak self] error in
-            self?.log("❌ Voice Error: \(error)")
-            self?.voiceStatusLabel.stringValue = "Status: ❌ Error"
+            self?.log("Voice Error: \(error)")
+            self?.voiceStatusLabel.stringValue = "Status: Error"
         }
     }
 
@@ -1443,7 +1443,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         controllers.append(controller)
 
         let name = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
-        log("✅ Controller Connected: \(name)")
+        log("Controller Connected: \(name)")
 
         updateConnectionDisplay()
         setupJoyConHandlers(controller)
@@ -1460,7 +1460,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
     func joyConDisconnected(_ controller: Controller) {
         controllers.removeAll { $0 === controller }
         let name = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
-        log("❌ Controller Disconnected: \(name)")
+        log("Controller Disconnected: \(name)")
         updateConnectionDisplay()
     }
 
@@ -1475,7 +1475,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             #endif
 
             if self.controllers.isEmpty {
-                self.connectionLabel.stringValue = "🔍 No Joy-Con detected\(debugSuffix)"
+                self.connectionLabel.stringValue = "No Joy-Con detected\(debugSuffix)"
                 self.connectionLabel.textColor = NSColor.secondaryLabelColor
                 self.batteryProgressView.subviews.forEach { $0.removeFromSuperview() }
                 self.ledIndicator.stringValue = ""
@@ -1490,7 +1490,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
                 // LED indicator
                 let count = self.controllers.count
-                self.ledIndicator.stringValue = "🔵 LED \(count)"
+                self.ledIndicator.stringValue = "LED \(count)"
                 self.helpButton?.isHidden = true  // Hide help button when connected
             }
         }
@@ -1552,7 +1552,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         if percentage >= 0 {
             // Charging indicator (remove emoji, use text)
             if controller.isCharging {
-                let chargeLabel = NSTextField(labelWithString: "⚡")
+                let chargeLabel = NSTextField(labelWithString: "+")
                 chargeLabel.font = DesignSystem.Typography.bodyMedium
                 chargeLabel.textColor = DesignSystem.Colors.warning
                 chargeLabel.frame = NSRect(x: xOffset, y: 6, width: 15, height: 16)
@@ -1619,13 +1619,13 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Log significant battery events
         if newState == .critical && oldState != .empty {
-            log("⚠️ Battery Critical! Please charge your Joy-Con soon")
+            log("Battery Critical! Please charge your Joy-Con soon")
         }
         if newState == .low && oldState == .medium {
-            log("🔋 Battery Low (25%)")
+            log("Battery Low (25%)")
         }
         if newState == .full && oldState != .unknown {
-            log("✅ Battery Full!")
+            log("Battery Full!")
         }
     }
 
@@ -1633,7 +1633,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         DispatchQueue.main.async { [weak self] in
             self?.updateBatteryDisplay()
         }
-        log(isCharging ? "⚡ Charging started" : "⚡ Charging stopped")
+        log(isCharging ? "Charging started" : "Charging stopped")
     }
 
     // MARK: - JoyConSwift Handlers
@@ -1810,7 +1810,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             self?.handleChargingChange(isCharging: isCharging)
         }
 
-        log("   ✅ Handlers configured")
+        log("   Handlers configured")
     }
 
     // MARK: - Profile-based Button Execution
@@ -1910,7 +1910,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             }
 
             profileManager.switchToProfileAtIndex(profileIndex)
-            log("🎮 Quick Switch → Profile \(profileIndex): \(profileManager.activeProfile.name)")
+            log("Quick Switch -> Profile \(profileIndex): \(profileManager.activeProfile.name)")
 
             // Show profile overlay with cheat sheet
             ProfileOverlay.show(profile: profileManager.activeProfile)
@@ -2118,17 +2118,17 @@ class ViewController: NSViewController, NSTabViewDelegate {
     private func handleSpecialModeChange(from oldMode: SpecialInputMode, to newMode: SpecialInputMode) {
         switch newMode {
         case .voice:
-            log("🎤 Voice input activated - speak now")
+            log("Voice input activated - speak now")
             voiceManager.startListening()
-            voiceStatusLabel.stringValue = "Status: 🎤 Listening..."
+            voiceStatusLabel.stringValue = "Status: Listening..."
 
         case .precision:
-            log("✨ Precision mode activated")
+            log("Precision mode activated")
             inputController.setPrecisionMode(true)
 
         case .none:
             if oldMode == .voice {
-                log("🎤 Voice mode ending - waiting for final transcript...")
+                log("Voice mode ending - waiting for final transcript...")
                 // Just tell the manager to stop. The finalization and typing
                 // will happen automatically via the onFinalTranscript callback.
                 voiceManager.stopListening()

@@ -142,7 +142,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showAbout() {
         let alert = NSAlert()
-        alert.messageText = "🎮 Berrry Joyful"
+        alert.messageText = "Berrry Joyful"
 
         // Get version from bundle
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -180,12 +180,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showHelp() {
         // This will be handled by the view controller
-        viewController.log("📖 Press Options (-) on Joy-Con to show controls help")
+        viewController.log("Press Options (-) on Joy-Con to show controls help")
     }
 
     @objc private func showControllerSetup() {
         let alert = NSAlert()
-        alert.messageText = "🎮 How to Connect Joy-Con Controllers"
+        alert.messageText = "How to Connect Joy-Con Controllers"
         alert.informativeText = """
         1. Open System Settings → Bluetooth
 
@@ -234,7 +234,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     #if DEBUG
     @objc private func startDriftLogging() {
         DriftLogger.shared.startLogging()
-        viewController?.log("📊 Drift logging started")
+        viewController?.log("Drift logging started")
 
         let alert = NSAlert()
         alert.messageText = "Drift Logging Started"
@@ -246,7 +246,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func stopDriftLogging() {
         DriftLogger.shared.stopLogging()
-        viewController?.log("📊 Drift logging stopped")
+        viewController?.log("Drift logging stopped")
 
         let alert = NSAlert()
         alert.messageText = "Drift Logging Stopped"
@@ -320,7 +320,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize JoyConSwift manager
         joyConManager = JoyConManager()
 
-        viewController.log("🔍 Starting Joy-Con monitoring with JoyConSwift...")
+        viewController.log("Starting Joy-Con monitoring with JoyConSwift...")
 
         // Log Bluetooth paired controllers
         logBluetoothJoyConStatus()
@@ -330,7 +330,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self = self else { return }
 
             let controllerType = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
-            self.viewController.log("✅ Joy-Con Connected: \(controllerType)")
+            self.viewController.log("Joy-Con Connected: \(controllerType)")
             self.viewController.log("   Type: \(controller.type)")
 
             // Store controller and configure handlers
@@ -342,7 +342,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self = self else { return }
 
             let controllerType = controller.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)"
-            self.viewController.log("❌ Joy-Con Disconnected: \(controllerType)")
+            self.viewController.log("Joy-Con Disconnected: \(controllerType)")
 
             self.viewController.joyConDisconnected(controller)
 
@@ -355,8 +355,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Start async monitoring
         joyConManager.runAsync()
-        viewController.log("🎮 JoyConSwift monitoring started")
-        viewController.log("💡 Make sure Joy-Cons are paired via System Settings → Bluetooth")
+        viewController.log("JoyConSwift monitoring started")
+        viewController.log("Make sure Joy-Cons are paired via System Settings > Bluetooth")
 
         // Check for Joy-Cons after a delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
@@ -382,21 +382,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 for line in lines {
                     if line.contains("Joy-Con") {
                         foundJoyCon = true
-                        viewController.log("🔵 Bluetooth: \(line.trimmingCharacters(in: .whitespaces))")
+                        viewController.log("[Bluetooth] \(line.trimmingCharacters(in: .whitespaces))")
                     }
                 }
                 if !foundJoyCon {
-                    viewController.log("⚠️ No Joy-Cons found in Bluetooth devices")
+                    viewController.log("No Joy-Cons found in Bluetooth devices")
                 }
             }
         } catch {
-            viewController.log("⚠️ Could not check Bluetooth status: \(error.localizedDescription)")
+            viewController.log("Could not check Bluetooth status: \(error.localizedDescription)")
         }
     }
 
     private func checkJoyConStatus() {
         let controllers = viewController.controllers
-        viewController.log("📊 Status Check: \(controllers.count) controller(s) connected")
+        viewController.log("Status Check: \(controllers.count) controller(s) connected")
 
         for controller in controllers {
             let type = controller.type == .JoyConL ? "Joy-Con (L)" :
@@ -405,7 +405,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         if controllers.count == 1 {
-            viewController.log("⚠️ Only 1 Joy-Con detected. If both are paired via Bluetooth:")
+            viewController.log("Only 1 Joy-Con detected. If both are paired via Bluetooth:")
             viewController.log("   1. Try pressing buttons on the missing Joy-Con")
             viewController.log("   2. Restart the app (Cmd+Q then relaunch)")
             viewController.log("   3. Disconnect/reconnect the missing Joy-Con in Bluetooth settings")

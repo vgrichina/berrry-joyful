@@ -195,7 +195,7 @@ class InputController {
 
     func leftClick(modifiers: ModifierState = ModifierState()) {
         let modStr = modifiers.isEmpty ? "" : " (\(modifiers.description))"
-        onLog?("🖱️ Left click\(modStr)")
+        onLog?("[Mouse] Left click\(modStr)")
 
         if debugMode { return }  // Skip in debug mode
 
@@ -221,7 +221,7 @@ class InputController {
     }
 
     func rightClick() {
-        onLog?("🖱️ Right click")
+        onLog?("[Mouse] Right click")
 
         if debugMode { return }  // Skip in debug mode
 
@@ -251,7 +251,7 @@ class InputController {
             upEvent.post(tap: .cghidEventTap)
         }
 
-        onLog?("🖱️ Middle click")
+        onLog?("[Mouse] Middle click")
     }
 
     func leftMouseDown(modifiers: ModifierState = ModifierState()) {
@@ -295,12 +295,12 @@ class InputController {
     // Legacy methods for compatibility
     func startDrag() {
         leftMouseDown()
-        onLog?("🖱️ Drag started")
+        onLog?("[Mouse] Drag started")
     }
 
     func endDrag() {
         leftMouseUp()
-        onLog?("🖱️ Drag ended")
+        onLog?("[Mouse] Drag ended")
     }
 
     // MARK: - Modifier Key Simulation (for real keyboard behavior)
@@ -381,7 +381,7 @@ class InputController {
             if shift { modDesc += "⇧" }
             if command { modDesc += "⌘" }
             let keyDesc = keyCode.map { CapturedKey.keyCodeToString($0) } ?? "None"
-            onLog?("⌨️  DEBUG: \(modDesc)\(keyDesc)")
+            onLog?("[Keyboard] DEBUG: \(modDesc)\(keyDesc)")
             return
         }
 

@@ -48,7 +48,7 @@ class DriftLogger {
         sampleCount = 0
         isLogging = true
 
-        print("📊 Drift logging started: \(logFile.path)")
+        print("Drift logging started: \(logFile.path)")
     }
 
     func stopLogging() {
@@ -60,7 +60,7 @@ class DriftLogger {
         sessionStartTime = nil
         sampleCount = 0
 
-        print("📊 Drift logging stopped. Total samples: \(sampleCount)")
+        print("Drift logging stopped. Total samples: \(sampleCount)")
     }
 
     var loggingEnabled: Bool {
@@ -189,11 +189,11 @@ class DriftLogger {
     /// Print current drift statistics to console
     func printStatistics() {
         guard let stats = getIdleStatistics() else {
-            print("📊 Not enough idle samples for statistics")
+            print("Not enough idle samples for statistics")
             return
         }
 
-        print("📊 Drift Statistics:")
+        print("Drift Statistics:")
         print("   Idle samples: \(idleSamples.count)")
         print("   Mean position: x=\(String(format: "%.4f", stats.mean.x)), y=\(String(format: "%.4f", stats.mean.y))")
         print("   Std deviation: x=\(String(format: "%.4f", stats.stdDev.x)), y=\(String(format: "%.4f", stats.stdDev.y))")

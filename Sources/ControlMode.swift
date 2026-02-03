@@ -10,7 +10,7 @@ enum ControlMode: String {
     }
 
     var icon: String {
-        return "🎮"
+        return ""
     }
 }
 
@@ -22,8 +22,8 @@ enum SpecialInputMode {
 
     var icon: String {
         switch self {
-        case .voice: return "🎤"
-        case .precision: return "✨"
+        case .voice: return "Voice"
+        case .precision: return "Precision"
         case .none: return ""
         }
     }

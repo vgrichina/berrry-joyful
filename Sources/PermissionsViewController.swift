@@ -6,28 +6,28 @@ class PermissionsViewController: NSViewController {
 
     // MARK: - UI Elements
 
-    private let titleLabel = NSTextField(labelWithString: "🎮 Berrry Joyful")
+    private let titleLabel = NSTextField(labelWithString: "Berrry Joyful")
     private let subtitleLabel = NSTextField(labelWithString: "Welcome to Joy-Con Mac Control")
     private let descriptionLabel = NSTextField(wrappingLabelWithString: "To use Berrry Joyful, we need a few permissions:")
 
     // Accessibility Permission Card
     private let accessibilityCard = NSView()
-    private let accessibilityTitleLabel = NSTextField(labelWithString: "🖱️  Accessibility Access")
+    private let accessibilityTitleLabel = NSTextField(labelWithString: "Accessibility Access")
     private let accessibilityDescLabel = NSTextField(wrappingLabelWithString: "Required to control your mouse and keyboard with Joy-Con controllers. This allows button presses to simulate clicks and stick movements to move your cursor.")
-    private let accessibilityStatusLabel = NSTextField(labelWithString: "Status: ⚠️  Not Granted")
+    private let accessibilityStatusLabel = NSTextField(labelWithString: "Status: Not Granted")
     private let accessibilityGrantButton = NSButton(title: "GRANT", target: nil, action: #selector(grantAccessibilityClicked))
 
     // Voice Input Permission Card (Microphone + Speech Recognition)
     private let microphoneCard = NSView()
-    private let microphoneTitleLabel = NSTextField(labelWithString: "🎤  Voice Input")
+    private let microphoneTitleLabel = NSTextField(labelWithString: "Voice Input")
     private let microphoneDescLabel = NSTextField(wrappingLabelWithString: "Optional. Enables voice input where you can speak to type text. Requires both Microphone and Speech Recognition permissions. Hold ZL+ZR on your Joy-Con to activate. You can enable this later.")
-    private let microphoneStatusLabel = NSTextField(labelWithString: "Status: ⏸️  Not Requested")
+    private let microphoneStatusLabel = NSTextField(labelWithString: "Status: Not Requested")
     private let microphoneSkipButton = NSButton(title: "SKIP", target: nil, action: #selector(skipMicrophoneClicked))
     private let microphoneGrantButton = NSButton(title: "GRANT", target: nil, action: #selector(grantMicrophoneClicked))
 
     // Continue Button
     private let continueButton = NSButton(title: "Continue", target: nil, action: #selector(continueClicked))
-    private let tipLabel = NSTextField(wrappingLabelWithString: "💡 Tip: Click \"Grant\" to open System Settings. Enable Berrry Joyful in the Accessibility section, then return here.")
+    private let tipLabel = NSTextField(wrappingLabelWithString: "Tip: Click \"Grant\" to open System Settings. Enable Berrry Joyful in the Accessibility section, then return here.")
 
     #if DEBUG
     // Debug: Skip button to bypass permissions
@@ -270,13 +270,13 @@ class PermissionsViewController: NSViewController {
         let hasAccess = AXIsProcessTrusted()
 
         if hasAccess {
-            accessibilityStatusLabel.stringValue = "Status: ✅ Granted"
+            accessibilityStatusLabel.stringValue = "Status: Granted"
             accessibilityStatusLabel.textColor = NSColor.systemGreen
             accessibilityGrantButton.isEnabled = false
-            accessibilityGrantButton.title = "✓ GRANTED"
+            accessibilityGrantButton.title = "GRANTED"
             continueButton.isEnabled = true
         } else {
-            accessibilityStatusLabel.stringValue = "Status: ⚠️  Not Granted"
+            accessibilityStatusLabel.stringValue = "Status: Not Granted"
             accessibilityStatusLabel.textColor = NSColor.systemOrange
             accessibilityGrantButton.isEnabled = true
             continueButton.isEnabled = false
@@ -287,12 +287,12 @@ class PermissionsViewController: NSViewController {
         let hasAccess = VoiceInputManager.checkVoiceInputPermissions()
 
         if hasAccess {
-            microphoneStatusLabel.stringValue = "Status: ✅ Granted (Microphone + Speech)"
+            microphoneStatusLabel.stringValue = "Status: Granted (Microphone + Speech)"
             microphoneStatusLabel.textColor = NSColor.systemGreen
             microphoneSkipButton.isHidden = true
             microphoneGrantButton.isHidden = true
         } else {
-            microphoneStatusLabel.stringValue = "Status: ⏸️  Not Requested"
+            microphoneStatusLabel.stringValue = "Status: Not Requested"
             microphoneStatusLabel.textColor = NSColor.secondaryLabelColor
         }
     }
@@ -327,7 +327,7 @@ class PermissionsViewController: NSViewController {
 
     @objc private func skipMicrophoneClicked() {
         // User doesn't want microphone access - that's fine
-        microphoneStatusLabel.stringValue = "Status: ⏭️  Skipped"
+        microphoneStatusLabel.stringValue = "Status: Skipped"
         microphoneStatusLabel.textColor = NSColor.tertiaryLabelColor
         microphoneSkipButton.isHidden = true
         microphoneGrantButton.isHidden = false

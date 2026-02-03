@@ -220,7 +220,7 @@ class ButtonMappingEditor: NSView {
             let key = CapturedKey(keyCode: event.keyCode, modifiers: modifiers)
 
             self.stopCapture()
-            self.captureField.stringValue = "✓ \(key.description)"
+            self.captureField.stringValue = "Captured: \(key.description)"
             self.captureField.textColor = DesignSystem.Colors.success
 
             self.capturedAction = .keyCombo(

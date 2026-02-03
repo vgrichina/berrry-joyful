@@ -140,7 +140,7 @@ class KeyCaptureView: NSView {
         // Create UI components
         containerBox = NSBox()
         titleLabel = NSTextField(labelWithString: "\(buttonName) - CAPTURING KEY...")
-        instructionLabel = NSTextField(labelWithString: "🎹  Press any key or combination")
+        instructionLabel = NSTextField(labelWithString: "Press any key or combination")
         currentLabel = NSTextField(labelWithString: "Current: \(currentMapping)")
         newLabel = NSTextField(labelWithString: "New: (waiting...)")
 
@@ -285,7 +285,7 @@ class KeyCaptureView: NSView {
         // Update UI
         titleLabel.stringValue = titleLabel.stringValue.replacingOccurrences(of: "CAPTURING", with: "KEY CAPTURED!")
         titleLabel.textColor = NSColor.systemGreen
-        instructionLabel.stringValue = "✓ Detected: \(key.description)"
+        instructionLabel.stringValue = "Detected: \(key.description)"
     }
 
     @objc private func keepPressed() {
@@ -299,7 +299,7 @@ class KeyCaptureView: NSView {
         newLabel.textColor = NSColor.labelColor
         titleLabel.stringValue = titleLabel.stringValue.replacingOccurrences(of: "KEY CAPTURED!", with: "CAPTURING KEY...")
         titleLabel.textColor = NSColor.systemBlue
-        instructionLabel.stringValue = "🎹  Press any key or combination"
+        instructionLabel.stringValue = "Press any key or combination"
         keepButton.isEnabled = false
         capturedKey = nil
         startCapture()

@@ -126,7 +126,7 @@ public class Controller {
             if self.battery != oldValue {
                 jcsLog("[Controller] Battery changed: \(self.type) (Serial: \(self.serialID)): \(oldValue) → \(self.battery)")
                 if self.battery == .critical || self.battery == .empty {
-                    jcsLog("[Controller] ⚠️  LOW BATTERY WARNING: \(self.battery) - may disconnect soon!")
+                    jcsLog("[Controller] LOW BATTERY WARNING: \(self.battery) - may disconnect soon!")
                 }
                 self.batteryChangeHandler?(self.battery, oldValue)
             }
@@ -206,7 +206,7 @@ public class Controller {
     func handleError(result: Int32, value: IOHIDValue) {
         let element = IOHIDValueGetElement(value)
         let reportID = IOHIDElementGetReportID(element)
-        jcsLog("[Controller] ⚠️  INPUT ERROR: \(self.type) (Serial: \(self.serialID))")
+        jcsLog("[Controller] INPUT ERROR: \(self.type) (Serial: \(self.serialID))")
         jcsLog("[Controller]    IOReturn: \(result) (\(String(format: "0x%08X", result)))")
         jcsLog("[Controller]    Report ID: \(String(format: "0x%02X", reportID))")
         jcsLog("[Controller]    Battery: \(self.battery), Charging: \(self.isCharging)")
@@ -358,7 +358,7 @@ public class Controller {
         let report: [UInt8] = [type.rawValue, self.packetCounter] + data
         let result = IOHIDDeviceSetReport(self.device, kIOHIDReportTypeOutput, CFIndex(type.rawValue), report, report.count);
         if (result != kIOReturnSuccess) {
-            jcsLog("[Controller] ⚠️  OUTPUT ERROR: \(self.type) (Serial: \(self.serialID))")
+            jcsLog("[Controller] OUTPUT ERROR: \(self.type) (Serial: \(self.serialID))")
             jcsLog("[Controller]    IOHIDDeviceSetReport failed: \(result) (\(String(format: "0x%08X", result)))")
             jcsLog("[Controller]    Output type: \(type) (0x\(String(format: "%02X", type.rawValue)))")
             jcsLog("[Controller]    Packet counter: \(self.packetCounter)")
@@ -476,7 +476,7 @@ public class Controller {
         if cmd.type.rawValue == subcommand {
             if ack & 0x80 == 0 {
                 // NACK
-                jcsLog("[Controller] ⚠️  NACK received: \(self.type) (Serial: \(self.serialID))")
+                jcsLog("[Controller] NACK received: \(self.type) (Serial: \(self.serialID))")
                 jcsLog("[Controller]    Subcommand: \(cmd.type) (0x\(String(format: "%02X", subcommand)))")
                 jcsLog("[Controller]    ACK byte: 0x\(String(format: "%02X", ack))")
                 cmd.responseHandler?(nil)
@@ -502,7 +502,7 @@ public class Controller {
             guard let processingSubcommand = self.processingSubcommand else { return }
             guard timer == processingSubcommand.timer else { return }
 
-            jcsLog("[Controller] ⚠️  SUBCOMMAND TIMEOUT: \(self.type) (Serial: \(self.serialID))")
+            jcsLog("[Controller] SUBCOMMAND TIMEOUT: \(self.type) (Serial: \(self.serialID))")
             jcsLog("[Controller]    Subcommand: \(cmd.type)")
             jcsLog("[Controller]    Queue remaining: \(self.subcommandQueue.count)")
             jcsLog("[Controller]    isConnected: \(self.isConnected)")

@@ -27,9 +27,9 @@ class VoiceInputManager: NSObject, ObservableObject {
 
     // Helper to log to both NSLog (stdout) and UI
     private func log(_ message: String) {
-        let formattedMessage = "🎤 \(message)"
+        let formattedMessage = "[Voice] \(message)"
         NSLog(formattedMessage)
-        onLog?(formattedMessage)  // Send WITH emoji to UI too
+        onLog?(formattedMessage)
     }
 
     private override init() {
@@ -57,7 +57,7 @@ class VoiceInputManager: NSObject, ObservableObject {
         currentLanguageCode = languageCode
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: languageCode))
 
-        log("🌍 Speech recognizer language changed to: \(languageCode)")
+        log("Language changed to: \(languageCode)")
     }
 
     // MARK: - Authorization
@@ -289,7 +289,7 @@ class VoiceInputManager: NSObject, ObservableObject {
     func typeCurrentTranscript() {
         guard !currentTranscript.isEmpty else { return }
         InputController.shared.typeText(currentTranscript)
-        onLog?("⌨️ Typed: \(currentTranscript)")
+        onLog?("[Keyboard] Typed: \(currentTranscript)")
         currentTranscript = ""
     }
 }

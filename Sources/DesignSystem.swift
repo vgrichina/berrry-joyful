@@ -53,17 +53,17 @@ enum DesignSystem {
         static let headlineSmall = NSFont.systemFont(ofSize: 13, weight: .semibold)
 
         // Body text
-        static let bodyLarge = NSFont.systemFont(ofSize: 13, weight: .regular)
-        static let bodyMedium = NSFont.systemFont(ofSize: 12, weight: .regular)
-        static let bodySmall = NSFont.systemFont(ofSize: 11, weight: .regular)
+        static let bodyLarge = NSFont.systemFont(ofSize: 14, weight: .regular)
+        static let bodyMedium = NSFont.systemFont(ofSize: 13, weight: .regular)
+        static let bodySmall = NSFont.systemFont(ofSize: 12, weight: .regular)
 
         // Captions and small text
-        static let caption = NSFont.systemFont(ofSize: 10, weight: .regular)
+        static let caption = NSFont.systemFont(ofSize: 11, weight: .regular)
 
         // Monospace (for code/debug)
-        static let codeLarge = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-        static let codeMedium = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        static let codeSmall = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        static let codeLarge = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        static let codeMedium = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        static let codeSmall = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
     }
 
     // MARK: - Spacing

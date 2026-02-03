@@ -60,7 +60,7 @@ class ProfileOverlay: NSWindow {
         mainBox.contentViewMargins = NSSize(width: DesignSystem.Spacing.xl, height: DesignSystem.Spacing.xl)
 
         // Title
-        titleLabel.stringValue = "🎮  \(profile.name.uppercased())"
+        titleLabel.stringValue = profile.name.uppercased()
         titleLabel.font = DesignSystem.Typography.displayLarge
         titleLabel.alignment = .center
         titleLabel.textColor = DesignSystem.Colors.text
@@ -256,7 +256,7 @@ class ProfileOverlay: NSWindow {
             tips.append("Right Stick = Scroll")
         }
 
-        let tipsText = tips.isEmpty ? "" : "💡 " + tips.joined(separator: " • ")
+        let tipsText = tips.isEmpty ? "" : tips.joined(separator: " • ")
 
         let label = NSTextField(labelWithString: tipsText)
         label.font = DesignSystem.Typography.bodySmall
