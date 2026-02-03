@@ -383,7 +383,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
     // MARK: - Section Box Helper
 
     /// Creates a visual section box with title and content
-    private func createSectionBox(title: String, content: NSView, yPosition: inout CGFloat, panelWidth: CGFloat) -> NSView {
+    /// - Parameter fillsRemainingHeight: If true, the section box will resize vertically with the window (for last section)
+    private func createSectionBox(title: String, content: NSView, yPosition: inout CGFloat, panelWidth: CGFloat, fillsRemainingHeight: Bool = false) -> NSView {
         // System Settings style: title OUTSIDE box, content inside
         let contentHeight = content.bounds.height
 
@@ -404,7 +405,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             width: panelWidth - (DesignSystem.Layout.sectionBoxHorizontalInset * 2),
             height: totalHeight
         ))
-        wrapper.autoresizingMask = [.width]
+        wrapper.autoresizingMask = fillsRemainingHeight ? [.width, .height] : [.width]
 
         // Section title (OUTSIDE the box, at top of wrapper)
         // Aligned with content inside box (same x offset)
@@ -417,7 +418,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
             width: wrapper.bounds.width - DesignSystem.Layout.contentLeftInset,
             height: DesignSystem.Layout.sectionBoxTitleHeight
         )
-        titleLabel.autoresizingMask = [.width]
+        // When filling remaining height, title stays at top (maxYMargin keeps distance from bottom flexible)
+        titleLabel.autoresizingMask = fillsRemainingHeight ? [.width, .maxYMargin] : [.width]
         wrapper.addSubview(titleLabel)
 
         // Section box container (below title)
@@ -427,7 +429,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             width: wrapper.bounds.width,
             height: boxHeight
         ))
-        box.autoresizingMask = [.width]
+        box.autoresizingMask = fillsRemainingHeight ? [.width, .height] : [.width]
 
         // System Settings exact colors (from Gemini analysis)
         // Background: #F2F2F2 @ 0.8 opacity, Border: #E5E5E5 @ 0.8 opacity
@@ -919,7 +921,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         scrollView.documentView = documentView
         mappingContainer.addSubview(scrollView)
 
-        panel.addSubview(createSectionBox(title: "Button Mapping", content: mappingContainer, yPosition: &y, panelWidth: frame.width))
+        panel.addSubview(createSectionBox(title: "Button Mapping", content: mappingContainer, yPosition: &y, panelWidth: frame.width, fillsRemainingHeight: true))
 
         return panel
     }
