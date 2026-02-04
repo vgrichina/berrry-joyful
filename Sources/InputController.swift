@@ -20,9 +20,6 @@ class InputController {
         return CGEventSource(stateID: .hidSystemState)
     }()
 
-    // Callback for logging
-    var onLog: ((String) -> Void)?
-
     // Debug mode - skips actual input events (for testing without permissions)
     // Always defaults to false - user must explicitly enable via checkbox
     var debugMode: Bool = false
@@ -103,7 +100,7 @@ class InputController {
 
     func setPrecisionMode(_ enabled: Bool) {
         isPrecisionMode = enabled
-        onLog?("🎯 Precision mode: \(enabled ? "ON" : "OFF")")
+        NSLog("🎯 Precision mode: %@", enabled ? "ON" : "OFF")
     }
 
     private func updateMouse() {
@@ -140,8 +137,8 @@ class InputController {
             maxY = max(maxY, screen.frame.maxY)
         }
 
-        let clampedX = max(0, min(newX, maxX))
-        let clampedY = max(0, min(newY, maxY))
+        let clampedX = max(0, min(newX, maxX - 1))
+        let clampedY = max(0, min(newY, maxY - 1))
         let newPosition = CGPoint(x: clampedX, y: clampedY)
 
         if isDragging {
@@ -161,15 +158,7 @@ class InputController {
                 dragEvent.post(tap: .cghidEventTap)
             }
         } else {
-            // Use CGWarpMouseCursorPosition to actually move the cursor
-            // This triggers Dock/hot corners, unlike CGEvent posting
-            CGWarpMouseCursorPosition(newPosition)
-
-            // Check if cursor is near Dock edge and manually trigger reveal
-            DockManager.shared.checkCursorForDockReveal(at: newPosition)
-
-            // Post .mouseMoved event for browsers/apps that rely on the event loop
-            // CGWarpMouseCursorPosition alone doesn't generate events that apps listen for
+            // Post CGEvent to move cursor and trigger native Dock reveal
             if let moveEvent = CGEvent(mouseEventSource: eventSource, mouseType: .mouseMoved,
                                        mouseCursorPosition: newPosition,
                                        mouseButton: .left) {
@@ -195,7 +184,7 @@ class InputController {
 
     func leftClick(modifiers: ModifierState = ModifierState()) {
         let modStr = modifiers.isEmpty ? "" : " (\(modifiers.description))"
-        onLog?("[Mouse] Left click\(modStr)")
+        NSLog("[Mouse] Left click%@", modStr)
 
         if debugMode { return }  // Skip in debug mode
 
@@ -221,7 +210,7 @@ class InputController {
     }
 
     func rightClick() {
-        onLog?("[Mouse] Right click")
+        NSLog("[Mouse] Right click")
 
         if debugMode { return }  // Skip in debug mode
 
@@ -251,7 +240,7 @@ class InputController {
             upEvent.post(tap: .cghidEventTap)
         }
 
-        onLog?("[Mouse] Middle click")
+        NSLog("[Mouse] Middle click")
     }
 
     func leftMouseDown(modifiers: ModifierState = ModifierState()) {
@@ -295,12 +284,12 @@ class InputController {
     // Legacy methods for compatibility
     func startDrag() {
         leftMouseDown()
-        onLog?("[Mouse] Drag started")
+        NSLog("[Mouse] Drag started")
     }
 
     func endDrag() {
         leftMouseUp()
-        onLog?("[Mouse] Drag ended")
+        NSLog("[Mouse] Drag ended")
     }
 
     // MARK: - Modifier Key Simulation (for real keyboard behavior)
@@ -381,7 +370,7 @@ class InputController {
             if shift { modDesc += "⇧" }
             if command { modDesc += "⌘" }
             let keyDesc = keyCode.map { CapturedKey.keyCodeToString($0) } ?? "None"
-            onLog?("[Keyboard] DEBUG: \(modDesc)\(keyDesc)")
+            NSLog("[Keyboard] DEBUG: %@%@", modDesc, keyDesc)
             return
         }
 
@@ -422,17 +411,17 @@ class InputController {
 
     func pressEnter(modifiers: ModifierState = ModifierState()) {
         pressKey(CGKeyCode(kVK_Return), modifiers: modifiers)
-        onLog?("⏎ Enter\(modifiers.isEmpty ? "" : " (\(modifiers.description))")")
+        NSLog("⏎ Enter%@", modifiers.isEmpty ? "" : " (\(modifiers.description))")
     }
 
     func pressEscape() {
         pressKey(CGKeyCode(kVK_Escape))
-        onLog?("⎋ Escape")
+        NSLog("⎋ Escape")
     }
 
     func pressTab(modifiers: ModifierState = ModifierState()) {
         pressKey(CGKeyCode(kVK_Tab), modifiers: modifiers)
-        onLog?("⇥ Tab\(modifiers.isEmpty ? "" : " (\(modifiers.description))")")
+        NSLog("⇥ Tab%@", modifiers.isEmpty ? "" : " (\(modifiers.description))")
     }
 
     func pressArrowUp(modifiers: ModifierState = ModifierState()) {
@@ -453,12 +442,12 @@ class InputController {
 
     func pressSpace(modifiers: ModifierState = ModifierState()) {
         pressKey(CGKeyCode(kVK_Space), modifiers: modifiers)
-        onLog?("␣ Space\(modifiers.isEmpty ? "" : " (\(modifiers.description))")")
+        NSLog("␣ Space%@", modifiers.isEmpty ? "" : " (\(modifiers.description))")
     }
 
     func pressBackspace(modifiers: ModifierState = ModifierState()) {
         pressKey(CGKeyCode(kVK_Delete), modifiers: modifiers)
-        onLog?("⌫ Backspace\(modifiers.isEmpty ? "" : " (\(modifiers.description))")")
+        NSLog("⌫ Backspace%@", modifiers.isEmpty ? "" : " (\(modifiers.description))")
     }
 
     // Claude Code specific shortcuts
@@ -467,7 +456,7 @@ class InputController {
         var modifiers = ModifierState()
         modifiers.control = true
         pressKey(CGKeyCode(kVK_ANSI_C), modifiers: modifiers)
-        onLog?("⌃C Interrupt")
+        NSLog("⌃C Interrupt")
     }
 
     func acceptSuggestion() {
@@ -493,12 +482,12 @@ class InputController {
 
     func pageUp() {
         pressKey(CGKeyCode(kVK_PageUp))
-        onLog?("⇞ Page Up")
+        NSLog("⇞ Page Up")
     }
 
     func pageDown() {
         pressKey(CGKeyCode(kVK_PageDown))
-        onLog?("⇟ Page Down")
+        NSLog("⇟ Page Down")
     }
 
     // MARK: - Key Code Mapping

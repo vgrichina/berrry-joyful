@@ -1395,9 +1395,6 @@ class ViewController: NSViewController, NSTabViewDelegate {
     // MARK: - Input Setup
 
     private func setupInputController() {
-        inputController.onLog = { [weak self] message in
-            self?.log(message)
-        }
         inputController.startMouseUpdates()
     }
 
