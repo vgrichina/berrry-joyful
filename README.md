@@ -6,7 +6,7 @@ Control your Mac with Nintendo Joy-Con controllers. Optimized for Claude Code an
 
 ## Download & Installation
 
-Download the latest release from [Releases](https://github.com/berrry-computer/berrry-joyful/releases)
+Download the latest release from [Releases](https://github.com/Strawberry-Computer/berrry-joyful/releases)
 
 1. Download `Berrry-Joyful-v0.5.dmg`
 2. Open the DMG and drag the app to Applications
@@ -187,7 +187,7 @@ Settings are accessible via the toolbar UI and persist automatically:
 ### Main Interface
 The app shows real-time Joy-Con battery status and provides tabs for configuring mouse, keyboard, and voice settings. The button mapping editor allows customizing the Desktop, Media, Gaming, and custom profiles.
 
-![Berrry Joyful Interface](https://raw.githubusercontent.com/berrry-computer/berrry-joyful/main/screenshots/main-interface.png)
+![Berrry Joyful Interface](https://raw.githubusercontent.com/Strawberry-Computer/berrry-joyful/main/screenshots/main-interface.png)
 
 ## Tips for Claude Code
 
