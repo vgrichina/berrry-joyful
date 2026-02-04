@@ -113,28 +113,28 @@ struct ButtonProfile: Codable, Equatable {
 
     // MARK: - Default Profiles
 
-    /// Desktop + Terminal profile optimized for Claude Code
+    /// Desktop profile - general productivity with arrow navigation
     static var desktopTerminal: ButtonProfile {
         ButtonProfile(
-            name: "Desktop + Terminal",
-            description: "Optimized for Claude Code, terminal, and browser navigation",
+            name: "Desktop",
+            description: "General productivity with arrow key navigation",
             buttonA: .mouseClick,
             buttonB: .pressEscape,
             buttonX: .pressTab,
             buttonY: .pressEnter,
-            dpadUp: .pressKey(keyCode: kVK_ANSI_1),
-            dpadDown: .pressKey(keyCode: kVK_ANSI_2),
-            dpadLeft: .pressKey(keyCode: kVK_ANSI_3),
-            dpadRight: .pressKey(keyCode: kVK_ANSI_4),
+            dpadUp: .pressKey(keyCode: kVK_UpArrow),
+            dpadDown: .pressKey(keyCode: kVK_DownArrow),
+            dpadLeft: .pressKey(keyCode: kVK_LeftArrow),
+            dpadRight: .pressKey(keyCode: kVK_RightArrow),
             bumperL: .command,
             bumperR: .shift,
             triggerZL: .keyCombo(keyCode: UInt16(kVK_ANSI_LeftBracket), command: true, shift: true, option: false, control: false, description: "⌘⇧[ (Prev Tab)"),
             triggerZR: .keyCombo(keyCode: UInt16(kVK_ANSI_RightBracket), command: true, shift: true, option: false, control: false, description: "⌘⇧] (Next Tab)"),
             triggerZLZR: .voiceInput,
             buttonMinus: .pressBackspace,
-            buttonPlus: .none,
-            buttonHome: .none,
-            buttonCapture: .none,
+            buttonPlus: .pressSpace,
+            buttonHome: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
+            buttonCapture: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
             buttonSL: .none,
             buttonSR: .none,
             leftStickClick: .mouseClick,
@@ -146,32 +146,65 @@ struct ButtonProfile: Codable, Equatable {
         )
     }
 
-    /// Gaming profile with WASD and standard controls
+    /// Media profile - volume and playback on D-Pad
+    static var media: ButtonProfile {
+        ButtonProfile(
+            name: "Media",
+            description: "Volume and playback controls on D-Pad",
+            buttonA: .mouseClick,
+            buttonB: .pressEscape,
+            buttonX: .pressTab,
+            buttonY: .pressEnter,
+            dpadUp: .pressKey(keyCode: kVK_VolumeUp),
+            dpadDown: .pressKey(keyCode: kVK_VolumeDown),
+            dpadLeft: .pressKey(keyCode: kVK_Mute),
+            dpadRight: .pressSpace,  // Play/Pause
+            bumperL: .command,
+            bumperR: .shift,
+            triggerZL: .keyCombo(keyCode: UInt16(kVK_ANSI_LeftBracket), command: true, shift: true, option: false, control: false, description: "⌘⇧[ (Prev Tab)"),
+            triggerZR: .keyCombo(keyCode: UInt16(kVK_ANSI_RightBracket), command: true, shift: true, option: false, control: false, description: "⌘⇧] (Next Tab)"),
+            triggerZLZR: .voiceInput,
+            buttonMinus: .pressBackspace,
+            buttonPlus: .pressSpace,
+            buttonHome: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
+            buttonCapture: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
+            buttonSL: .none,
+            buttonSR: .none,
+            leftStickClick: .mouseClick,
+            rightStickClick: .rightClick,
+            enableSmartTabbing: true,
+            enableCmdClick: true,
+            leftStickFunction: .mouse,
+            rightStickFunction: .scroll
+        )
+    }
+
+    /// Gaming profile - FPS-style with WASD movement
     static var gaming: ButtonProfile {
         ButtonProfile(
             name: "Gaming",
-            description: "WASD movement, Space to jump, standard gaming controls",
+            description: "FPS-style: left stick WASD, right stick aim, triggers shoot",
             buttonA: .pressSpace,  // Jump
             buttonB: .pressEscape,  // Menu/Back
             buttonX: .pressKey(keyCode: kVK_ANSI_E),  // Interact
             buttonY: .pressKey(keyCode: kVK_ANSI_R),  // Reload
-            dpadUp: .pressKey(keyCode: kVK_ANSI_W),
-            dpadDown: .pressKey(keyCode: kVK_ANSI_S),
-            dpadLeft: .pressKey(keyCode: kVK_ANSI_A),
-            dpadRight: .pressKey(keyCode: kVK_ANSI_D),
-            bumperL: .shift,  // Sprint
+            dpadUp: .pressKey(keyCode: kVK_ANSI_1),    // Weapon 1
+            dpadDown: .pressKey(keyCode: kVK_ANSI_2),  // Weapon 2
+            dpadLeft: .pressKey(keyCode: kVK_ANSI_3),  // Weapon 3
+            dpadRight: .pressKey(keyCode: kVK_ANSI_4), // Weapon 4
+            bumperL: .shift,    // Sprint
             bumperR: .control,  // Crouch
-            triggerZL: .mouseClick,  // Attack
-            triggerZR: .rightClick,  // Aim
-            triggerZLZR: .pressKey(keyCode: kVK_Tab),
+            triggerZL: .rightClick,   // Aim
+            triggerZR: .mouseClick,   // Shoot
+            triggerZLZR: .pressKey(keyCode: kVK_ANSI_G),  // Grenade
             buttonMinus: .pressKey(keyCode: kVK_ANSI_M),  // Map
-            buttonPlus: .pressEscape,  // Menu
+            buttonPlus: .pressKey(keyCode: kVK_Tab),      // Scoreboard
             buttonHome: .none,
             buttonCapture: .none,
             buttonSL: .none,
             buttonSR: .none,
-            leftStickClick: .pressKey(keyCode: kVK_ANSI_Q),  // Crouch toggle
-            rightStickClick: .pressKey(keyCode: kVK_ANSI_V),  // Melee
+            leftStickClick: .pressKey(keyCode: kVK_ANSI_C),  // Crouch toggle
+            rightStickClick: .pressKey(keyCode: kVK_ANSI_V), // Melee
             enableSmartTabbing: false,
             enableCmdClick: false,
             leftStickFunction: .wasd,
@@ -179,73 +212,7 @@ struct ButtonProfile: Codable, Equatable {
         )
     }
 
-    /// Media control profile
-    static var media: ButtonProfile {
-        ButtonProfile(
-            name: "Media Control",
-            description: "Control music, videos, and presentations",
-            buttonA: .pressKey(keyCode: kVK_Space),  // Play/Pause
-            buttonB: .pressEscape,
-            buttonX: .pressKey(keyCode: kVK_RightArrow),  // Next
-            buttonY: .pressKey(keyCode: kVK_LeftArrow),   // Previous
-            dpadUp: .pressKey(keyCode: kVK_VolumeUp),
-            dpadDown: .pressKey(keyCode: kVK_VolumeDown),
-            dpadLeft: .pressKey(keyCode: kVK_LeftArrow),  // Rewind
-            dpadRight: .pressKey(keyCode: kVK_RightArrow), // Fast Forward
-            bumperL: .command,
-            bumperR: .shift,
-            triggerZL: .pressKey(keyCode: kVK_LeftArrow),
-            triggerZR: .pressKey(keyCode: kVK_RightArrow),
-            triggerZLZR: .pressKey(keyCode: kVK_Space),
-            buttonMinus: .pressKey(keyCode: kVK_Mute),
-            buttonPlus: .pressKey(keyCode: kVK_F5),  // Presentation mode
-            buttonHome: .none,
-            buttonCapture: .none,
-            buttonSL: .none,
-            buttonSR: .none,
-            leftStickClick: .none,
-            rightStickClick: .none,
-            enableSmartTabbing: false,
-            enableCmdClick: false,
-            leftStickFunction: .mouse,
-            rightStickFunction: .scroll
-        )
-    }
-
-    /// Classic controller layout
-    static var classic: ButtonProfile {
-        ButtonProfile(
-            name: "Classic",
-            description: "Traditional controller mapping with arrow keys",
-            buttonA: .pressEnter,
-            buttonB: .pressEscape,
-            buttonX: .pressTab,
-            buttonY: .pressSpace,
-            dpadUp: .pressKey(keyCode: kVK_UpArrow),
-            dpadDown: .pressKey(keyCode: kVK_DownArrow),
-            dpadLeft: .pressKey(keyCode: kVK_LeftArrow),
-            dpadRight: .pressKey(keyCode: kVK_RightArrow),
-            bumperL: .option,
-            bumperR: .shift,
-            triggerZL: .pressKey(keyCode: kVK_PageUp),
-            triggerZR: .pressKey(keyCode: kVK_PageDown),
-            triggerZLZR: .voiceInput,
-            buttonMinus: .pressBackspace,
-            buttonPlus: .pressEscape,
-            buttonHome: .none,
-            buttonCapture: .none,
-            buttonSL: .none,
-            buttonSR: .none,
-            leftStickClick: .none,
-            rightStickClick: .none,
-            enableSmartTabbing: false,
-            enableCmdClick: false,
-            leftStickFunction: .mouse,
-            rightStickFunction: .scroll
-        )
-    }
-
     static var allDefaultProfiles: [ButtonProfile] {
-        [desktopTerminal, gaming, media, classic]
+        [desktopTerminal, media, gaming]
     }
 }
