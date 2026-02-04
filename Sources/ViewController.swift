@@ -24,7 +24,11 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
     // Toolbar item identifiers
     private static let toolbarIdentifier = NSToolbar.Identifier("MainToolbar")
     private static let connectionItemIdentifier = NSToolbarItem.Identifier("ConnectionStatus")
+    private static let tabSwitcherItemIdentifier = NSToolbarItem.Identifier("TabSwitcher")
     private static let flexibleSpaceIdentifier = NSToolbarItem.Identifier.flexibleSpace
+
+    // Segmented control for tab switching
+    private var tabSegmentedControl: NSSegmentedControl?
 
     // Layout containers
     private var mainStackView: NSStackView!
@@ -100,6 +104,9 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
     private var anyButtonPressed: Bool = false  // Track if any button is currently pressed
     private var isPlusHeldForDriftMarking: Bool = false  // Track if Plus is held to mark drift
 
+    // Track battery label style to avoid unnecessary updates
+    private var lastBatteryLabelStyle: Bool = false  // true = full labels
+
     // MARK: - Lifecycle
 
     override func loadView() {
@@ -117,6 +124,15 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
     override func viewDidLayout() {
         super.viewDidLayout()
         hasPerformedInitialLayout = true
+
+        // Update battery labels when window resizes (full vs short labels)
+        if !controllers.isEmpty {
+            let windowWidth = view.window?.frame.width ?? 600
+            let useFullLabels = windowWidth >= 850
+            if useFullLabels != lastBatteryLabelStyle {
+                updateBatteryDisplay()
+            }
+        }
     }
 
     // MARK: - UI Setup
@@ -174,35 +190,26 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         if itemIdentifier == Self.connectionItemIdentifier {
             let item = NSToolbarItem(itemIdentifier: itemIdentifier)
 
-            // Create container view for connection status and battery
-            // Use stack view for proper alignment
+            // Create container stack view
             let stackView = NSStackView()
             stackView.orientation = .horizontal
             stackView.spacing = 12
             stackView.alignment = .centerY
             stackView.distribution = .fill
 
-            // Connection label
-            let label = NSTextField(labelWithString: "No Joy-Con detected")
+            // "No Joy-Con" label (shown when disconnected)
+            let label = NSTextField(labelWithString: "No Joy-Con")
             label.font = NSFont.systemFont(ofSize: 13, weight: .medium)
             label.textColor = NSColor.secondaryLabelColor
             label.isBordered = false
             label.isEditable = false
             label.backgroundColor = .clear
-            label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-            label.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+            label.setContentHuggingPriority(.required, for: .horizontal)
+            label.setContentCompressionResistancePriority(.required, for: .horizontal)
             stackView.addArrangedSubview(label)
             connectionLabel = label
 
-            // Battery container
-            let batteryView = NSView()
-            batteryView.translatesAutoresizingMaskIntoConstraints = false
-            batteryView.widthAnchor.constraint(equalToConstant: 180).isActive = true
-            batteryView.heightAnchor.constraint(equalToConstant: 20).isActive = true
-            stackView.addArrangedSubview(batteryView)
-            batteryProgressView = batteryView
-
-            // Help button (hidden by default, shown when no controller)
+            // Help button (shown when no controller)
             let button = NSButton(title: "Help", target: self, action: #selector(showConnectionHelp))
             button.bezelStyle = .recessed
             button.setButtonType(.momentaryPushIn)
@@ -212,39 +219,70 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
             stackView.addArrangedSubview(button)
             helpButton = button
 
+            // Battery container (holds L and R indicators)
+            let batteryView = NSStackView()
+            batteryView.orientation = .horizontal
+            batteryView.spacing = 12
+            batteryView.alignment = .centerY
+            batteryView.distribution = .fill
+            batteryView.setContentHuggingPriority(.required, for: .horizontal)
+            batteryView.setContentCompressionResistancePriority(.required, for: .horizontal)
+            batteryView.isHidden = true
+            stackView.addArrangedSubview(batteryView)
+            batteryProgressView = batteryView
+
             item.view = stackView
-            item.minSize = NSSize(width: 180, height: 28)
-            item.maxSize = NSSize(width: 400, height: 28)
+            item.minSize = NSSize(width: 100, height: 28)
+            item.maxSize = NSSize(width: 350, height: 28)
+
+            return item
+        } else if itemIdentifier == Self.tabSwitcherItemIdentifier {
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+
+            // Segmented control for tab switching
+            let segmented = NSSegmentedControl(labels: ["Mouse", "Keyboard", "Voice"], trackingMode: .selectOne, target: self, action: #selector(tabSegmentChanged(_:)))
+            segmented.segmentStyle = .automatic
+            segmented.selectedSegment = 0
+            tabSegmentedControl = segmented
+
+            item.view = segmented
+            item.minSize = NSSize(width: 200, height: 28)
+            item.maxSize = NSSize(width: 250, height: 28)
 
             return item
         }
         return nil
     }
 
+    @objc private func tabSegmentChanged(_ sender: NSSegmentedControl) {
+        tabView.selectTabViewItem(at: sender.selectedSegment)
+    }
+
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        return [Self.connectionItemIdentifier, Self.flexibleSpaceIdentifier]
+        return [Self.flexibleSpaceIdentifier, Self.connectionItemIdentifier, Self.tabSwitcherItemIdentifier]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        return [Self.connectionItemIdentifier, Self.flexibleSpaceIdentifier]
+        return [Self.flexibleSpaceIdentifier, Self.connectionItemIdentifier, Self.tabSwitcherItemIdentifier]
     }
 
     private func refreshConnectionStatus() {
         #if DEBUG
-        let debugSuffix = inputController.debugMode ? " [DEBUG MODE]" : ""
+        let debugSuffix = inputController.debugMode ? " [DEBUG]" : ""
         #else
         let debugSuffix = ""
         #endif
 
         if controllers.isEmpty {
-            connectionLabel?.stringValue = "No Joy-Con detected\(debugSuffix)"
+            connectionLabel?.stringValue = "No Joy-Con\(debugSuffix)"
             connectionLabel?.textColor = NSColor.secondaryLabelColor
-            batteryProgressView?.subviews.forEach { $0.removeFromSuperview() }
+            connectionLabel?.isHidden = false
+            batteryProgressView?.isHidden = true
             helpButton?.isHidden = false
         } else {
-            let names = controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
-            connectionLabel?.stringValue = "\(names.joined(separator: " + "))\(debugSuffix)"
-            connectionLabel?.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
+            // Hide text label, show battery indicators instead
+            connectionLabel?.isHidden = true
+            batteryProgressView?.isHidden = false
             updateBatteryDisplay()
             helpButton?.isHidden = true
         }
@@ -452,9 +490,9 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
     }
 
     private func createTabView() {
-        // Create NSTabView
+        // Create NSTabView (tabs hidden, controlled by toolbar segmented control)
         tabView = NSTabView(frame: NSRect(x: 0, y: 0, width: 800, height: 400))
-        tabView.tabViewType = .topTabsBezelBorder
+        tabView.tabViewType = .noTabsNoBorder
 
         // Use tab view bounds for initial sizing - autoresizing will handle the rest
         let panelFrame = tabView.bounds
@@ -1041,6 +1079,11 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
     func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
         guard let identifier = tabViewItem?.identifier as? String else { return }
         log("Switched to \(identifier.capitalized) tab")
+
+        // Sync segmented control with tab selection
+        if let index = tabView.indexOfTabViewItem(tabViewItem!) as Int? {
+            tabSegmentedControl?.selectedSegment = index
+        }
     }
 
     @objc private func sensitivityChanged(_ sender: NSSlider) {
@@ -1498,85 +1541,67 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
             #endif
 
             if self.controllers.isEmpty {
-                self.connectionLabel?.stringValue = "No Joy-Con detected\(debugSuffix)"
+                self.connectionLabel?.stringValue = "No Joy-Con\(debugSuffix)"
                 self.connectionLabel?.textColor = NSColor.secondaryLabelColor
-                self.batteryProgressView?.subviews.forEach { $0.removeFromSuperview() }
-                self.helpButton?.isHidden = false  // Show help button when no controller
+                self.connectionLabel?.isHidden = false
+                self.batteryProgressView?.isHidden = true
+                self.helpButton?.isHidden = false
             } else {
-                let names = self.controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
-                self.connectionLabel?.stringValue = "\(names.joined(separator: " + "))\(debugSuffix)"
-                self.connectionLabel?.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
-
-                // Update battery display
+                // Hide text label, show battery indicators
+                self.connectionLabel?.isHidden = true
+                self.batteryProgressView?.isHidden = false
                 self.updateBatteryDisplay()
-
-                self.helpButton?.isHidden = true  // Hide help button when connected
+                self.helpButton?.isHidden = true
             }
         }
     }
 
     private func updateBatteryDisplay() {
         // Guard against nil batteryProgressView (titlebar not yet set up)
-        guard let progressView = batteryProgressView else { return }
+        guard let progressView = batteryProgressView as? NSStackView else { return }
 
-        // Clear existing battery UI
-        progressView.subviews.forEach { $0.removeFromSuperview() }
+        // Clear existing indicators
+        progressView.arrangedSubviews.forEach { $0.removeFromSuperview() }
 
-        // Create horizontal stack for battery indicators
-        let stackView = NSStackView()
-        stackView.orientation = .horizontal
-        stackView.spacing = 8
-        stackView.alignment = .centerY
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        progressView.addSubview(stackView)
+        // Check window width to decide label style
+        let windowWidth = view.window?.frame.width ?? 600
+        let useFullLabels = windowWidth >= 850  // Use full labels when window is wide enough
 
-        // Pin stack to edges
-        NSLayoutConstraint.activate([
-            stackView.leadingAnchor.constraint(equalTo: progressView.leadingAnchor),
-            stackView.trailingAnchor.constraint(lessThanOrEqualTo: progressView.trailingAnchor),
-            stackView.centerYAnchor.constraint(equalTo: progressView.centerYAnchor)
-        ])
+        // Add indicator for each controller
+        let left = controllers.first { $0.type == .JoyConL }
+        let right = controllers.first { $0.type == .JoyConR }
 
-        if controllers.count == 1 {
-            let controller = controllers[0]
-            let indicator = createBatteryIndicatorView(for: controller, label: nil)
-            stackView.addArrangedSubview(indicator)
-        } else if controllers.count == 2 {
-            let left = controllers.first { $0.type == .JoyConL }
-            let right = controllers.first { $0.type == .JoyConR }
+        if let left = left {
+            let label = useFullLabels ? "Joy-Con L" : "L"
+            let indicator = createBatteryIndicatorView(for: left, label: label)
+            progressView.addArrangedSubview(indicator)
+        }
 
-            if let left = left {
-                let indicator = createBatteryIndicatorView(for: left, label: "L")
-                stackView.addArrangedSubview(indicator)
-            }
-
-            if let right = right {
-                let indicator = createBatteryIndicatorView(for: right, label: "R")
-                stackView.addArrangedSubview(indicator)
-            }
+        if let right = right {
+            let label = useFullLabels ? "Joy-Con R" : "R"
+            let indicator = createBatteryIndicatorView(for: right, label: label)
+            progressView.addArrangedSubview(indicator)
         }
     }
 
-    private func createBatteryIndicatorView(for controller: Controller, label: String?) -> NSView {
+    private func createBatteryIndicatorView(for controller: Controller, label: String) -> NSView {
         let stackView = NSStackView()
         stackView.orientation = .horizontal
         stackView.spacing = 4
         stackView.alignment = .centerY
 
-        let smallFont = NSFont.systemFont(ofSize: 11, weight: .medium)
+        let smallFont = NSFont.systemFont(ofSize: 12, weight: .medium)
 
-        // Controller label (L/R) if provided
-        if let label = label {
-            let labelField = NSTextField(labelWithString: "\(label):")
-            labelField.font = smallFont
-            labelField.textColor = NSColor.tertiaryLabelColor
-            labelField.isBordered = false
-            labelField.isEditable = false
-            labelField.backgroundColor = .clear
-            labelField.setContentHuggingPriority(.required, for: .horizontal)
-            labelField.setContentCompressionResistancePriority(.required, for: .horizontal)
-            stackView.addArrangedSubview(labelField)
-        }
+        // Controller label (L/R or "Joy-Con L/R")
+        let labelField = NSTextField(labelWithString: label)
+        labelField.font = smallFont
+        labelField.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)  // Green = connected
+        labelField.isBordered = false
+        labelField.isEditable = false
+        labelField.backgroundColor = .clear
+        labelField.setContentHuggingPriority(.required, for: .horizontal)
+        labelField.setContentCompressionResistancePriority(.required, for: .horizontal)
+        stackView.addArrangedSubview(labelField)
 
         let percentage = batteryPercentage(for: controller.battery)
         let color = batteryColor(for: controller.battery)
