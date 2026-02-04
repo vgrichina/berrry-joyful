@@ -2017,6 +2017,9 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
             log("🕹️ \(buttonName) → Voice Input")
             // Voice input is handled separately through ZL+ZR combo
             break
+        case .missionControl:
+            log("🕹️ \(buttonName) → Mission Control")
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mission Control.app"))
         case .none:
             break
         }

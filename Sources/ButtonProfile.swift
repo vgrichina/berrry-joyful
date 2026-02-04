@@ -14,6 +14,7 @@ enum ButtonAction: Codable, Equatable {
     case customKey(keyCode: Int, description: String)
     case keyCombo(keyCode: UInt16?, command: Bool, shift: Bool, option: Bool, control: Bool, description: String)  // Arbitrary key combo with modifiers
     case voiceInput
+    case missionControl  // Launch Mission Control app directly
     case none
 
     var description: String {
@@ -31,6 +32,7 @@ enum ButtonAction: Codable, Equatable {
         case .customKey(_, let desc): return desc
         case .keyCombo(_, _, _, _, _, let desc): return desc
         case .voiceInput: return "Voice Input"
+        case .missionControl: return "Mission Control"
         case .none: return "None"
         }
     }
@@ -133,7 +135,7 @@ struct ButtonProfile: Codable, Equatable {
             triggerZLZR: .voiceInput,
             buttonMinus: .pressBackspace,
             buttonPlus: .pressSpace,
-            buttonHome: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
+            buttonHome: .missionControl,
             buttonCapture: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
             buttonSL: .none,
             buttonSR: .none,
@@ -164,9 +166,9 @@ struct ButtonProfile: Codable, Equatable {
             triggerZL: .keyCombo(keyCode: UInt16(kVK_ANSI_LeftBracket), command: true, shift: true, option: false, control: false, description: "⌘⇧[ (Prev Tab)"),
             triggerZR: .keyCombo(keyCode: UInt16(kVK_ANSI_RightBracket), command: true, shift: true, option: false, control: false, description: "⌘⇧] (Next Tab)"),
             triggerZLZR: .voiceInput,
-            buttonMinus: .pressBackspace,
-            buttonPlus: .pressSpace,
-            buttonHome: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
+            buttonMinus: .pressKey(keyCode: kVK_ANSI_J),  // Rewind 10s (YouTube)
+            buttonPlus: .pressKey(keyCode: kVK_ANSI_L),   // Forward 10s (YouTube)
+            buttonHome: .missionControl,
             buttonCapture: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
             buttonSL: .none,
             buttonSR: .none,
@@ -199,8 +201,8 @@ struct ButtonProfile: Codable, Equatable {
             triggerZLZR: .pressKey(keyCode: kVK_ANSI_G),  // Grenade
             buttonMinus: .pressKey(keyCode: kVK_ANSI_M),  // Map
             buttonPlus: .pressKey(keyCode: kVK_Tab),      // Scoreboard
-            buttonHome: .none,
-            buttonCapture: .none,
+            buttonHome: .missionControl,
+            buttonCapture: .keyCombo(keyCode: UInt16(kVK_ANSI_4), command: true, shift: true, option: false, control: false, description: "⌘⇧4 (Screenshot)"),
             buttonSL: .none,
             buttonSR: .none,
             leftStickClick: .pressKey(keyCode: kVK_ANSI_C),  // Crouch toggle

@@ -28,6 +28,7 @@ class ButtonMappingEditor: NSView {
         ("Space", .pressSpace),
         ("Backspace", .pressBackspace),
         ("Voice Input", .voiceInput),
+        ("Mission Control", .missionControl),
         // Separator will be added in popup
         ("───────────", .none), // visual separator
         // System shortcuts
