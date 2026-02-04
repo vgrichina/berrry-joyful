@@ -6,9 +6,9 @@ Control your Mac with Nintendo Joy-Con controllers. Optimized for Claude Code an
 
 ## Download & Installation
 
-**For End Users**: Download the latest release from [Releases](https://github.com/berrry-computer/berrry-joyful/releases)
+Download the latest release from [Releases](https://github.com/berrry-computer/berrry-joyful/releases)
 
-1. Download `Berrry-Joyful-v1.0.dmg`
+1. Download `Berrry-Joyful-v0.5.dmg`
 2. Open the DMG and drag the app to Applications
 3. Right-click the app and select "Open" (first time only)
 4. Grant Accessibility permission when prompted
@@ -20,49 +20,66 @@ Control your Mac with Nintendo Joy-Con controllers. Optimized for Claude Code an
 - **Full Mouse Control** - Move cursor with left stick, scroll with right stick
 - **Keyboard Input** - Face buttons and D-pad for common keys and navigation
 - **Voice Input** - Hold ZL+ZR to dictate text (text-only mode)
-- **Modern Tabbed UI** - Configure mouse sensitivity, keyboard layouts, and voice settings
-- **Collapsible Debug Log** - Monitor controller events and system messages
+- **Profile System** - Switch between Desktop, Media, and Gaming profiles
+- **Menu Bar App** - Quick profile switching from the menu bar, runs in background
+- **Custom Profiles** - Create and customize your own button mappings
+- **Modern Toolbar UI** - Configure mouse sensitivity, keyboard layouts, and voice settings
 - **Permissions-First UX** - Friendly onboarding with clear permission explanations
 
-## Control Scheme
+## Profiles
 
-### Unified Control Mode
+Berrry Joyful includes three built-in profiles. Switch profiles from the menu bar icon or create custom profiles in the app.
 
-All controls are active simultaneously when a Joy-Con is connected:
+### Desktop (Default)
+General productivity with arrow key navigation.
 
-#### Face Buttons
-| Button | Action |
-|--------|--------|
-| **A** | Enter / Confirm |
-| **B** | Escape (with Cmd: Ctrl+C interrupt) |
-| **X** | Tab (with Cmd: New Tab) |
-| **Y** | Space |
-
-#### Triggers & Shoulders
 | Input | Action |
 |-------|--------|
-| **ZL + ZR** | Voice input (hold to speak, release to type) |
-| **L** | Option (⌥) modifier |
+| **A** | Click |
+| **B** | Escape |
+| **X** | Tab |
+| **Y** | Enter |
+| **D-Pad** | Arrow keys |
+| **L** | Command (⌘) modifier |
 | **R** | Shift (⇧) modifier |
-| **L + R** | Precision mode (slower mouse) |
+| **ZL** | Previous Tab (⌘⇧[) |
+| **ZR** | Next Tab (⌘⇧]) |
+| **ZL + ZR** | Voice input |
+| **Minus** | Backspace |
+| **Plus** | Space |
+| **Home** | Mission Control |
+| **Capture** | Screenshot (⌘⇧4) |
+| **Left Stick** | Mouse cursor |
+| **Right Stick** | Scroll |
 
-#### Analog Sticks
-| Input | Function |
-|-------|----------|
-| **Left Stick** | Move mouse cursor |
-| **Right Stick** | Scroll (vertical & horizontal) |
+### Media
+Volume and playback controls on D-Pad.
 
-#### D-Pad
 | Input | Action |
 |-------|--------|
-| **↑↓←→** | Arrow keys |
-| **+ Modifiers** | Works with L/R for modified arrow keys |
+| **D-Pad Up/Down** | Volume Up/Down |
+| **D-Pad Left** | Mute |
+| **D-Pad Right** | Play/Pause |
+| **Minus/Plus** | Rewind/Forward 10s (YouTube) |
+| *Other buttons* | Same as Desktop |
 
-#### Menu Buttons
-| Button | Action |
-|--------|--------|
-| **Minus (-)** | Toggle debug log visibility |
-| **Plus (+)** | (Currently unassigned) |
+### Gaming
+FPS-style controls with WASD movement.
+
+| Input | Action |
+|-------|--------|
+| **A** | Jump (Space) |
+| **B** | Menu (Escape) |
+| **X** | Interact (E) |
+| **Y** | Reload (R) |
+| **D-Pad** | Weapon slots 1-4 |
+| **L** | Sprint (Shift) |
+| **R** | Crouch (Control) |
+| **ZL** | Aim (Right Click) |
+| **ZR** | Shoot (Click) |
+| **ZL + ZR** | Grenade (G) |
+| **Left Stick** | WASD movement |
+| **Right Stick** | Mouse aim |
 
 ## Voice Input
 
@@ -74,35 +91,7 @@ Example:
 1. Hold ZL + ZR
 2. Say: "git commit dash m quote added new feature quote"
 3. Release buttons
-4. Text appears: "git commit -m added new feature"
-
-## User Interface
-
-The app features a modern tabbed interface:
-
-### Connection Header
-Shows controller status, battery level (when available), and LED indicators.
-
-### Configuration Tabs
-
-**🖱️ Mouse Tab**
-- Sensitivity slider (0.5x - 3.0x)
-- Deadzone control (0% - 30%)
-- Invert Y-Axis option
-- Mouse acceleration toggle
-
-**⌨️ Keyboard Tab**
-- Layout presets (Gaming, Text Editing, Media Controls, Custom)
-- Button mapping reference
-- Current configuration display
-
-**🎤 Voice Tab**
-- Live status indicator
-- Activation method selection
-- Speech recognition settings
-
-### Collapsible Debug Log
-Click "▼ Debug Log" to expand/collapse the event log panel at the bottom.
+4. Text appears: `git commit -m "added new feature"`
 
 ## Requirements
 
@@ -123,80 +112,79 @@ Needed for voice input (ZL+ZR). You can skip this and enable it later if desired
 
 ## Building from Source
 
-**For Developers**:
-
 ```bash
-# Install dependencies
+# Install XcodeGen
 brew install xcodegen
-sudo gem install cocoapods
 
-# Install CocoaPods dependencies (includes JoyConSwift)
-pod install
+# Generate Xcode project
+xcodegen
 
-# Build using workspace (not .xcodeproj!)
-xcodebuild -workspace berrry-joyful.xcworkspace -scheme berrry-joyful -configuration Debug build
+# Build
+xcodebuild -project berrry-joyful.xcodeproj -scheme berrry-joyful -configuration Debug build
 
 # Or open in Xcode
-open berrry-joyful.xcworkspace
+open berrry-joyful.xcodeproj
 ```
 
-**Important**:
-- Always use `berrry-joyful.xcworkspace`, not `.xcodeproj`
-- `pod install` automatically patches JoyConSwift pointer alignment bug
-- Run `xcodegen` only when adding/removing source files
+Run `xcodegen` after adding or removing source files.
 
-### Building for Distribution
-
-See [DISTRIBUTION.md](DISTRIBUTION.md) for complete release build instructions including code signing, notarization, and DMG creation.
+See [DISTRIBUTION.md](DISTRIBUTION.md) for release build instructions including code signing and notarization.
 
 ## Project Structure
 
 ```
 Sources/
-├── main.swift                      # App entry point
-├── AppDelegate.swift               # Application lifecycle & controller monitoring
-├── PermissionsViewController.swift # First-launch permissions UI
-├── ViewController.swift            # Main tabbed UI & Joy-Con input handling
-├── InputController.swift           # Mouse/keyboard simulation via CGEvent
-├── VoiceInputManager.swift         # Speech recognition (text-only)
-├── ControlMode.swift               # Unified control mode & settings
-├── Info.plist                      # App configuration
-└── berrry-joyful.entitlements      # Security entitlements
+├── main.swift                 # App entry point
+├── AppDelegate.swift          # Application lifecycle & controller monitoring
+├── ViewController.swift       # Main toolbar UI & Joy-Con input handling
+├── PermissionsViewController.swift  # First-launch permissions UI
+├── InputController.swift      # Mouse/keyboard simulation via CGEvent
+├── VoiceInputManager.swift    # Speech recognition (text-only)
+├── ControlMode.swift          # Control mode & settings
+├── ButtonProfile.swift        # Profile definitions (Desktop, Media, Gaming)
+├── ProfileManager.swift       # Profile persistence & switching
+├── ProfileOverlay.swift       # On-screen profile indicator
+├── ButtonMappingEditor.swift  # Custom button mapping UI
+├── KeyCaptureView.swift       # Keyboard shortcut capture
+├── DesignSystem.swift         # UI styling constants
+├── StickyMouseManager.swift   # Mouse edge behavior
+├── AccessibilityScanner.swift # UI element scanning
+├── DriftLogger.swift          # Stick drift diagnostics
+└── JoyConSwift/               # Vendored Joy-Con library
 ```
 
 ## Configuration
 
-All settings are accessible via the tabbed UI and persist automatically:
+Settings are accessible via the toolbar UI and persist automatically:
 
-- **Mouse Sensitivity**: Adjust cursor speed (default: 15.0)
-- **Deadzone**: Ignore small stick movements (default: 15%)
+- **Mouse Sensitivity**: Adjust cursor speed
+- **Deadzone**: Ignore small stick movements
 - **Invert Y**: Flip vertical axis
 - **Acceleration**: Enable mouse acceleration curve
-- **Keyboard Presets**: Choose layout optimized for different tasks
+- **Profiles**: Switch between Desktop, Media, Gaming, or custom profiles
 
 ## Technical Notes
 
 - Pure Swift 5.9 with AppKit (no storyboards, all programmatic UI)
-- JoyConSwift library for direct Joy-Con HID communication (via CocoaPods)
+- Vendored JoyConSwift library for direct Joy-Con HID communication
 - CGEvent API for mouse/keyboard simulation
-- Speech framework for voice recognition (on-device, macOS 13+)
-- Auto-patches JoyConSwift pointer alignment bug during `pod install`
-- Unified control mode: all input methods active simultaneously
+- Speech framework for voice recognition (on-device)
+- Menu bar app with profile switching
+- XcodeGen-based project configuration
 
 ## Tips for Claude Code
 
 1. **Navigate quickly** - Left stick for cursor, right stick for scrolling
 2. **Voice for long prompts** - Hold ZL+ZR to dictate complex commands
 3. **Arrow keys** - Use D-pad for terminal history and cursor movement
-4. **Interrupt processes** - Cmd+B (B button with Cmd modifier)
+4. **Tab switching** - ZL/ZR for previous/next tab
 5. **Precision control** - Hold L+R for slow, accurate mouse movement
-6. **Debug visibility** - Toggle log with Minus (-) button when troubleshooting
 
 ## Troubleshooting
 
 **Controller not detected?**
 - Pair Joy-Con via Bluetooth in System Settings
-- Check app logs (toggle debug panel with Minus button)
+- Try disconnecting and reconnecting
 
 **Mouse/keyboard not working?**
 - Grant Accessibility permission in System Settings
@@ -208,9 +196,12 @@ All settings are accessible via the tabbed UI and persist automatically:
 - Verify ZL+ZR button combination
 
 **Build errors?**
-- Use `.xcworkspace` not `.xcodeproj`
-- Run `pod install` to get dependencies
+- Run `xcodegen` to regenerate the project
 - Clean build folder if issues persist
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 

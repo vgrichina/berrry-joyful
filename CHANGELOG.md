@@ -7,38 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] - TBD
+## [0.5.0] - 2026-02-04
 
 ### Added
-- App icon with proper macOS transparency and corner radius specifications
-
-### Added
-- Initial release of Berrry Joyful
+- Initial public release of Berrry Joyful
 - Full Joy-Con controller support (L, R, Pro Controller)
-- Mouse control with analog stick
-- Keyboard input simulation
+- Mouse control with analog stick (left stick moves cursor, right stick scrolls)
+- Keyboard input simulation via face buttons and D-pad
 - Voice-to-text dictation (hold ZL+ZR to speak)
-- On-screen status overlay with help display
-- Multiple control modes:
-  - Mouse mode with configurable sensitivity
-  - Keyboard mode with customizable button mappings
-  - Voice input mode with real-time transcription
-- Accessibility permission handling
-- Microphone permission handling
-- Automatic controller detection and connection
-- Modern tabbed UI for configuration
-- Debug log for troubleshooting
+- Profile system with three built-in profiles:
+  - Desktop: Arrow key navigation, tab switching, general productivity
+  - Media: Volume/playback controls on D-pad
+  - Gaming: FPS-style WASD movement and mouse aim
+- Custom profile creation and editing
+- Menu bar app with quick profile switching
+- App runs in background when window is closed
+- Modern toolbar UI with segmented control
+- Permissions screen on first launch
+- App icon with proper macOS transparency and corner radius
 - Privacy-first design (no data collection, fully offline)
 - Hardened runtime security
 - Support for macOS 14.0+
 
 ### Technical
-- Built with Swift 5.9
-- Uses JoyConSwift framework (via CocoaPods)
+- Built with Swift 5.9 and AppKit (programmatic UI, no storyboards)
+- Vendored JoyConSwift library for direct HID communication
 - XcodeGen-based project configuration
-- Automated release build script
+- CGEvent API for mouse/keyboard simulation
+- Speech framework for on-device voice recognition
 - Developer ID code signing support
 - Notarization support for distribution
 
-[Unreleased]: https://github.com/vgrichina/berrry-joyful/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/vgrichina/berrry-joyful/releases/tag/v1.0.0
+[Unreleased]: https://github.com/berrry-computer/berrry-joyful/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/berrry-computer/berrry-joyful/releases/tag/v0.5.0

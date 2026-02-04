@@ -20,13 +20,22 @@ berrry-joyful is a macOS application that enables Mac control using Nintendo Joy
 ```
 berrry-joyful/
 ├── Sources/
-│   ├── AppDelegate.swift          # Main application delegate
-│   ├── ViewController.swift       # Main view controller
-│   ├── InputController.swift      # Handles mouse/keyboard simulation
-│   ├── VoiceInputManager.swift    # Voice recognition and commands
-│   ├── ControlMode.swift          # Control mode enumerations
-│   ├── StatusOverlay.swift        # On-screen status display
 │   ├── main.swift                 # Entry point
+│   ├── AppDelegate.swift          # Application lifecycle, menu bar, controller monitoring
+│   ├── ViewController.swift       # Main toolbar UI & Joy-Con input handling
+│   ├── PermissionsViewController.swift  # First-launch permissions UI
+│   ├── InputController.swift      # Mouse/keyboard simulation via CGEvent
+│   ├── VoiceInputManager.swift    # Speech recognition (text-only)
+│   ├── ControlMode.swift          # Control mode & settings
+│   ├── ButtonProfile.swift        # Profile definitions (Desktop, Media, Gaming)
+│   ├── ProfileManager.swift       # Profile persistence & switching
+│   ├── ProfileOverlay.swift       # On-screen profile indicator
+│   ├── ButtonMappingEditor.swift  # Custom button mapping UI
+│   ├── KeyCaptureView.swift       # Keyboard shortcut capture
+│   ├── DesignSystem.swift         # UI styling constants
+│   ├── StickyMouseManager.swift   # Mouse edge behavior
+│   ├── AccessibilityScanner.swift # UI element scanning
+│   ├── DriftLogger.swift          # Stick drift diagnostics
 │   ├── Info.plist                 # App metadata
 │   ├── berrry-joyful.entitlements # Security entitlements
 │   └── JoyConSwift/               # Vendored JoyConSwift library
@@ -43,38 +52,36 @@ berrry-joyful/
 ## Key Components
 
 ### AppDelegate.swift
-- Manages application lifecycle
-- Sets up menu bar
-- Handles controller monitoring
-- Creates and manages main window
+- Application lifecycle management
+- Menu bar icon with profile switching
+- Controller connection monitoring
+- Window management (runs in background when closed)
 
 ### ViewController.swift
-- Main UI management
-- Controller input handling
-- Mode switching logic
-- Status overlay coordination
+- Main toolbar UI with segmented control
+- Joy-Con input handling and button dispatch
+- Profile-based action execution
+- Mouse/Keyboard/Voice tab configuration
 
 ### InputController.swift
-- Simulates mouse movements and clicks
-- Simulates keyboard input
-- Handles accessibility permissions
-- Manages modifier keys (Cmd, Shift, etc.)
+- CGEvent-based mouse/keyboard simulation
+- Accessibility permission handling
+- Modifier key management (Cmd, Shift, Option, Control)
+
+### ButtonProfile.swift
+- Profile definitions (Desktop, Media, Gaming)
+- Button-to-action mappings
+- Stick function configuration (mouse, scroll, WASD)
+
+### ProfileManager.swift
+- Profile persistence (UserDefaults)
+- Custom profile creation/deletion
+- Active profile switching
 
 ### VoiceInputManager.swift
-- Speech recognition integration
-- Voice command processing
+- Speech framework integration
+- Text-only voice dictation (no commands)
 - Microphone permission handling
-- Real-time transcription
-
-### ControlMode.swift
-- Defines control modes (mouse, keyboard, voice)
-- Modifier state management
-- Input settings configuration
-
-### StatusOverlay.swift
-- On-screen overlay windows
-- Help screen display
-- Mode indicators
 
 ### JoyConSwift (Vendored)
 - IOKit wrapper for Joy-Con and Pro Controller
@@ -129,10 +136,10 @@ The app will prompt for these permissions on first launch.
 
 - **Mouse Control**: Use Joy-Con as a mouse with adjustable sensitivity
 - **Keyboard Input**: Simulate keyboard presses and key combinations
-- **Voice Commands**: Voice-activated commands and text input
-- **Mode Switching**: Seamlessly switch between control modes
-- **On-Screen Overlay**: Visual feedback for current mode and status
-- **Help Screen**: Built-in help overlay with keyboard shortcuts
+- **Voice Dictation**: Text-only voice input (hold ZL+ZR to speak)
+- **Profile System**: Desktop, Media, Gaming profiles with distinct button mappings
+- **Menu Bar App**: Quick profile switching, runs in background
+- **Custom Profiles**: Create and edit your own button mappings
 
 ## Controller Support
 
