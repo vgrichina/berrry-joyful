@@ -102,15 +102,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                    keyEquivalent: "q"))
         appMenuItem.submenu = appMenu
 
-        // View menu
-        let viewMenuItem = NSMenuItem()
-        mainMenu.addItem(viewMenuItem)
-        let viewMenu = NSMenu(title: "View")
-        viewMenu.addItem(NSMenuItem(title: "Show Help",
-                                    action: #selector(showHelp),
-                                    keyEquivalent: "/"))
-        viewMenuItem.submenu = viewMenu
-
         #if DEBUG
         // Debug menu
         let debugMenuItem = NSMenuItem()
@@ -136,9 +127,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let helpMenuItem = NSMenuItem()
         mainMenu.addItem(helpMenuItem)
         let helpMenu = NSMenu(title: "Help")
-        helpMenu.addItem(NSMenuItem(title: "Berrry Joyful Help",
-                                    action: #selector(showHelp),
-                                    keyEquivalent: "?"))
         helpMenu.addItem(NSMenuItem(title: "Controller Setup Guide",
                                     action: #selector(showControllerSetup),
                                     keyEquivalent: ""))
@@ -277,11 +265,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 NSWorkspace.shared.open(url)
             }
         }
-    }
-
-    @objc private func showHelp() {
-        // This will be handled by the view controller
-        viewController.log("Press Options (-) on Joy-Con to show controls help")
     }
 
     @objc private func showControllerSetup() {
