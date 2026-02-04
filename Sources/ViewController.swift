@@ -644,10 +644,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Info text (full-width below controls)
         let stickyInfoLabel = NSTextField(wrappingLabelWithString: "Slows cursor near buttons and text fields, making them easier to click. Toggle with L button, adjust strength with ZL+X.")
-        stickyInfoLabel.font = DesignSystem.Typography.caption
+        stickyInfoLabel.font = DesignSystem.Typography.bodyMedium
         stickyInfoLabel.textColor = DesignSystem.Colors.secondaryText
         stickyInfoLabel.alignment = .left
-        stickyInfoLabel.frame = NSRect(x: DesignSystem.Spacing.lg, y: stickyMouseY, width: contentWidth - DesignSystem.Spacing.lg * 2, height: 40)
+        stickyInfoLabel.frame = NSRect(x: 0, y: stickyMouseY, width: contentWidth, height: 36)
         stickyInfoLabel.autoresizingMask = [.width]
         stickyMouseContent.addSubview(stickyInfoLabel)
 
@@ -674,10 +674,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Info text
         let debugInfo = NSTextField(wrappingLabelWithString: "DEBUG MODE: Input events are logged but not sent to the system.")
-        debugInfo.font = DesignSystem.Typography.caption
+        debugInfo.font = DesignSystem.Typography.bodyMedium
         debugInfo.textColor = DesignSystem.Colors.warning
         debugInfo.alignment = .left
-        debugInfo.frame = NSRect(x: DesignSystem.Spacing.lg, y: debugY, width: contentWidth - DesignSystem.Spacing.lg * 2, height: 20)
+        debugInfo.frame = NSRect(x: 0, y: debugY, width: contentWidth, height: 20)
         debugInfo.autoresizingMask = [.width]
         debugContent.addSubview(debugInfo)
 
@@ -972,8 +972,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.addSubview(createSectionBox(title: "Settings", content: settingsContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 3: How to Use
-        let howToContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: 90))
-        var howToY: CGFloat = 0
+        let howToContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: 135))
+        var howToY: CGFloat = 12
 
         // Instructions
         let instructionsLabel = NSTextField(wrappingLabelWithString: "1. Hold ZL + ZR on your Joy-Con to activate voice input\n\n2. Speak naturally in your selected language\n\n3. Release ZL + ZR to type your words automatically")
@@ -985,9 +985,9 @@ class ViewController: NSViewController, NSTabViewDelegate {
         howToY += 80
 
         // Info text
-        let infoLabel = NSTextField(wrappingLabelWithString: "ℹ️ Voice input converts your speech to text and types it automatically. Perfect for hands-free typing!")
-        infoLabel.font = DesignSystem.Typography.caption
-        infoLabel.textColor = DesignSystem.Colors.tertiaryText
+        let infoLabel = NSTextField(wrappingLabelWithString: "Voice input converts your speech to text and types it automatically. Perfect for hands-free typing.")
+        infoLabel.font = DesignSystem.Typography.bodyMedium
+        infoLabel.textColor = DesignSystem.Colors.secondaryText
         infoLabel.frame = NSRect(x: 0, y: howToY, width: frame.width - 120, height: 30)
         infoLabel.autoresizingMask = [.width]  // Grow with window
         howToContent.addSubview(infoLabel)
