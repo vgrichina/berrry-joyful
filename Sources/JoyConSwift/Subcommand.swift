@@ -43,7 +43,14 @@ class Subcommand {
     let data: [UInt8]
     var responseHandler: ((_ value: IOHIDValue?) -> Void)?
     var timer: Timer?
-    
+    var retryCount: Int = 0
+    // Linux driver uses 2 total attempts (1 original + 1 retry)
+    static let maxRetries = 1
+    // Linux driver uses 250ms-1000ms depending on command; we use 1s
+    static let timeoutInterval: TimeInterval = 1.0
+    // Linux driver enforces 25ms minimum between subcommands
+    static let minIntervalBetweenCommands: TimeInterval = 0.025
+
     init(type: CommandType, data: [UInt8], responseHandler: ((_ value: IOHIDValue?) -> Void)?) {
         self.type = type
         self.data = data

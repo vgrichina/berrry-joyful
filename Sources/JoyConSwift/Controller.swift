@@ -74,6 +74,11 @@ public class Controller {
     
     private var subcommandQueue: [Subcommand]
     private var processingSubcommand: Subcommand?
+
+    // Linux driver: track last subcommand time for 25ms rate limiting
+    private var lastSubcommandTime: Date = .distantPast
+    // Linux driver: track if we've received an input report (for sync)
+    private var receivedInputReport: Bool = false
     
     var lStickFactoryCalibration: StickCalibration?
     var lStickUserCalibration: StickCalibration?
@@ -194,7 +199,23 @@ public class Controller {
     
     func readInitializeData(_ done: @escaping () -> Void) {
         jcsLog("[Controller] Reading initialization data: \(self.type) (Serial: \(self.serialID))")
-        self.readControllerColor {
+
+        // Fallback timeout: if SPI reads all fail, still call done() after max retry time
+        // Linux driver: 1 retry * 1 sec timeout = 2 sec per command, add buffer = 5 sec
+        var completed = false
+        let fallbackTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+            guard let self = self, !completed else { return }
+            completed = true
+            jcsLog("[Controller] ERROR: Initialization timed out for \(self.type) (Serial: \(self.serialID))")
+            jcsLog("[Controller]    Proceeding with default values")
+            self.readCalibration()
+            done()
+        }
+
+        self.readControllerColor { [weak self] in
+            guard let self = self, !completed else { return }
+            completed = true
+            fallbackTimer.invalidate()
             jcsLog("[Controller] Controller color read complete: \(self.type)")
             self.readCalibration()
             // TODO: Call done() after readCalibration() is done
@@ -257,7 +278,10 @@ public class Controller {
         let element = IOHIDValueGetElement(value)
         let reportID = IOHIDElementGetReportID(element)
         let reportCount = IOHIDElementGetReportCount(element)
-        
+
+        // Linux driver: mark that we received an input report (improves subcommand reliability)
+        self.receivedInputReport = true
+
         if reportCount <= 1 {
             // There's no data.
             return
@@ -265,7 +289,7 @@ public class Controller {
 
         self.readStandardState(value: value)
         self.readSensorData(value: value)
-        
+
         if reportID == 0x31 {
             self.readNFCData(value: value)
         }
@@ -493,23 +517,47 @@ public class Controller {
         guard self.processingSubcommand == nil else { return }
         guard self.subcommandQueue.count > 0 else { return }
 
+        // Linux driver: enforce minimum 25ms between subcommands
+        // "Sending subcommands at too high a rate can cause bluetooth disconnections"
+        let timeSinceLast = Date().timeIntervalSince(self.lastSubcommandTime)
+        if timeSinceLast < Subcommand.minIntervalBetweenCommands {
+            let delay = Subcommand.minIntervalBetweenCommands - timeSinceLast
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.processSubcommand()
+            }
+            return
+        }
+
         let cmd = self.subcommandQueue.removeFirst()
         self.processingSubcommand = cmd
+        self.lastSubcommandTime = Date()
 
-        cmd.timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] timer in
+        cmd.timer = Timer.scheduledTimer(withTimeInterval: Subcommand.timeoutInterval, repeats: false) { [weak self] timer in
             timer.invalidate()
             guard let self = self else { return }
             guard let processingSubcommand = self.processingSubcommand else { return }
             guard timer == processingSubcommand.timer else { return }
 
+            cmd.retryCount += 1
             jcsLog("[Controller] SUBCOMMAND TIMEOUT: \(self.type) (Serial: \(self.serialID))")
             jcsLog("[Controller]    Subcommand: \(cmd.type)")
+            jcsLog("[Controller]    Retry: \(cmd.retryCount)/\(Subcommand.maxRetries)")
             jcsLog("[Controller]    Queue remaining: \(self.subcommandQueue.count)")
             jcsLog("[Controller]    isConnected: \(self.isConnected)")
 
-            cmd.responseHandler?(nil)
-            self.processingSubcommand = nil
-            self.processSubcommand()
+            if cmd.retryCount < Subcommand.maxRetries {
+                // Retry: re-send the command (Linux driver does 1 retry)
+                jcsLog("[Controller]    Retrying...")
+                self.processingSubcommand = nil
+                self.subcommandQueue.insert(cmd, at: 0)
+                self.processSubcommand()
+            } else {
+                // Max retries reached, give up
+                jcsLog("[Controller]    Max retries reached, giving up")
+                cmd.responseHandler?(nil)
+                self.processingSubcommand = nil
+                self.processSubcommand()
+            }
         }
 
         self.reportOutput(type: .subcommand, data: cmd.data)
@@ -635,8 +683,9 @@ public class Controller {
         self.sendSubcommand(type: .getSPIFlash, data: data) { [weak self] response in
             guard let self = self else { return }
             guard let data = response else {
-                // NACK or Timeout
+                // NACK or Timeout after all retries - just log and skip (don't call handler)
                 jcsLog("[Controller] SPI Flash read failed (NACK/Timeout): address=0x\(String(format: "%08X", address)), length=\(length)")
+                self.spiReadHandler.removeValue(forKey: address)
                 return
             }
             self.handleReadSPIFlash(value: data)

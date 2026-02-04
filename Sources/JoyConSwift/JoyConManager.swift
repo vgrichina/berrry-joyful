@@ -38,7 +38,11 @@ public class JoyConManager {
     private var matchingControllers: [IOHIDDevice] = []
     private var controllers: [IOHIDDevice: Controller] = [:]
     private var runLoop: RunLoop? = nil
-        
+
+    // Linux driver approach: sequential initialization to prevent HID contention
+    private var initQueue: [(device: IOHIDDevice, controller: Controller, typeName: String)] = []
+    private var isInitializing: Bool = false
+
     /// Handler for a controller connection event
     public var connectHandler: ((_ controller: Controller) -> Void)? = nil
     /// Handler for a controller disconnection event
@@ -107,10 +111,56 @@ public class JoyConManager {
         self.controllers[device] = ctrl
         ctrl.isConnected = true
 
-        jcsLog("[JoyConManager] Reading initialization data for \(typeName)...")
-        ctrl.readInitializeData { [weak self] in
-            jcsLog("[JoyConManager] Controller ready: \(typeName) (Serial: \(ctrl.serialID))")
-            self?.connectHandler?(ctrl)
+        // Linux driver approach: queue for sequential initialization
+        // Prevents HID contention when multiple controllers connect simultaneously
+        jcsLog("[JoyConManager] Queuing \(typeName) for initialization...")
+        self.initQueue.append((device: device, controller: ctrl, typeName: typeName))
+        self.processInitQueue()
+    }
+
+    /// Process initialization queue sequentially (Linux driver approach)
+    /// Only one controller initializes at a time to prevent HID contention
+    private func processInitQueue() {
+        guard !self.isInitializing else {
+            jcsLog("[JoyConManager] Init already in progress, waiting...")
+            return
+        }
+        guard !self.initQueue.isEmpty else {
+            jcsLog("[JoyConManager] Init queue empty")
+            return
+        }
+
+        self.isInitializing = true
+        let item = self.initQueue.removeFirst()
+        let ctrl = item.controller
+        let typeName = item.typeName
+
+        guard ctrl.isConnected else {
+            jcsLog("[JoyConManager] Controller \(typeName) disconnected before init, skipping")
+            self.isInitializing = false
+            self.processInitQueue()
+            return
+        }
+
+        // Delay before sending commands - Joy-Con needs time to initialize command interface
+        // Linux driver waits for input report; we use 250ms delay as equivalent
+        jcsLog("[JoyConManager] Waiting 250ms before initialization for \(typeName)...")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            guard let self = self, ctrl.isConnected else {
+                jcsLog("[JoyConManager] Controller disconnected during init delay, aborting")
+                self?.isInitializing = false
+                self?.processInitQueue()
+                return
+            }
+            jcsLog("[JoyConManager] Reading initialization data for \(typeName)...")
+            ctrl.readInitializeData { [weak self] in
+                jcsLog("[JoyConManager] Controller ready: \(typeName) (Serial: \(ctrl.serialID))")
+                self?.connectHandler?(ctrl)
+
+                // Process next controller in queue
+                self?.isInitializing = false
+                self?.processInitQueue()
+            }
         }
     }
     
@@ -211,6 +261,12 @@ public class JoyConManager {
 
         jcsLog("[JoyConManager] DEVICE REMOVED: \(productName) (Serial: \(serialNumber))")
         jcsLog("[JoyConManager]    IOReturn result: \(result) (\(String(format: "0x%08X", result)))")
+
+        // Remove from init queue if pending
+        if let index = self.initQueue.firstIndex(where: { $0.device == device }) {
+            jcsLog("[JoyConManager]    Device was in initQueue, removing...")
+            self.initQueue.remove(at: index)
+        }
 
         guard let controller = self.controllers[device] else {
             jcsLog("[JoyConManager]    WARNING: Device was not in controllers dictionary (may have been removed during matching)")
