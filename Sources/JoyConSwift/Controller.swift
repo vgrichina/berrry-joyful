@@ -197,30 +197,67 @@ public class Controller {
         self.buttonColor = CGColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
     }
     
-    func readInitializeData(_ done: @escaping () -> Void) {
+    func readInitializeData(_ done: @escaping (_ success: Bool) -> Void) {
         jcsLog("[Controller] Reading initialization data: \(self.type) (Serial: \(self.serialID))")
 
-        // Fallback timeout: if SPI reads all fail, still call done() after max retry time
-        // Linux driver: 1 retry * 1 sec timeout = 2 sec per command, add buffer = 5 sec
+        // Fallback timeout: if SPI reads all fail, report failure
+        // With 8s timeout per command and ~3-4 commands for color read, need longer fallback
+        // 45 seconds should be enough for even very slow controllers
         var completed = false
-        let fallbackTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+        let fallbackTimer = Timer.scheduledTimer(withTimeInterval: 45.0, repeats: false) { [weak self] _ in
             guard let self = self, !completed else { return }
             completed = true
-            jcsLog("[Controller] ERROR: Initialization timed out for \(self.type) (Serial: \(self.serialID))")
-            jcsLog("[Controller]    Proceeding with default values")
-            self.readCalibration()
-            done()
+            jcsLog("[Controller] ❌ INIT FAILED: Initialization timed out for \(self.type) (Serial: \(self.serialID))")
+            jcsLog("[Controller]    Controller may not respond to commands - try re-pairing via Bluetooth settings")
+            done(false)
         }
 
-        self.readControllerColor { [weak self] in
+        // Wake-up sequence: send a simple command first to "wake" the controller
+        // Some Joy-Cons don't respond to subcommands immediately after Bluetooth reconnection
+        // The Linux driver does similar handshaking during USB setup
+        jcsLog("[Controller] 🔔 Sending wake-up sequence...")
+        self.sendWakeUpSequence { [weak self] success in
             guard let self = self, !completed else { return }
-            completed = true
-            fallbackTimer.invalidate()
-            jcsLog("[Controller] Controller color read complete: \(self.type)")
-            self.readCalibration()
-            // TODO: Call done() after readCalibration() is done
-            jcsLog("[Controller] Calibration read started: \(self.type)")
-            done()
+
+            if success {
+                jcsLog("[Controller] ✅ Wake-up sequence complete, proceeding with initialization")
+            } else {
+                // Wake-up failed after 8s timeout - controller is unresponsive
+                completed = true
+                fallbackTimer.invalidate()
+                jcsLog("[Controller] ❌ INIT FAILED: Controller not responding for \(self.type) (Serial: \(self.serialID))")
+                jcsLog("[Controller]    Controller may need to be re-paired via Bluetooth settings")
+                done(false)
+                return
+            }
+
+            self.readControllerColor { [weak self] in
+                guard let self = self, !completed else { return }
+                completed = true
+                fallbackTimer.invalidate()
+                jcsLog("[Controller] Controller color read complete: \(self.type)")
+                self.readCalibration()
+                // TODO: Call done() after readCalibration() is done
+                jcsLog("[Controller] Calibration read started: \(self.type)")
+                done(true)
+            }
+        }
+    }
+
+    /// Wake-up sequence to ensure the controller is ready for subcommands
+    /// Sends getDeviceInfo which is a simple, low-overhead command
+    private func sendWakeUpSequence(_ completion: @escaping (Bool) -> Void) {
+        // Send getDeviceInfo - a simple query that should always work
+        // No retry here - we now use longer timeouts (8s) to wait for slow controllers
+        jcsLog("[Controller] 🔔 Wake-up: sending getDeviceInfo...")
+        self.sendSubcommand(type: .getDeviceInfo, data: []) { response in
+            if response != nil {
+                jcsLog("[Controller] 🔔 Wake-up: getDeviceInfo succeeded!")
+                completion(true)
+            } else {
+                jcsLog("[Controller] 🔔 Wake-up: getDeviceInfo failed (timeout after 8s)")
+                completion(false)
+            }
         }
     }
     
@@ -491,11 +528,17 @@ public class Controller {
     }
     
     func receiveSubcommand(value: IOHIDValue) {
-        guard let cmd = self.processingSubcommand else { return }
-
         let ptr = IOHIDValueGetBytePtr(value)
         let ack = (ptr+12).pointee
         let subcommand = (ptr+13).pointee
+
+        guard let cmd = self.processingSubcommand else {
+            jcsLog("[Controller] ⚠️ STALE RESPONSE: \(self.type) (Serial: \(self.serialID))")
+            jcsLog("[Controller]    Received subcmd=0x\(String(format: "%02X", subcommand)), ack=0x\(String(format: "%02X", ack))")
+            jcsLog("[Controller]    But processingSubcommand is nil!")
+            jcsLog("[Controller]    Queue size: \(self.subcommandQueue.count)")
+            return
+        }
 
         if cmd.type.rawValue == subcommand {
             if ack & 0x80 == 0 {
@@ -505,11 +548,16 @@ public class Controller {
                 jcsLog("[Controller]    ACK byte: 0x\(String(format: "%02X", ack))")
                 cmd.responseHandler?(nil)
             } else {
+                jcsLog("[Controller] ✅ ACK received: \(cmd.type) (0x\(String(format: "%02X", subcommand))) ← \(self.type)")
                 cmd.responseHandler?(value)
             }
             cmd.timer?.invalidate()
             self.processingSubcommand = nil
             self.processSubcommand()
+        } else {
+            // Response doesn't match expected subcommand - log it
+            jcsLog("[Controller] ⚠️ MISMATCH: \(self.type) (Serial: \(self.serialID))")
+            jcsLog("[Controller]    Expected subcmd=0x\(String(format: "%02X", cmd.type.rawValue)), got=0x\(String(format: "%02X", subcommand))")
         }
     }
         
@@ -531,6 +579,8 @@ public class Controller {
         let cmd = self.subcommandQueue.removeFirst()
         self.processingSubcommand = cmd
         self.lastSubcommandTime = Date()
+
+        jcsLog("[Controller] 📤 Sending subcommand: \(cmd.type) (0x\(String(format: "%02X", cmd.type.rawValue))) → \(self.type)")
 
         cmd.timer = Timer.scheduledTimer(withTimeInterval: Subcommand.timeoutInterval, repeats: false) { [weak self] timer in
             timer.invalidate()

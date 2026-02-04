@@ -153,9 +153,18 @@ public class JoyConManager {
                 return
             }
             jcsLog("[JoyConManager] Reading initialization data for \(typeName)...")
-            ctrl.readInitializeData { [weak self] in
-                jcsLog("[JoyConManager] Controller ready: \(typeName) (Serial: \(ctrl.serialID))")
-                self?.connectHandler?(ctrl)
+            ctrl.readInitializeData { [weak self] success in
+                if success {
+                    jcsLog("[JoyConManager] Controller ready: \(typeName) (Serial: \(ctrl.serialID))")
+                    self?.connectHandler?(ctrl)
+                } else {
+                    jcsLog("[JoyConManager] ❌ Controller initialization failed: \(typeName) (Serial: \(ctrl.serialID))")
+                    jcsLog("[JoyConManager]    Controller will not be available until re-paired")
+                    // Remove the failed controller from our dictionary
+                    if let device = self?.controllers.first(where: { $0.value === ctrl })?.key {
+                        self?.controllers.removeValue(forKey: device)
+                    }
+                }
 
                 // Process next controller in queue
                 self?.isInitializing = false
@@ -233,9 +242,14 @@ public class JoyConManager {
         self.controllers[device] = controller
         controller.isConnected = true
         jcsLog("[JoyConManager] Reading initialization data for \(typeName)...")
-        controller.readInitializeData { [weak self] in
-            jcsLog("[JoyConManager] Controller ready: \(typeName) (Serial: \(controller.serialID))")
-            self?.connectHandler?(controller)
+        controller.readInitializeData { [weak self] success in
+            if success {
+                jcsLog("[JoyConManager] Controller ready: \(typeName) (Serial: \(controller.serialID))")
+                self?.connectHandler?(controller)
+            } else {
+                jcsLog("[JoyConManager] ❌ Controller initialization failed: \(typeName) (Serial: \(controller.serialID))")
+                self?.controllers.removeValue(forKey: device)
+            }
         }
     }
     
@@ -246,7 +260,33 @@ public class JoyConManager {
         }
         let device = Unmanaged<IOHIDDevice>.fromOpaque(sender).takeUnretainedValue();
 
-        guard let controller = self.controllers[device] else { return }
+        // Diagnostic: log report routing for subcommand responses
+        let element = IOHIDValueGetElement(value)
+        let reportID = IOHIDElementGetReportID(element)
+
+        guard let controller = self.controllers[device] else {
+            // Only log for subcommand responses (0x21) to avoid spam
+            if reportID == 0x21 {
+                let devicePtr = Unmanaged.passUnretained(device).toOpaque()
+                jcsLog("[JoyConManager] ⚠️ ORPHAN REPORT: reportID=0x\(String(format: "%02X", reportID)) from device \(devicePtr)")
+                jcsLog("[JoyConManager]    Device not in controllers dict (count: \(self.controllers.count))")
+                // Log which devices ARE in the dictionary
+                for (dev, ctrl) in self.controllers {
+                    let devPtr = Unmanaged.passUnretained(dev).toOpaque()
+                    jcsLog("[JoyConManager]    Known device: \(devPtr) → \(ctrl.type) (Serial: \(ctrl.serialID))")
+                }
+            }
+            return
+        }
+
+        // Log subcommand responses for diagnostics
+        if reportID == 0x21 {
+            let ptr = IOHIDValueGetBytePtr(value)
+            let ack = (ptr+12).pointee
+            let subcommand = (ptr+13).pointee
+            jcsLog("[JoyConManager] 📥 Subcommand response: reportID=0x21, ack=0x\(String(format: "%02X", ack)), subcmd=0x\(String(format: "%02X", subcommand)) → \(controller.type)")
+        }
+
         if (result == kIOReturnSuccess) {
             controller.handleInput(value: value)
         } else {
