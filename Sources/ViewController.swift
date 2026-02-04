@@ -61,6 +61,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
 
     // Keyboard Controls
     private var keyboardPresetPopup: NSPopUpButton!
+    private var deleteProfileButton: NSButton?
 
     // Debug Controls
     #if DEBUG
@@ -825,6 +826,16 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         cloneButton.action = #selector(cloneProfile(_:))
         buttonsRow.addSubview(cloneButton)
 
+        let deleteButton = NSButton(frame: NSRect(x: 200, y: 2, width: 90, height: 25))
+        deleteButton.title = "Delete"
+        deleteButton.bezelStyle = .rounded
+        deleteButton.target = self
+        deleteButton.action = #selector(deleteProfile(_:))
+        // Only enable for user-created profiles
+        deleteButton.isEnabled = profileManager.isUserCreatedProfile(named: profileManager.activeProfile.name)
+        buttonsRow.addSubview(deleteButton)
+        deleteProfileButton = deleteButton
+
         profileContent.addSubview(buttonsRow)
         profileY += 32
 
@@ -1257,6 +1268,17 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         if response == .alertFirstButtonReturn {
             let newName = inputField.stringValue.trimmingCharacters(in: .whitespaces)
             if !newName.isEmpty {
+                // Check if profile name already exists
+                if profileManager.getProfile(named: newName) != nil {
+                    let errorAlert = NSAlert()
+                    errorAlert.messageText = "Profile Already Exists"
+                    errorAlert.informativeText = "A profile named \"\(newName)\" already exists. Please choose a different name."
+                    errorAlert.alertStyle = .warning
+                    errorAlert.addButton(withTitle: "OK")
+                    errorAlert.runModal()
+                    return
+                }
+
                 profileManager.duplicateProfile(named: currentProfileName, newName: newName)
                 log("📋 Cloned profile \"\(currentProfileName)\" to \"\(newName)\"")
 
@@ -1266,6 +1288,41 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
                 // Refresh the keyboard panel to show new profile in dropdown
                 refreshKeyboardPanel()
             }
+        }
+    }
+
+    @objc private func deleteProfile(_ sender: NSButton) {
+        let currentProfileName = profileManager.activeProfile.name
+
+        // Safety check - can't delete default profiles
+        guard profileManager.isUserCreatedProfile(named: currentProfileName) else {
+            let alert = NSAlert()
+            alert.messageText = "Cannot Delete Profile"
+            alert.informativeText = "Default profiles cannot be deleted."
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Delete Profile"
+        alert.informativeText = "Are you sure you want to delete \"\(currentProfileName)\"? This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            // Switch to a default profile before deleting
+            profileManager.setActiveProfile(ButtonProfile.desktopTerminal)
+
+            // Delete the profile
+            profileManager.deleteProfile(named: currentProfileName)
+            log("🗑️ Deleted profile \"\(currentProfileName)\"")
+
+            // Refresh the keyboard panel
+            refreshKeyboardPanel()
         }
     }
 

@@ -154,4 +154,9 @@ class ProfileManager {
     func getProfile(named name: String) -> ButtonProfile? {
         profiles.first { $0.name == name }
     }
+
+    /// Check if a profile is user-created (not a default profile)
+    func isUserCreatedProfile(named name: String) -> Bool {
+        !ButtonProfile.allDefaultProfiles.contains(where: { $0.name == name })
+    }
 }
