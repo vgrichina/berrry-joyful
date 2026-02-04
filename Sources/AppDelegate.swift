@@ -33,7 +33,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        newWindow.title = "Settings"
+        newWindow.title = "Berrry Joyful"
         newWindow.backgroundColor = NSColor.windowBackgroundColor
         newWindow.isReleasedWhenClosed = false
         window = newWindow
@@ -73,6 +73,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         viewController = ViewController()
         window?.contentViewController = viewController
         window?.minSize = NSSize(width: 700, height: 600)
+
+        // Setup toolbar after view controller is set
+        if let window = window {
+            viewController.setupToolbar(for: window)
+        }
 
         // Setup controller monitoring
         setupControllerMonitoring()
@@ -159,27 +164,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Build the status menu
-        let statusMenu = NSMenu()
-
-        // Profiles submenu
-        let profilesMenuItem = NSMenuItem(title: "Profiles", action: nil, keyEquivalent: "")
         profilesMenu = NSMenu()
         rebuildProfilesMenu()
-        profilesMenuItem.submenu = profilesMenu
-        statusMenu.addItem(profilesMenuItem)
 
-        statusMenu.addItem(NSMenuItem.separator())
-
-        // Settings
-        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
-        statusMenu.addItem(settingsItem)
-
-        statusMenu.addItem(NSMenuItem.separator())
-
-        // Quit
-        statusMenu.addItem(NSMenuItem(title: "Quit Berrry Joyful", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-
-        statusItem.menu = statusMenu
+        statusItem.menu = profilesMenu
 
         // Subscribe to profile changes to update menu checkmarks
         ProfileManager.shared.onProfileChanged = { [weak self] _ in
@@ -193,6 +181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let profiles = ProfileManager.shared.profiles
         let activeProfile = ProfileManager.shared.activeProfile
 
+        // Add profile items directly to menu
         for (index, profile) in profiles.enumerated() {
             let item = NSMenuItem(
                 title: profile.name,
@@ -203,6 +192,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             item.state = (profile.name == activeProfile.name) ? .on : .off
             profilesMenu.addItem(item)
         }
+
+        profilesMenu.addItem(NSMenuItem.separator())
+
+        // Settings
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
+        profilesMenu.addItem(settingsItem)
+
+        profilesMenu.addItem(NSMenuItem.separator())
+
+        // Quit
+        profilesMenu.addItem(NSMenuItem(title: "Quit Berrry Joyful", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
     @objc private func selectProfile(_ sender: NSMenuItem) {
@@ -225,13 +225,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        newWindow.title = "Settings"
+        newWindow.title = "Berrry Joyful"
         newWindow.backgroundColor = NSColor.windowBackgroundColor
         newWindow.minSize = NSSize(width: 700, height: 600)
         newWindow.isReleasedWhenClosed = false
 
         if viewController != nil {
             newWindow.contentViewController = viewController
+            viewController.setupToolbar(for: newWindow)
         }
 
         window = newWindow
