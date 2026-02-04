@@ -20,6 +20,7 @@ targets:
       - Sources
     resources:
       - Sources/berrry-joyful.icns
+      - Sources/Assets.xcassets
     info:
       path: Sources/Info.plist
       properties:

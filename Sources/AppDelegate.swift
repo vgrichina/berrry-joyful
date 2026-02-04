@@ -148,7 +148,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: "Berrry Joyful")
+            if let image = NSImage(named: "JoyConIcon") {
+                image.isTemplate = true
+                button.image = image
+            } else {
+                // Fallback to system symbol if custom icon not found
+                button.image = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: "Berrry Joyful")
+            }
         }
 
         // Build the status menu
