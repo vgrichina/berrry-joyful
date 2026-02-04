@@ -238,18 +238,18 @@ class ViewController: NSViewController, NSTabViewDelegate {
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
-        // Value label on far right (60px from right edge)
+        // Value label on far right (flush with content edge for 20px margin from box)
         let valueLbl = NSTextField(labelWithString: String(format: formatString, value))
         valueLbl.font = DesignSystem.Typography.bodyMedium
         valueLbl.textColor = DesignSystem.Colors.secondaryText
         valueLbl.alignment = .right
-        valueLbl.frame = NSRect(x: width - 60 - DesignSystem.Spacing.lg, y: 6, width: 60, height: 20)
+        valueLbl.frame = NSRect(x: width - 60, y: 6, width: 60, height: 20)
         valueLbl.autoresizingMask = [.minXMargin]
         row.addSubview(valueLbl)
         valueLabel = valueLbl
 
         // Slider in the middle (between label and value)
-        let sldr = NSSlider(frame: NSRect(x: labelWidth + DesignSystem.Spacing.md, y: 6, width: width - labelWidth - 60 - DesignSystem.Spacing.lg - DesignSystem.Spacing.md, height: 20))
+        let sldr = NSSlider(frame: NSRect(x: labelWidth + DesignSystem.Spacing.md, y: 6, width: width - labelWidth - 60 - DesignSystem.Spacing.md, height: 20))
         sldr.minValue = minValue
         sldr.maxValue = maxValue
         sldr.doubleValue = value
@@ -284,12 +284,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
-        // Switch on right (iOS-style toggle)
+        // Switch on right (flush with content edge for 20px margin from box)
         let toggle = NSSwitch()
         toggle.state = isChecked ? .on : .off
         toggle.target = self
         toggle.action = action
-        toggle.frame = NSRect(x: width - 60, y: 2, width: 50, height: 24)
+        toggle.frame = NSRect(x: width - 50, y: 2, width: 50, height: 24)
         toggle.autoresizingMask = [.minXMargin]
         row.addSubview(toggle)
 
@@ -322,8 +322,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         labelView.autoresizingMask = [.maxXMargin]
         row.addSubview(labelView)
 
-        // Popup on right
-        let pop = NSPopUpButton(frame: NSRect(x: width - 180 - DesignSystem.Spacing.lg, y: 3, width: 180, height: 25))
+        // Popup on right (flush with content edge for 20px margin from box)
+        let pop = NSPopUpButton(frame: NSRect(x: width - 180, y: 3, width: 180, height: 25))
         pop.removeAllItems()
         pop.addItems(withTitles: items)
         if let selected = selectedItem {
@@ -712,6 +712,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // SECTION 1: Profile Selection (8pt grid aligned)
         let profileContentHeight: CGFloat = 32 + 32 + 24  // popup row + buttons row + description (all 8pt multiples)
         let profileContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: profileContentHeight))
+        profileContent.autoresizingMask = [.width]
         var profileY: CGFloat = 0
 
         // Profile selection dropdown using helper
@@ -722,14 +723,14 @@ class ViewController: NSViewController, NSTabViewDelegate {
             selectedItem: profileManager.activeProfile.name,
             action: #selector(profileSelectionChanged(_:)),
             yPosition: profileY,
-            width: profileContent.bounds.width,
+            width: contentWidth,
             labelWidth: 150
         )
         profileContent.addSubview(profileRow)
         profileY += 32
 
         // Action buttons row
-        let buttonsRow = NSView(frame: NSRect(x: 0, y: profileY, width: profileContent.bounds.width, height: 32))
+        let buttonsRow = NSView(frame: NSRect(x: 0, y: profileY, width: contentWidth, height: 32))
 
         let resetButton = NSButton(frame: NSRect(x: 0, y: 2, width: 90, height: 25))
         resetButton.title = "Reset"
@@ -752,7 +753,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         let descLabel = NSTextField(wrappingLabelWithString: profileManager.activeProfile.description)
         descLabel.font = DesignSystem.Typography.bodyMedium
         descLabel.textColor = DesignSystem.Colors.secondaryText
-        descLabel.frame = NSRect(x: 0, y: profileY, width: profileContent.bounds.width, height: 24)
+        descLabel.frame = NSRect(x: 0, y: profileY, width: contentWidth, height: 24)
         descLabel.autoresizingMask = [.width]
         profileContent.addSubview(descLabel)
 
@@ -779,7 +780,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
             mappingLabel.autoresizingMask = [.width]
             mappingContent.addSubview(mappingLabel)
 
-            let editBtn = NSButton(frame: NSRect(x: contentWidth - 80, y: rowY, width: 70, height: 24))
+            let editBtn = NSButton(frame: NSRect(x: contentWidth - 70, y: rowY, width: 70, height: 24))
             editBtn.title = "Edit"
             editBtn.bezelStyle = .rounded
             editBtn.font = DesignSystem.Typography.bodyMedium
@@ -871,10 +872,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.autoresizingMask = [.width, .height]
 
         var y: CGFloat = DesignSystem.Spacing.lg  // Start from top
+        let contentWidth = DesignSystem.Layout.contentWidth(for: frame.width)
 
         // SECTION 1: Permissions
         let hasPermissions = VoiceInputManager.checkVoiceInputPermissions()
-        let permissionsContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: hasPermissions ? 20 : 50))
+        let permissionsContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: hasPermissions ? 20 : 50))
+        permissionsContent.autoresizingMask = [.width]
         var permissionsY: CGFloat = 0
 
         // Permission Status
@@ -898,7 +901,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.addSubview(createSectionBox(title: "Permissions", content: permissionsContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 2: Settings
-        let settingsContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: 62))
+        let settingsContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 62))
+        settingsContent.autoresizingMask = [.width]
         var settingsY: CGFloat = 0
 
         // Language Selection using helper
@@ -921,14 +925,15 @@ class ViewController: NSViewController, NSTabViewDelegate {
             selectedItem: selectedLanguage,
             action: #selector(languageChanged),
             yPosition: settingsY,
-            width: settingsContent.bounds.width,
+            width: contentWidth,
             labelWidth: 150
         )
         settingsContent.addSubview(languageRow)
         settingsY += 32
 
-        // Status - use horizontal row style
-        let statusRow = NSView(frame: NSRect(x: 0, y: settingsY, width: settingsContent.bounds.width, height: 30))
+        // Status - use horizontal row style (matching createPopupRow pattern)
+        let statusRow = NSView(frame: NSRect(x: 0, y: settingsY, width: contentWidth, height: 30))
+        statusRow.autoresizingMask = [.width]
 
         let statusLabel = NSTextField(labelWithString: "Status")
         statusLabel.font = DesignSystem.Typography.bodyMedium
@@ -942,7 +947,7 @@ class ViewController: NSViewController, NSTabViewDelegate {
         voiceStatusLabel.font = DesignSystem.Typography.bodyMedium
         voiceStatusLabel.textColor = DesignSystem.Colors.secondaryText
         voiceStatusLabel.alignment = .right
-        voiceStatusLabel.frame = NSRect(x: settingsContent.bounds.width - 180 - DesignSystem.Spacing.lg, y: 5, width: 180, height: 20)
+        voiceStatusLabel.frame = NSRect(x: contentWidth - 60, y: 5, width: 60, height: 20)
         voiceStatusLabel.autoresizingMask = [.minXMargin]
         statusRow.addSubview(voiceStatusLabel)
 
@@ -951,7 +956,8 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.addSubview(createSectionBox(title: "Settings", content: settingsContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 3: How to Use
-        let howToContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: 135))
+        let howToContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 135))
+        howToContent.autoresizingMask = [.width]
         var howToY: CGFloat = 12
 
         // Instructions
