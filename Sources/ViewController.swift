@@ -804,7 +804,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         var rowY: CGFloat = 0
 
         // Helper to create button row (8pt grid aligned)
-        let mappingContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 1000))  // Height set later
+        let mappingContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 1000))  // Height set later
         mappingContent.autoresizingMask = [.width]
 
         let createRow: (String, ButtonAction, Int) -> Void = { buttonName, action, tag in
