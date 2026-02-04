@@ -96,9 +96,19 @@ Example:
 ## Requirements
 
 - macOS 14.0+ (Sonoma)
-- Nintendo Joy-Con controllers (L, R, or both)
+- Nintendo Joy-Con controllers (L, R, or both) or Pro Controller
 - Accessibility permission (required for mouse/keyboard control)
 - Speech Recognition permission (optional, for voice input only)
+
+## Pairing Joy-Con
+
+1. On your Joy-Con, hold the **Sync button** (small round button on the rail) until the lights start flashing
+2. On your Mac, open **System Settings → Bluetooth**
+3. Look for "Joy-Con (L)" or "Joy-Con (R)" and click **Connect**
+4. Repeat for the other Joy-Con if using both
+5. Launch Berrry Joyful - the controller should be detected automatically
+
+**Tip**: Joy-Cons stay paired. Next time, just press any button to wake them up.
 
 ## Permissions
 
@@ -198,6 +208,17 @@ Settings are accessible via the toolbar UI and persist automatically:
 **Build errors?**
 - Run `xcodegen` to regenerate the project
 - Clean build folder if issues persist
+
+## Known Limitations
+
+- **No rumble/HD rumble**: Haptic feedback is not implemented
+- **No motion controls**: Gyro/accelerometer data is not used
+- **Joy-Con drift**: If your Joy-Con has stick drift, increase the deadzone in settings
+- **macOS only**: No Windows or Linux support
+
+## Acknowledgments
+
+- [JoyConSwift](https://github.com/magicien/JoyConSwift) by magicien - Joy-Con HID communication library
 
 ## License
 
