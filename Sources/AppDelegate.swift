@@ -3,10 +3,14 @@ import ApplicationServices
 import IOKit.hid
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var window: NSWindow!
+    var window: NSWindow?
     var viewController: ViewController!
     var permissionsViewController: PermissionsViewController?
     var joyConManager: JoyConManager!
+
+    // Status bar item
+    var statusItem: NSStatusItem!
+    var profilesMenu: NSMenu!
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         // Setup application
@@ -15,19 +19,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Create menu bar
         setupMenuBar()
 
+        // Create status bar item
+        setupStatusItem()
+
         // Check if we need to show permissions screen
         let hasAccessibility = AXIsProcessTrusted()
 
         // Create window
         let contentRect = NSRect(x: 100, y: 100, width: 800, height: 700)
-        window = NSWindow(
+        let newWindow = NSWindow(
             contentRect: contentRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "Berrry Joyful"
-        window.backgroundColor = NSColor.windowBackgroundColor
+        newWindow.title = "Settings"
+        newWindow.backgroundColor = NSColor.windowBackgroundColor
+        newWindow.isReleasedWhenClosed = false
+        window = newWindow
 
         // Skip permissions screen in debug mode
         #if DEBUG
@@ -45,8 +54,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Show window and activate app
-        window.center()
-        window.makeKeyAndOrderFront(nil)
+        window?.center()
+        window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -55,15 +64,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         permissionsViewController?.onPermissionsGranted = { [weak self] in
             self?.showMainApp()
         }
-        window.contentViewController = permissionsViewController
-        window.minSize = NSSize(width: 700, height: 600)
+        window?.contentViewController = permissionsViewController
+        window?.minSize = NSSize(width: 700, height: 600)
     }
 
     private func showMainApp() {
         // Create view controller
         viewController = ViewController()
-        window.contentViewController = viewController
-        window.minSize = NSSize(width: 700, height: 600)
+        window?.contentViewController = viewController
+        window?.minSize = NSSize(width: 700, height: 600)
 
         // Setup controller monitoring
         setupControllerMonitoring()
@@ -138,6 +147,97 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         helpMenuItem.submenu = helpMenu
 
         NSApp.mainMenu = mainMenu
+    }
+
+    // MARK: - Status Bar Item
+
+    private func setupStatusItem() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+
+        if let button = statusItem.button {
+            button.image = NSImage(systemSymbolName: "gamecontroller.fill", accessibilityDescription: "Berrry Joyful")
+        }
+
+        // Build the status menu
+        let statusMenu = NSMenu()
+
+        // Profiles submenu
+        let profilesMenuItem = NSMenuItem(title: "Profiles", action: nil, keyEquivalent: "")
+        profilesMenu = NSMenu()
+        rebuildProfilesMenu()
+        profilesMenuItem.submenu = profilesMenu
+        statusMenu.addItem(profilesMenuItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
+        // Settings
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
+        statusMenu.addItem(settingsItem)
+
+        statusMenu.addItem(NSMenuItem.separator())
+
+        // Quit
+        statusMenu.addItem(NSMenuItem(title: "Quit Berrry Joyful", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+
+        statusItem.menu = statusMenu
+
+        // Subscribe to profile changes to update menu checkmarks
+        ProfileManager.shared.onProfileChanged = { [weak self] _ in
+            self?.rebuildProfilesMenu()
+        }
+    }
+
+    private func rebuildProfilesMenu() {
+        profilesMenu.removeAllItems()
+
+        let profiles = ProfileManager.shared.profiles
+        let activeProfile = ProfileManager.shared.activeProfile
+
+        for (index, profile) in profiles.enumerated() {
+            let item = NSMenuItem(
+                title: profile.name,
+                action: #selector(selectProfile(_:)),
+                keyEquivalent: index < 9 ? "\(index + 1)" : ""
+            )
+            item.tag = index
+            item.state = (profile.name == activeProfile.name) ? .on : .off
+            profilesMenu.addItem(item)
+        }
+    }
+
+    @objc private func selectProfile(_ sender: NSMenuItem) {
+        ProfileManager.shared.switchToProfileAtIndex(sender.tag)
+    }
+
+    @objc private func showSettings() {
+        // Bring window to front if it exists
+        if let existingWindow = window {
+            existingWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        // Recreate window if it was closed
+        let contentRect = NSRect(x: 100, y: 100, width: 800, height: 700)
+        let newWindow = NSWindow(
+            contentRect: contentRect,
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        newWindow.title = "Settings"
+        newWindow.backgroundColor = NSColor.windowBackgroundColor
+        newWindow.minSize = NSSize(width: 700, height: 600)
+        newWindow.isReleasedWhenClosed = false
+
+        if viewController != nil {
+            newWindow.contentViewController = viewController
+        }
+
+        window = newWindow
+        newWindow.center()
+        newWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func showAbout() {
@@ -425,6 +525,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            showSettings()
+        }
         return true
     }
 
