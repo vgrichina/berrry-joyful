@@ -533,7 +533,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         let contentWidth = DesignSystem.Layout.contentWidth(for: frame.width)
 
         // SECTION 1: Movement
-        let movementContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 140))
+        let movementContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 140))
         movementContent.autoresizingMask = [.width]
         var movementY: CGFloat = 0
 
@@ -599,7 +599,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         panel.addSubview(createSectionBox(title: "Movement", content: movementContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 2: Deadzone
-        let deadzoneContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 72))
+        let deadzoneContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 72))
         deadzoneContent.autoresizingMask = [.width]
         var deadzoneY: CGFloat = 0
 
@@ -643,7 +643,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         panel.addSubview(createSectionBox(title: "Deadzone", content: deadzoneContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 3: Stick Functions
-        let stickFunctionContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 68))
+        let stickFunctionContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 68))
         stickFunctionContent.autoresizingMask = [.width]
         var stickFunctionY: CGFloat = 0
 
@@ -677,7 +677,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         panel.addSubview(createSectionBox(title: "Stick Functions", content: stickFunctionContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 4: Sticky Mouse
-        let stickyMouseContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 146))
+        let stickyMouseContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 146))
         stickyMouseContent.autoresizingMask = [.width]
         var stickyMouseY: CGFloat = 0
 
@@ -734,7 +734,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
 
         // Debug mode toggle (only in debug builds)
         #if DEBUG
-        let debugContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 60))
+        let debugContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 60))
         debugContent.autoresizingMask = [.width]
         var debugY: CGFloat = 0
 
@@ -790,7 +790,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
 
         // SECTION 1: Profile Selection (8pt grid aligned)
         let profileContentHeight: CGFloat = 32 + 32 + 24  // popup row + buttons row + description (all 8pt multiples)
-        let profileContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: profileContentHeight))
+        let profileContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: profileContentHeight))
         profileContent.autoresizingMask = [.width]
         var profileY: CGFloat = 0
 
@@ -955,7 +955,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
 
         // SECTION 1: Permissions
         let hasPermissions = VoiceInputManager.checkVoiceInputPermissions()
-        let permissionsContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: hasPermissions ? 20 : 50))
+        let permissionsContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: hasPermissions ? 20 : 50))
         permissionsContent.autoresizingMask = [.width]
         var permissionsY: CGFloat = 0
 
@@ -980,7 +980,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         panel.addSubview(createSectionBox(title: "Permissions", content: permissionsContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 2: Settings
-        let settingsContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 62))
+        let settingsContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 62))
         settingsContent.autoresizingMask = [.width]
         var settingsY: CGFloat = 0
 
@@ -1035,7 +1035,7 @@ class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
         panel.addSubview(createSectionBox(title: "Settings", content: settingsContent, yPosition: &y, panelWidth: frame.width))
 
         // SECTION 3: How to Use
-        let howToContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 135))
+        let howToContent = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 135))
         howToContent.autoresizingMask = [.width]
         var howToY: CGFloat = 12
 
