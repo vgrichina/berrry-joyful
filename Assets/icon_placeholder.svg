@@ -8,8 +8,9 @@
     </linearGradient>
 
     <!-- Strawberry gradient -->
-    <radialGradient id="strawberryGrad" cx="50%" cy="45%" r="45%">
+    <radialGradient id="strawberryGrad" cx="50%" cy="35%" r="55%">
       <stop offset="0%" style="stop-color:#FF4757;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#E53935;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#C0392B;stop-opacity:1" />
     </radialGradient>
 
@@ -18,60 +19,132 @@
       <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:1" />
     </linearGradient>
+
+    <!-- Joy-Con L gradient (blue) -->
+    <linearGradient id="joyconLGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00D9FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0A9EDC;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Joy-Con R gradient (red) -->
+    <linearGradient id="joyconRGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF3E3E;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Seed dimple gradient -->
+    <radialGradient id="seedDimple" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" style="stop-color:#B71C1C;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#B71C1C;stop-opacity:0" />
+    </radialGradient>
   </defs>
 
-  <!-- Rounded square background (macOS style) - proper size with transparent padding -->
-  <!-- Content area: 824x824 centered with 100px gutter on all sides -->
+  <!-- Rounded square background (macOS style) -->
   <rect x="100" y="100" width="824" height="824" rx="185.4" fill="url(#bgGrad)"/>
 
-  <!-- Strawberry body (larger, rounded at bottom, tapered at top) -->
-  <ellipse cx="512" cy="540" rx="305" ry="337" fill="url(#strawberryGrad)"/>
+  <!-- Strawberry body - 30% larger, less pointy bottom -->
+  <path d="M 512 890
+           C 340 820, 180 620, 180 400
+           C 180 240, 310 150, 512 150
+           C 714 150, 844 240, 844 400
+           C 844 620, 684 820, 512 890 Z"
+        fill="url(#strawberryGrad)"/>
 
-  <!-- Highlight for depth on strawberry (below leaves in z-order) -->
-  <ellipse cx="420" cy="370" rx="144" ry="96" fill="white" opacity="0.2"/>
+  <!-- Highlight for depth on strawberry -->
+  <ellipse cx="400" cy="380" rx="100" ry="70" fill="white" opacity="0.15"/>
 
-  <!-- Strawberry seeds (yellow dots) - scaled to fit content area -->
+  <!-- Strawberry seeds with dimples (vertical ovals) -->
+  <ellipse cx="360" cy="390" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="360" cy="390" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="445" cy="415" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="445" cy="415" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="579" cy="408" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="579" cy="408" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="664" cy="390" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="664" cy="390" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
 
+  <ellipse cx="378" cy="480" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="378" cy="480" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="463" cy="510" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="463" cy="510" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="561" cy="518" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="561" cy="518" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="646" cy="490" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="646" cy="490" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
 
+  <ellipse cx="396" cy="580" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="396" cy="580" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="481" cy="615" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="481" cy="615" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="543" cy="623" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="543" cy="623" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="628" cy="590" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="628" cy="590" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
 
+  <ellipse cx="425" cy="680" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="425" cy="680" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="512" cy="720" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="512" cy="720" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="599" cy="685" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="599" cy="685" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
 
+  <ellipse cx="475" cy="780" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="475" cy="780" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
+  <ellipse cx="549" cy="788" rx="16" ry="18" fill="url(#seedDimple)"/>
   <ellipse cx="549" cy="788" rx="10" ry="12" fill="#FFF9C4" opacity="0.9"/>
 
-  <!-- Strawberry leaves (top) - arranged in a cluster, scaled -->
-  <path d="M 440 210 Q 410 195 395 225 Q 380 255 410 270 Q 440 285 470 270 Q 500 255 493 225 Z" fill="url(#leafGrad)"/>
-  <path d="M 493 225 Q 503 255 533 270 Q 563 285 593 270 Q 623 255 608 225 Q 593 195 563 210 Z" fill="url(#leafGrad)"/>
-  <path d="M 470 270 Q 487 300 512 315 Q 537 300 554 270 Q 537 255 512 247 Q 487 255 470 270 Z" fill="url(#leafGrad)"/>
+  <!-- Strawberry leaves (top) -->
+  <path d="M 440 260 Q 400 240 380 270 Q 360 310 400 330 Q 440 350 470 320 Q 490 290 470 260 Z" fill="url(#leafGrad)"/>
+  <path d="M 470 260 Q 490 230 512 220 Q 534 230 554 260 Q 534 290 512 300 Q 490 290 470 260 Z" fill="url(#leafGrad)"/>
+  <path d="M 554 260 Q 574 260 584 320 Q 604 350 644 330 Q 684 310 664 270 Q 644 240 604 260 Z" fill="url(#leafGrad)"/>
 
-  <!-- Joy-Con L (blue, left side) - scaled to fit content area -->
-  <rect x="160" y="400" width="104" height="304" rx="28" fill="#00D9FF" opacity="0.85"/>
-  <rect x="168" y="408" width="88" height="288" rx="24" fill="#0A9EDC" opacity="0.9"/>
-  <!-- D-pad representation -->
-  <circle cx="212" cy="500" r="18" fill="#2C3E50" opacity="0.6"/>
-  <rect x="203" y="485" width="18" height="30" fill="#34495E" opacity="0.6"/>
-  <rect x="194" y="491" width="36" height="18" fill="#34495E" opacity="0.6"/>
+  <!-- Joy-Con L (blue, left side) - 25% larger, fits in bounds -->
+  <rect x="110" y="280" width="155" height="480" rx="42" fill="url(#joyconLGrad)"/>
+  <rect x="121" y="291" width="133" height="458" rx="36" fill="#0A9EDC" opacity="0.7"/>
 
-  <!-- Joy-Con R (red, right side) - scaled to fit content area -->
-  <rect x="760" y="400" width="104" height="304" rx="28" fill="#FF6B6B" opacity="0.85"/>
-  <rect x="768" y="408" width="88" height="288" rx="24" fill="#FF3E3E" opacity="0.9"/>
-  <!-- Buttons representation (ABXY) -->
-  <circle cx="812" cy="500" r="16" fill="#2C3E50" opacity="0.6"/>
-  <circle cx="788" cy="524" r="16" fill="#2C3E50" opacity="0.6"/>
-  <circle cx="836" cy="524" r="16" fill="#2C3E50" opacity="0.6"/>
-  <circle cx="812" cy="548" r="16" fill="#2C3E50" opacity="0.6"/>
+  <!-- L Joy-Con: Minus button (top, offset right/inward) -->
+  <rect x="210" y="325" width="36" height="10" rx="5" fill="#1a1a1a"/>
+
+  <!-- L Joy-Con: Analog stick (upper) -->
+  <circle cx="188" cy="415" r="34" fill="#1a1a1a"/>
+  <circle cx="188" cy="415" r="24" fill="#2d2d2d"/>
+
+  <!-- L Joy-Con: D-pad as 4 circles (same size as ABXY) -->
+  <circle cx="188" cy="510" r="17" fill="#1a1a1a"/>
+  <circle cx="152" cy="546" r="17" fill="#1a1a1a"/>
+  <circle cx="224" cy="546" r="17" fill="#1a1a1a"/>
+  <circle cx="188" cy="582" r="17" fill="#1a1a1a"/>
+
+  <!-- L Joy-Con: Capture button (bottom, offset right/inward) -->
+  <rect x="210" y="635" width="24" height="24" rx="5" fill="#1a1a1a"/>
+
+  <!-- L Joy-Con: SL/SR buttons on rail -->
+  <rect x="259" y="370" width="10" height="36" rx="5" fill="#0A9EDC"/>
+  <rect x="259" y="485" width="10" height="36" rx="5" fill="#0A9EDC"/>
+
+  <!-- Joy-Con R (red, right side) - 25% larger, fits in bounds -->
+  <rect x="759" y="280" width="155" height="480" rx="42" fill="url(#joyconRGrad)"/>
+  <rect x="770" y="291" width="133" height="458" rx="36" fill="#FF3E3E" opacity="0.7"/>
+
+  <!-- R Joy-Con: Plus button (top, offset left/inward) -->
+  <rect x="778" y="320" width="36" height="10" rx="5" fill="#1a1a1a"/>
+  <rect x="791" y="307" width="10" height="36" rx="5" fill="#1a1a1a"/>
+
+  <!-- R Joy-Con: Face buttons ABXY (diamond pattern, same size as d-pad) -->
+  <circle cx="836" cy="395" r="17" fill="#1a1a1a"/>
+  <circle cx="800" cy="431" r="17" fill="#1a1a1a"/>
+  <circle cx="872" cy="431" r="17" fill="#1a1a1a"/>
+  <circle cx="836" cy="467" r="17" fill="#1a1a1a"/>
+
+  <!-- R Joy-Con: Analog stick (lower) -->
+  <circle cx="836" cy="555" r="34" fill="#1a1a1a"/>
+  <circle cx="836" cy="555" r="24" fill="#2d2d2d"/>
+
+  <!-- R Joy-Con: Home button (bottom, offset left/inward) -->
+  <circle cx="792" cy="650" r="14" fill="#1a1a1a"/>
+  <circle cx="792" cy="650" r="7" fill="#2d2d2d"/>
+
+  <!-- R Joy-Con: SL/SR buttons on rail -->
+  <rect x="755" y="370" width="10" height="36" rx="5" fill="#FF3E3E"/>
+  <rect x="755" y="485" width="10" height="36" rx="5" fill="#FF3E3E"/>
 </svg>
