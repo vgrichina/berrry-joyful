@@ -6,21 +6,25 @@ class FlippedView: NSView {
     override var isFlipped: Bool { return true }
 }
 
+
 enum ControlModeTab: String {
     case mouse = "Mouse"
     case keyboard = "Keyboard"
     case voice = "Voice"
 }
 
-class ViewController: NSViewController, NSTabViewDelegate {
+class ViewController: NSViewController, NSTabViewDelegate, NSToolbarDelegate {
     // MARK: - UI Components
 
-    // Header
-    private var connectionLabel: NSTextField!
-    private var batteryLabel: NSTextField!
-    private var batteryProgressView: NSView!  // Container for battery progress bars
-    private var ledIndicator: NSTextField!
-    private var helpButton: NSButton!
+    // Toolbar items
+    private var connectionLabel: NSTextField?
+    private var batteryProgressView: NSView?  // Container for battery progress bars
+    private var helpButton: NSButton?
+
+    // Toolbar item identifiers
+    private static let toolbarIdentifier = NSToolbar.Identifier("MainToolbar")
+    private static let connectionItemIdentifier = NSToolbarItem.Identifier("ConnectionStatus")
+    private static let flexibleSpaceIdentifier = NSToolbarItem.Identifier.flexibleSpace
 
     // Layout containers
     private var mainStackView: NSStackView!
@@ -128,9 +132,6 @@ class ViewController: NSViewController, NSTabViewDelegate {
         mainStackView.distribution = .fill
         mainStackView.autoresizingMask = [.width, .height]
 
-        // Create header (fixed height)
-        let headerView = createHeaderView()
-
         // Create split view for tab view + debug log
         contentSplitView = NSSplitView()
         contentSplitView.isVertical = false  // Horizontal split
@@ -143,72 +144,112 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Add to split view
         contentSplitView.addArrangedSubview(tabView)
 
-        // Add all to main stack - header at BOTTOM
+        // Add content to main stack (no bottom header anymore)
         mainStackView.addArrangedSubview(contentSplitView)
-        mainStackView.addArrangedSubview(headerView)
-
-        // Set hugging priorities so header stays fixed size
-        contentSplitView.setContentHuggingPriority(.defaultLow, for: .vertical)
-        headerView.setContentHuggingPriority(.defaultHigh, for: .vertical)
 
         view.addSubview(mainStackView)
     }
 
-    private func createHeaderView() -> NSView {
-        let headerHeight = DesignSystem.Layout.headerHeight
-        let headerView = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.defaultWindowWidth, height: headerHeight))
-        headerView.wantsLayer = true
-        headerView.layer?.backgroundColor = DesignSystem.Colors.secondaryBackground.cgColor
-        headerView.heightAnchor.constraint(equalToConstant: headerHeight).isActive = true
+    func setupToolbar(for window: NSWindow) {
+        // Create toolbar
+        let toolbar = NSToolbar(identifier: Self.toolbarIdentifier)
+        toolbar.delegate = self
+        toolbar.displayMode = .iconOnly
+        toolbar.showsBaselineSeparator = false
 
-        // Connection status (left side)
+        window.toolbar = toolbar
+        window.title = "Berrry Joyful"
+        window.titleVisibility = .visible
+        window.toolbarStyle = .unified
+        window.representedURL = nil  // Remove document proxy icon
+        window.subtitle = ""  // No subtitle
+
+        // Update with current status
+        refreshConnectionStatus()
+    }
+
+    // MARK: - NSToolbarDelegate
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        if itemIdentifier == Self.connectionItemIdentifier {
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+
+            // Create container view for connection status and battery
+            // Use stack view for proper alignment
+            let stackView = NSStackView()
+            stackView.orientation = .horizontal
+            stackView.spacing = 12
+            stackView.alignment = .centerY
+            stackView.distribution = .fill
+
+            // Connection label
+            let label = NSTextField(labelWithString: "No Joy-Con detected")
+            label.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+            label.textColor = NSColor.secondaryLabelColor
+            label.isBordered = false
+            label.isEditable = false
+            label.backgroundColor = .clear
+            label.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+            label.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+            stackView.addArrangedSubview(label)
+            connectionLabel = label
+
+            // Battery container
+            let batteryView = NSView()
+            batteryView.translatesAutoresizingMaskIntoConstraints = false
+            batteryView.widthAnchor.constraint(equalToConstant: 180).isActive = true
+            batteryView.heightAnchor.constraint(equalToConstant: 20).isActive = true
+            stackView.addArrangedSubview(batteryView)
+            batteryProgressView = batteryView
+
+            // Help button (hidden by default, shown when no controller)
+            let button = NSButton(title: "Help", target: self, action: #selector(showConnectionHelp))
+            button.bezelStyle = .recessed
+            button.setButtonType(.momentaryPushIn)
+            button.controlSize = .small
+            button.font = NSFont.systemFont(ofSize: 11)
+            button.isHidden = true
+            stackView.addArrangedSubview(button)
+            helpButton = button
+
+            item.view = stackView
+            item.minSize = NSSize(width: 180, height: 28)
+            item.maxSize = NSSize(width: 400, height: 28)
+
+            return item
+        }
+        return nil
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        return [Self.connectionItemIdentifier, Self.flexibleSpaceIdentifier]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        return [Self.connectionItemIdentifier, Self.flexibleSpaceIdentifier]
+    }
+
+    private func refreshConnectionStatus() {
         #if DEBUG
         let debugSuffix = inputController.debugMode ? " [DEBUG MODE]" : ""
         #else
         let debugSuffix = ""
         #endif
-        connectionLabel = NSTextField(labelWithString: "No Joy-Con detected\(debugSuffix)")
-        connectionLabel.font = DesignSystem.Typography.headlineMedium
-        connectionLabel.textColor = DesignSystem.Colors.secondaryText
-        connectionLabel.frame = NSRect(x: 20, y: 15, width: 350, height: 20)
-        headerView.addSubview(connectionLabel)
 
-        // Help button (only shown when no controller connected)
-        helpButton = NSButton(frame: NSRect(x: 380, y: 13, width: 80, height: 24))
-        helpButton.title = "Need Help?"
-        helpButton.bezelStyle = .rounded
-        helpButton.target = self
-        helpButton.action = #selector(showConnectionHelp)
-        helpButton.autoresizingMask = [.minXMargin]
-        helpButton.isHidden = true  // Hidden by default, shown when no controller
-        headerView.addSubview(helpButton)
-
-        // Battery indicator container (right side)
-        batteryProgressView = NSView(frame: NSRect(x: 380, y: 12, width: 240, height: 26))
-        batteryProgressView.autoresizingMask = [.minXMargin]
-        headerView.addSubview(batteryProgressView)
-
-        // Hidden text label (kept for compatibility)
-        batteryLabel = NSTextField(labelWithString: "")
-        batteryLabel.font = DesignSystem.Typography.bodyMedium
-        batteryLabel.textColor = DesignSystem.Colors.tertiaryText
-        batteryLabel.alignment = .right
-        batteryLabel.frame = NSRect(x: 0, y: 0, width: 0, height: 0)
-        batteryLabel.isHidden = true
-        headerView.addSubview(batteryLabel)
-
-        // LED indicator (removed to make space for battery display)
-        ledIndicator = NSTextField(labelWithString: "")
-        ledIndicator.font = DesignSystem.Typography.bodyMedium
-        ledIndicator.textColor = DesignSystem.Colors.tertiaryText
-        ledIndicator.alignment = .right
-        ledIndicator.frame = NSRect(x: 0, y: 0, width: 0, height: 0)  // Hidden
-        ledIndicator.autoresizingMask = [.minXMargin]
-        ledIndicator.isHidden = true
-        headerView.addSubview(ledIndicator)
-
-        return headerView
+        if controllers.isEmpty {
+            connectionLabel?.stringValue = "No Joy-Con detected\(debugSuffix)"
+            connectionLabel?.textColor = NSColor.secondaryLabelColor
+            batteryProgressView?.subviews.forEach { $0.removeFromSuperview() }
+            helpButton?.isHidden = false
+        } else {
+            let names = controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
+            connectionLabel?.stringValue = "\(names.joined(separator: " + "))\(debugSuffix)"
+            connectionLabel?.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
+            updateBatteryDisplay()
+            helpButton?.isHidden = true
+        }
     }
+
 
     // MARK: - System Settings Style Row Helpers
 
@@ -1096,10 +1137,10 @@ class ViewController: NSViewController, NSTabViewDelegate {
         // Update header label
         let debugSuffix = inputController.debugMode ? " [DEBUG MODE]" : ""
         if controllers.isEmpty {
-            connectionLabel.stringValue = "No Joy-Con detected\(debugSuffix)"
+            connectionLabel?.stringValue = "No Joy-Con detected\(debugSuffix)"
         } else {
             let names = controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
-            connectionLabel.stringValue = "Connected: \(names.joined(separator: " + "))\(debugSuffix)"
+            connectionLabel?.stringValue = "\(names.joined(separator: " + "))\(debugSuffix)"
         }
 
         // Refresh mouse config panel to update status text
@@ -1457,117 +1498,137 @@ class ViewController: NSViewController, NSTabViewDelegate {
             #endif
 
             if self.controllers.isEmpty {
-                self.connectionLabel.stringValue = "No Joy-Con detected\(debugSuffix)"
-                self.connectionLabel.textColor = NSColor.secondaryLabelColor
-                self.batteryProgressView.subviews.forEach { $0.removeFromSuperview() }
-                self.ledIndicator.stringValue = ""
+                self.connectionLabel?.stringValue = "No Joy-Con detected\(debugSuffix)"
+                self.connectionLabel?.textColor = NSColor.secondaryLabelColor
+                self.batteryProgressView?.subviews.forEach { $0.removeFromSuperview() }
                 self.helpButton?.isHidden = false  // Show help button when no controller
             } else {
                 let names = self.controllers.map { $0.type == .JoyConL ? "Joy-Con (L)" : "Joy-Con (R)" }
-                self.connectionLabel.stringValue = "Connected: \(names.joined(separator: " + "))\(debugSuffix)"
-                self.connectionLabel.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
+                self.connectionLabel?.stringValue = "\(names.joined(separator: " + "))\(debugSuffix)"
+                self.connectionLabel?.textColor = NSColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
 
                 // Update battery display
                 self.updateBatteryDisplay()
 
-                // LED indicator
-                let count = self.controllers.count
-                self.ledIndicator.stringValue = "LED \(count)"
                 self.helpButton?.isHidden = true  // Hide help button when connected
             }
         }
     }
 
     private func updateBatteryDisplay() {
+        // Guard against nil batteryProgressView (titlebar not yet set up)
+        guard let progressView = batteryProgressView else { return }
+
         // Clear existing battery UI
-        batteryProgressView.subviews.forEach { $0.removeFromSuperview() }
+        progressView.subviews.forEach { $0.removeFromSuperview() }
+
+        // Create horizontal stack for battery indicators
+        let stackView = NSStackView()
+        stackView.orientation = .horizontal
+        stackView.spacing = 8
+        stackView.alignment = .centerY
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        progressView.addSubview(stackView)
+
+        // Pin stack to edges
+        NSLayoutConstraint.activate([
+            stackView.leadingAnchor.constraint(equalTo: progressView.leadingAnchor),
+            stackView.trailingAnchor.constraint(lessThanOrEqualTo: progressView.trailingAnchor),
+            stackView.centerYAnchor.constraint(equalTo: progressView.centerYAnchor)
+        ])
 
         if controllers.count == 1 {
-            // Single controller - full width display
             let controller = controllers[0]
-            createBatteryIndicator(
-                for: controller,
-                label: nil,
-                frame: NSRect(x: 0, y: 0, width: 240, height: 26)
-            )
+            let indicator = createBatteryIndicatorView(for: controller, label: nil)
+            stackView.addArrangedSubview(indicator)
         } else if controllers.count == 2 {
-            // Two controllers - split display
             let left = controllers.first { $0.type == .JoyConL }
             let right = controllers.first { $0.type == .JoyConR }
 
             if let left = left {
-                createBatteryIndicator(
-                    for: left,
-                    label: "L",
-                    frame: NSRect(x: 0, y: 0, width: 110, height: 26)
-                )
+                let indicator = createBatteryIndicatorView(for: left, label: "L")
+                stackView.addArrangedSubview(indicator)
             }
 
             if let right = right {
-                createBatteryIndicator(
-                    for: right,
-                    label: "R",
-                    frame: NSRect(x: 130, y: 0, width: 110, height: 26)
-                )
+                let indicator = createBatteryIndicatorView(for: right, label: "R")
+                stackView.addArrangedSubview(indicator)
             }
         }
     }
 
-    private func createBatteryIndicator(for controller: Controller, label: String?, frame: NSRect) {
-        let container = NSView(frame: frame)
+    private func createBatteryIndicatorView(for controller: Controller, label: String?) -> NSView {
+        let stackView = NSStackView()
+        stackView.orientation = .horizontal
+        stackView.spacing = 4
+        stackView.alignment = .centerY
 
-        var xOffset: CGFloat = 0
+        let smallFont = NSFont.systemFont(ofSize: 11, weight: .medium)
 
         // Controller label (L/R) if provided
         if let label = label {
             let labelField = NSTextField(labelWithString: "\(label):")
-            labelField.font = DesignSystem.Typography.bodyMedium
-            labelField.textColor = DesignSystem.Colors.tertiaryText
-            labelField.frame = NSRect(x: xOffset, y: 8, width: 15, height: 14)
-            container.addSubview(labelField)
-            xOffset += 18
+            labelField.font = smallFont
+            labelField.textColor = NSColor.tertiaryLabelColor
+            labelField.isBordered = false
+            labelField.isEditable = false
+            labelField.backgroundColor = .clear
+            labelField.setContentHuggingPriority(.required, for: .horizontal)
+            labelField.setContentCompressionResistancePriority(.required, for: .horizontal)
+            stackView.addArrangedSubview(labelField)
         }
 
         let percentage = batteryPercentage(for: controller.battery)
         let color = batteryColor(for: controller.battery)
 
         if percentage >= 0 {
-            // Charging indicator (remove emoji, use text)
+            // Charging indicator
             if controller.isCharging {
                 let chargeLabel = NSTextField(labelWithString: "+")
-                chargeLabel.font = DesignSystem.Typography.bodyMedium
+                chargeLabel.font = smallFont
                 chargeLabel.textColor = DesignSystem.Colors.warning
-                chargeLabel.frame = NSRect(x: xOffset, y: 6, width: 15, height: 16)
-                container.addSubview(chargeLabel)
-                xOffset += 16
+                chargeLabel.isBordered = false
+                chargeLabel.isEditable = false
+                chargeLabel.backgroundColor = .clear
+                chargeLabel.sizeToFit()
+                stackView.addArrangedSubview(chargeLabel)
             }
 
             // Progress bar
-            let progressBar = NSProgressIndicator(frame: NSRect(x: xOffset, y: 8, width: 50, height: 10))
+            let progressBar = NSProgressIndicator()
             progressBar.style = .bar
             progressBar.isIndeterminate = false
             progressBar.minValue = 0
             progressBar.maxValue = 100
             progressBar.doubleValue = Double(percentage)
-            container.addSubview(progressBar)
-            xOffset += 55
+            progressBar.translatesAutoresizingMaskIntoConstraints = false
+            progressBar.widthAnchor.constraint(equalToConstant: 30).isActive = true
+            progressBar.heightAnchor.constraint(equalToConstant: 8).isActive = true
+            stackView.addArrangedSubview(progressBar)
 
             // Percentage label
             let percentLabel = NSTextField(labelWithString: "\(percentage)%")
-            percentLabel.font = DesignSystem.Typography.bodyMedium
+            percentLabel.font = smallFont
             percentLabel.textColor = color
-            percentLabel.frame = NSRect(x: xOffset, y: 8, width: 35, height: 14)
-            container.addSubview(percentLabel)
+            percentLabel.isBordered = false
+            percentLabel.isEditable = false
+            percentLabel.backgroundColor = .clear
+            percentLabel.setContentHuggingPriority(.required, for: .horizontal)
+            percentLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+            stackView.addArrangedSubview(percentLabel)
         } else {
             // Unknown battery state
             let unknownLabel = NSTextField(labelWithString: "---")
-            unknownLabel.font = DesignSystem.Typography.bodyMedium
-            unknownLabel.textColor = DesignSystem.Colors.tertiaryText
-            unknownLabel.frame = NSRect(x: xOffset, y: 8, width: 30, height: 14)
-            container.addSubview(unknownLabel)
+            unknownLabel.font = smallFont
+            unknownLabel.textColor = NSColor.tertiaryLabelColor
+            unknownLabel.isBordered = false
+            unknownLabel.isEditable = false
+            unknownLabel.backgroundColor = .clear
+            unknownLabel.sizeToFit()
+            stackView.addArrangedSubview(unknownLabel)
         }
 
-        batteryProgressView.addSubview(container)
+        return stackView
     }
 
     private func batteryPercentage(for battery: JoyCon.BatteryStatus) -> Int {
