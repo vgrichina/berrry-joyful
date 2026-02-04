@@ -706,11 +706,12 @@ class ViewController: NSViewController, NSTabViewDelegate {
         panel.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
         panel.autoresizingMask = [.width, .height]
 
+        let contentWidth = DesignSystem.Layout.contentWidth(for: frame.width)
         var y: CGFloat = DesignSystem.Spacing.lg  // Start from top
 
         // SECTION 1: Profile Selection (8pt grid aligned)
         let profileContentHeight: CGFloat = 32 + 32 + 24  // popup row + buttons row + description (all 8pt multiples)
-        let profileContent = NSView(frame: NSRect(x: 0, y: 0, width: DesignSystem.Layout.contentWidth(for: frame.width), height: profileContentHeight))
+        let profileContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: profileContentHeight))
         var profileY: CGFloat = 0
 
         // Profile selection dropdown using helper
@@ -757,76 +758,47 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         panel.addSubview(createSectionBox(title: "Profile", content: profileContent, yPosition: &y, panelWidth: frame.width))
 
-        // SECTION 2: Button Mapping - Scrollable editor fills remaining space
-        // Calculate available height: remaining window height minus section box chrome (not spacing, since this is last section)
-        let availableHeight: CGFloat = frame.height - y - DesignSystem.Layout.sectionBoxChrome
-
-        // DEBUG: Log the calculation
-        print("DEBUG Keyboard Tab - frame.height: \(frame.height), y after Profile: \(y), sectionBoxChrome: \(DesignSystem.Layout.sectionBoxChrome), availableHeight: \(availableHeight)")
-
-        // Create section box for button mapping
-        let mappingContainer = NSView(frame: NSRect(
-            x: 0,
-            y: 0,
-            width: DesignSystem.Layout.contentWidth(for: frame.width),
-            height: availableHeight
-        ))
-        mappingContainer.autoresizingMask = [.width, .height]  // Resize with window
-
-        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: mappingContainer.bounds.width, height: mappingContainer.bounds.height))
-        scrollView.hasVerticalScroller = true
-        scrollView.autohidesScrollers = false
-        scrollView.borderType = .bezelBorder
-        scrollView.autoresizingMask = [.width, .height]  // Resize with parent
-
-        // Use FlippedView for top-down coordinates
-        let contentWidth = scrollView.contentSize.width
-        let documentView = FlippedView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 500))
-        documentView.wantsLayer = true
-        documentView.layer?.backgroundColor = DesignSystem.Colors.background.cgColor
-        documentView.autoresizingMask = [.width]
-
-        var rowY: CGFloat = 8  // Start from top (8pt grid aligned)
+        // SECTION 2: Button Mapping - rows added directly to content view
+        var rowY: CGFloat = 0
 
         // Helper to create button row (8pt grid aligned)
+        let mappingContent = NSView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 1000))  // Height set later
+        mappingContent.autoresizingMask = [.width]
+
         let createRow: (String, ButtonAction, Int) -> Void = { buttonName, action, tag in
-            // Button name label (x=0 since scroll view is already offset by contentLeftInset)
             let nameLabel = NSTextField(labelWithString: buttonName)
             nameLabel.frame = NSRect(x: 0, y: rowY, width: 100, height: 24)
             nameLabel.font = DesignSystem.Typography.bodyMedium
             nameLabel.textColor = DesignSystem.Colors.text
-            documentView.addSubview(nameLabel)
+            mappingContent.addSubview(nameLabel)
 
-            // Current mapping label
             let mappingLabel = NSTextField(labelWithString: action.description)
             mappingLabel.frame = NSRect(x: 130, y: rowY, width: 250, height: 24)
             mappingLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
             mappingLabel.textColor = DesignSystem.Colors.secondaryText
-            mappingLabel.autoresizingMask = [.width]  // Grow with window
-            documentView.addSubview(mappingLabel)
+            mappingLabel.autoresizingMask = [.width]
+            mappingContent.addSubview(mappingLabel)
 
-            // Edit button (positioned on right side)
-            let editBtn = NSButton(frame: NSRect(x: documentView.bounds.width - 80, y: rowY, width: 70, height: 24))
+            let editBtn = NSButton(frame: NSRect(x: contentWidth - 80, y: rowY, width: 70, height: 24))
             editBtn.title = "Edit"
             editBtn.bezelStyle = .rounded
             editBtn.font = DesignSystem.Typography.bodyMedium
             editBtn.tag = tag
             editBtn.target = self
             editBtn.action = #selector(self.editButtonMapping(_:))
-            editBtn.autoresizingMask = [.minXMargin]  // Keep on right when resizing
-            documentView.addSubview(editBtn)
+            editBtn.autoresizingMask = [.minXMargin]
+            mappingContent.addSubview(editBtn)
 
-            rowY += 32  // Move down for next row (8pt grid: 4×8)
+            rowY += 32
         }
 
-        // Helper to create section header (8pt grid aligned)
         let createSectionHeader: (String) -> Void = { title in
             let header = NSTextField(labelWithString: title)
             header.frame = NSRect(x: 0, y: rowY, width: 250, height: 24)
             header.font = DesignSystem.Typography.headlineMedium
             header.textColor = DesignSystem.Colors.text
-            documentView.addSubview(header)
-            rowY += 32  // 8pt grid: 4×8
+            mappingContent.addSubview(header)
+            rowY += 32
         }
 
         // Face Buttons section
@@ -847,7 +819,6 @@ class ViewController: NSViewController, NSTabViewDelegate {
 
         // Triggers section
         createSectionHeader("Triggers & Bumpers")
-        // Note: L/R bumpers are ModifierActions and handled separately
         createRow("ZL Trigger", profileManager.activeProfile.triggerZL, 11)
         createRow("ZR Trigger", profileManager.activeProfile.triggerZR, 12)
         createRow("ZL+ZR Combo", profileManager.activeProfile.triggerZLZR, 13)
@@ -872,16 +843,24 @@ class ViewController: NSViewController, NSTabViewDelegate {
         createRow("SL", profileManager.activeProfile.buttonSL, 20)
         createRow("SR", profileManager.activeProfile.buttonSR, 21)
 
-        // Set final documentView height based on actual content
-        let finalHeight = rowY + 24  // Add padding at bottom (8pt grid: 3×8)
-        documentView.frame = NSRect(x: 0, y: 0, width: contentWidth, height: finalHeight)
+        // Set final content height based on actual content
+        mappingContent.frame = NSRect(x: 0, y: 0, width: contentWidth, height: rowY + 8)
 
-        scrollView.documentView = documentView
-        mappingContainer.addSubview(scrollView)
+        panel.addSubview(createSectionBox(title: "Button Mapping", content: mappingContent, yPosition: &y, panelWidth: frame.width))
 
-        panel.addSubview(createSectionBox(title: "Button Mapping", content: mappingContainer, yPosition: &y, panelWidth: frame.width, fillsRemainingHeight: true))
+        // Set panel height based on content
+        let panelHeight = y + DesignSystem.Spacing.lg
+        panel.frame = NSRect(x: 0, y: 0, width: frame.width, height: panelHeight)
 
-        return panel
+        // Wrap in scroll view for vertical scrolling (like Mouse and Voice tabs)
+        let scrollView = NSScrollView(frame: frame)
+        scrollView.documentView = panel
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        scrollView.autoresizingMask = [.width, .height]
+        scrollView.borderType = .noBorder
+
+        return scrollView
     }
 
     private func createVoiceConfigPanel(frame: NSRect) -> NSView {
