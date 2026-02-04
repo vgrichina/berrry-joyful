@@ -182,6 +182,13 @@ Settings are accessible via the toolbar UI and persist automatically:
 - Menu bar app with profile switching
 - XcodeGen-based project configuration
 
+## Screenshots
+
+### Main Interface
+The app shows real-time Joy-Con battery status and provides tabs for configuring mouse, keyboard, and voice settings. The button mapping editor allows customizing the Desktop, Media, Gaming, and custom profiles.
+
+![Berrry Joyful Interface](https://raw.githubusercontent.com/berrry-computer/berrry-joyful/main/screenshots/main-interface.png)
+
 ## Tips for Claude Code
 
 1. **Navigate quickly** - Left stick for cursor, right stick for scrolling
